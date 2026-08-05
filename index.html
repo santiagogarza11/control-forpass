@@ -1145,9 +1145,15 @@ function tarjetaKpi(label, valor, pie, clase, accion){
 }
 
 function barraHerramientas(){
-  return '<button type="button" class="btn btn-suave btn-mini" data-accion="excel">' + ICONO.excel + 'Descargar Excel</button>'
-       + '<button type="button" class="btn btn-suave btn-mini" data-accion="respaldo">' + ICONO.respaldo + 'Respaldo JSON</button>'
+  /* El Excel lo puede sacar cualquiera: es la herramienta del día a día.
+     Respaldar y restaurar mueven TODA la base de golpe, así que quedan solo
+     para Owner y Admin. */
+  let h = '<button type="button" class="btn btn-suave btn-mini" data-accion="excel">' + ICONO.excel + 'Descargar Excel</button>';
+  if(esAdmin()){
+    h += '<button type="button" class="btn btn-suave btn-mini" data-accion="respaldo">' + ICONO.respaldo + 'Respaldo JSON</button>'
        + '<button type="button" class="btn btn-suave btn-mini" data-accion="restaurar">' + ICONO.subir + 'Restaurar</button>';
+  }
+  return h;
 }
 
 /* ------------------------------ Vista: clientes ------------------------------ */
@@ -1441,6 +1447,12 @@ function pintarCabecera(){
 function exigirPermiso(){
   if(puedeEditar()) return true;
   aviso('Tu cuenta es Viewer: no puede hacer cambios.', true);
+  return false;
+}
+/* Para lo que toca toda la base de golpe: solo Owner y Admin. */
+function exigirAdmin(quePasa){
+  if(esAdmin()) return true;
+  aviso('Solo un Owner o un Admin puede ' + quePasa + '.', true);
   return false;
 }
 /* Redibuja sin perder el cursor del buscador. */
@@ -2375,8 +2387,8 @@ $('vista').addEventListener('click', ev=>{
     else if(a === 'ir-clientes'){ estado.vista = 'clientes'; estado.clienteId = null; render(); }
     else if(a === 'excel') descargarExcel(null);
     else if(a === 'excel-cliente') descargarExcel(estado.clienteId);
-    else if(a === 'respaldo') descargarRespaldo();
-    else if(a === 'restaurar') $('archivoRestaurar').click();
+    else if(a === 'respaldo'){ if(exigirAdmin('descargar el respaldo completo')) descargarRespaldo(); }
+    else if(a === 'restaurar'){ if(exigirAdmin('restaurar un respaldo')) $('archivoRestaurar').click(); }
     else if(a === 'ver-por-vencer') modalPorVencer(null);
     else if(a === 'ver-por-vencer-cliente') modalPorVencer(estado.clienteId);
     else if(a === 'nueva-cuenta') modalCuenta();
@@ -2506,7 +2518,7 @@ $('archivoRestaurar').addEventListener('change', ev=>{
     try{ d = JSON.parse(lector.result); }
     catch(e){ aviso('El archivo no es un respaldo JSON válido.', true); return; }
     if(!d || !Array.isArray(d.clientes) || !Array.isArray(d.sitios)){ aviso('El archivo no tiene el formato esperado.', true); return; }
-    if(HAY_NUBE && !puedeEditar()){ aviso('Tu cuenta es Viewer: no puede restaurar respaldos.', true); return; }
+    if(!esAdmin()){ aviso('Solo un Owner o un Admin puede restaurar un respaldo.', true); return; }
     confirmar('Restaurar respaldo',
       'Se van a reemplazar los datos ' + (HAY_NUBE ? '<b>del servidor</b>' : 'de este navegador') + ' por los del archivo: <b>'
       + d.clientes.length + ' ' + plural(d.clientes.length,'cliente','clientes')
