@@ -2456,6 +2456,8 @@ function manejarFalloDeArranque(e){
   /* Cualquier otra cosa (sin internet, servidor caído) se aguanta: sigues dentro,
      trabajando con la última copia, y se reintenta solo. */
   console.warn('No se pudo sincronizar al arrancar:', m);
+  /* Tienes sesión válida: que no te quede la pantalla de acceso encima. */
+  if(haySesion()) ocultarAcceso();
   aviso(esFalloDeRed(e)
     ? 'Sin conexión. Estás viendo la última copia guardada aquí; se sincroniza solo al volver el internet.'
     : 'No se pudo leer del servidor; se muestra la última copia local.', true);
