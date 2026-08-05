@@ -387,7 +387,7 @@ table.tabla .yo{font-size:10.5px; color:var(--accent); font-weight:600;}
   <form class="acceso-caja" id="formAcceso" autocomplete="on">
     <img id="logoAcceso" src="" alt="Forguard">
     <h2>Control de Forpass</h2>
-    <p class="intro">Entra con tu correo y contraseña para ver la información del equipo.</p>
+    <p class="intro"><span id="saludo"></span> Entra con tu correo y contraseña. La sesión se queda abierta en este navegador, así no te la pide cada vez.</p>
     <div class="acceso-error" id="accesoError" role="alert"></div>
     <div class="campo">
       <label for="aCorreo">Correo</label>
@@ -398,6 +398,7 @@ table.tabla .yo{font-size:10.5px; color:var(--accent); font-weight:600;}
       <input type="password" id="aClave" name="password" autocomplete="current-password" placeholder="••••••••" required>
     </div>
     <button type="submit" class="btn btn-primario" id="aEntrar">Entrar</button>
+    <p class="acceso-pie" id="otraCuenta" style="display:none">¿No eres tú? <button type="button" id="aOtraCuenta">Entrar con otra cuenta</button></p>
     <p class="acceso-pie">¿Olvidaste tu contraseña? <button type="button" id="aOlvide">Que me manden un correo para cambiarla</button></p>
   </form>
 </div>
@@ -609,6 +610,7 @@ function salir(porVencimiento){
   datos = { v:1, clientes:[], sitios:[] };
   try{ localStorage.removeItem(LLAVE); }catch(e){}
   estado.vista = 'clientes'; estado.clienteId = null;
+  sincronizado = false;
   mostrarAcceso(porVencimiento ? 'Tu sesión expiró. Vuelve a entrar.' : '');
   render();
 }
@@ -2275,12 +2277,38 @@ function descargarExcel(clienteId){
   aviso('Excel descargado con ' + filas.length + ' ' + plural(filas.length,'sitio','sitios') + '.');
 }
 
-/* ======================== PANTALLA DE ACCESO ======================== */
+/* ======================== PANTALLA DE ACCESO ========================
+   El correo se recuerda aunque cierres sesión, para que la próxima vez solo
+   teclees la contraseña. La contraseña nunca se guarda: de eso se encarga el
+   navegador si le dices que la recuerde.
+   ==================================================================== */
+const LLAVE_CORREO = 'forguard_forpass_ultimo_correo_v1';
+function recordarCorreo(correo){
+  try{ localStorage.setItem(LLAVE_CORREO, correo || ''); }catch(e){}
+}
+function correoRecordado(){
+  try{ return localStorage.getItem(LLAVE_CORREO) || ''; }catch(e){ return ''; }
+}
+function olvidarCorreo(){
+  try{ localStorage.removeItem(LLAVE_CORREO); }catch(e){}
+}
+
 function mostrarAcceso(mensaje){
   $('acceso').classList.add('abierto');
   document.body.style.overflow = 'hidden';
   errorAcceso(mensaje || '');
-  setTimeout(()=>{ const c = $('aCorreo'); if(c && !c.value) c.focus(); }, 80);
+
+  const recordado = correoRecordado();
+  const campoCorreo = $('aCorreo');
+  if(recordado && !campoCorreo.value) campoCorreo.value = recordado;
+
+  /* Si ya sabemos quién eres, el cursor va directo a la contraseña. */
+  $('otraCuenta').style.display = campoCorreo.value ? '' : 'none';
+  $('saludo').textContent = recordado ? 'Hola, ' + nombreDeCorreo(recordado) + '.' : '';
+  setTimeout(()=>{
+    const ir = campoCorreo.value ? $('aClave') : campoCorreo;
+    if(ir) ir.focus();
+  }, 80);
 }
 function ocultarAcceso(){
   $('acceso').classList.remove('abierto');
@@ -2302,6 +2330,7 @@ $('formAcceso').addEventListener('submit', async ev=>{
   errorAcceso('');
   try{
     await entrar(correo, clave);
+    recordarCorreo(sesion.correo);
     ocultarAcceso();
     anotar('entró', 'sesión', sesion.correo);
     await arrancarNube();
@@ -2326,6 +2355,16 @@ function salirSilencioso(){
   Object.assign(sesion, { correo:null, uid:null, idToken:null, refreshToken:null, expira:0, rol:null, nombre:'' });
   try{ localStorage.removeItem(LLAVE_SESION); }catch(e){}
 }
+
+$('aOtraCuenta').addEventListener('click', ()=>{
+  olvidarCorreo();
+  $('aCorreo').value = '';
+  $('aClave').value = '';
+  $('saludo').textContent = '';
+  $('otraCuenta').style.display = 'none';
+  errorAcceso('');
+  $('aCorreo').focus();
+});
 
 $('aOlvide').addEventListener('click', async ()=>{
   const correo = $('aCorreo').value.trim();
@@ -2360,6 +2399,16 @@ $('btnAdmin').addEventListener('click', ()=>{
    vuelve a consultar cada medio minuto mientras la pestaña esté a la vista
    y no haya nada pendiente ni un formulario abierto.
    ==================================================================== */
+/* ¿El error fue por falta de internet? Entonces NO hay que cerrar la sesión:
+   sería sacar al usuario y pedirle la contraseña por una falla pasajera. */
+function esFalloDeRed(e){
+  if(e instanceof TypeError) return true;      /* así se queja fetch cuando no hay red */
+  const m = String((e && e.message) || e || '');
+  return /Failed to fetch|NetworkError|Load failed|network error|ERR_INTERNET/i.test(m);
+}
+/* Queda en falso mientras no se haya logrado leer del servidor ni una vez. */
+let sincronizado = false;
+
 async function refrescarDesdeNube(){
   if(!HAY_NUBE || !haySesion()) return;
   if(cola.length || vaciando) return;
@@ -2368,15 +2417,56 @@ async function refrescarDesdeNube(){
   try{
     const antes = JSON.stringify(datos);
     await bajarDeLaNube();
+    sincronizado = true;
     if(JSON.stringify(datos) !== antes) render();
   }catch(e){
     if(/SIN_SESION|SESION_VENCIDA/.test(String(e.message))) salir(true);
   }
 }
 
+/* Al volver el internet o al regresar a la pestaña: si nunca se logró la primera
+   lectura, se intenta de nuevo; si ya estaba sincronizado, basta con subir la cola. */
+function reintentarSincronizar(){
+  if(!HAY_NUBE || !haySesion()) return;
+  intentosFallidos = 0;
+  if(!sincronizado){
+    cargarPerfil().then(arrancarNube).catch(manejarFalloDeArranque);
+    return;
+  }
+  vaciarCola();
+  refrescarDesdeNube();
+}
+
+/* Qué hacer si al abrir la página no se pudo hablar con el servidor. Solo se
+   cierra la sesión cuando el problema es de la cuenta, nunca por red. */
+function manejarFalloDeArranque(e){
+  const m = String((e && e.message) || '');
+  if(/SIN_PERMISO/.test(m)){
+    salirSilencioso();
+    mostrarAcceso('Tu cuenta ya no tiene acceso concedido. Habla con un administrador.');
+    render(); return;
+  }
+  if(/BLOQUEADO/.test(m)){
+    salirSilencioso();
+    mostrarAcceso('Tu cuenta está bloqueada. Pide a un administrador que la reactive.');
+    render(); return;
+  }
+  if(/SESION_VENCIDA|SIN_SESION/.test(m)){ salir(true); return; }
+
+  /* Cualquier otra cosa (sin internet, servidor caído) se aguanta: sigues dentro,
+     trabajando con la última copia, y se reintenta solo. */
+  console.warn('No se pudo sincronizar al arrancar:', m);
+  aviso(esFalloDeRed(e)
+    ? 'Sin conexión. Estás viendo la última copia guardada aquí; se sincroniza solo al volver el internet.'
+    : 'No se pudo leer del servidor; se muestra la última copia local.', true);
+  render();
+  vaciarCola();
+}
+
 async function arrancarNube(){
   try{
     const r = await bajarDeLaNube();
+    sincronizado = true;
     /* Primera conexión: el servidor está vacío y aquí ya había capturas. Se suben. */
     if(r === 'vacia'){
       if(puedeEditar()){
@@ -2389,15 +2479,8 @@ async function arrancarNube(){
       }
     }
   }catch(e){
-    const m = String(e.message || '');
-    if(/SIN_SESION|SESION_VENCIDA/.test(m)){ salir(true); return; }
-    if(/SIN_PERMISO/.test(m)){
-      salirSilencioso();
-      mostrarAcceso('Tu cuenta no tiene acceso concedido a esta información. Pide a un administrador que te lo dé.');
-      render();
-      return;
-    }
-    aviso('No se pudo leer del servidor; se muestra la última copia local.', true);
+    manejarFalloDeArranque(e);
+    return;
   }
   render();
   vaciarCola();
@@ -2418,21 +2501,14 @@ if(!HAY_NUBE){
     render();                       /* pinta ya con la copia local, sin esperar la red */
     cargarPerfil()
       .then(arrancarNube)
-      .catch(e=>{
-        const m = String(e.message || '');
-        salirSilencioso();
-        mostrarAcceso(/SIN_PERMISO/.test(m) ? 'Tu cuenta ya no tiene acceso concedido. Habla con un administrador.'
-                     : /BLOQUEADO/.test(m) ? 'Tu cuenta está bloqueada. Pide a un administrador que la reactive.'
-                     : '');
-        render();
-      });
+      .catch(manejarFalloDeArranque);
   }else{
     mostrarAcceso();
     render();
   }
   setInterval(refrescarDesdeNube, 30000);
-  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ vaciarCola(); refrescarDesdeNube(); } });
-  window.addEventListener('online', ()=>{ intentosFallidos = 0; vaciarCola(); });
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) reintentarSincronizar(); });
+  window.addEventListener('online', reintentarSincronizar);
 }
 </script>
 
