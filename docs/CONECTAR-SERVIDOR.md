@@ -65,7 +65,7 @@ git add -A && git commit -m "Conecta el tablero al servidor" && git push
 
 1. **Firestore Database** → pestaña **Reglas**.
 2. Borra todo lo que haya y pega el contenido completo del archivo
-   [`firestore.rules`](firestore.rules) de este repo.
+   [`config/firestore.rules`](../config/firestore.rules) de este repo.
 3. **Publicar**.
 
 ## Paso 6 — Crear tu cuenta de Owner

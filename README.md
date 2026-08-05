@@ -32,8 +32,8 @@ máquina.
 **Modo servidor** — con Firebase configurado: pide correo y contraseña, guarda en
 el servidor, todos ven lo mismo, hay cuatro permisos (Owner, Admin, Analyst,
 Viewer) y queda historial de quién cambió qué. Los pasos están en
-[CONECTAR-SERVIDOR.md](CONECTAR-SERVIDOR.md) y las reglas de seguridad en
-[firestore.rules](firestore.rules).
+[docs/CONECTAR-SERVIDOR.md](docs/CONECTAR-SERVIDOR.md) y las reglas de seguridad en
+[config/firestore.rules](config/firestore.rules).
 
 En los dos modos, **Descargar Excel** genera un `.xlsx` con el formato de
 *Control de Kioskos Forpass*, con las columnas calculadas como fórmulas vivas.
