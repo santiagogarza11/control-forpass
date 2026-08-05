@@ -1,0 +1,82 @@
+rules_version = '2';
+
+/* ===========================================================================
+   Reglas de seguridad de Control de Forpass
+
+   Esto es lo que de verdad protege la información: aunque alguien copie la
+   página o los datos de configuración, sin una cuenta con permiso concedido
+   aquí no puede leer ni escribir nada.
+
+   Cómo se pegan: consola de Firebase → Firestore Database → pestaña Reglas →
+   borra lo que haya, pega todo esto, y dale a Publicar.
+
+   Permisos:
+     owner   → todo, y es el único que puede nombrar o tocar a otro owner
+     admin   → todo lo demás, incluido administrar cuentas
+     analyst → agrega y modifica clientes, sitios y pagos
+     viewer  → solo lee
+   =========================================================================== */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function perfil() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+    /* Tiene acceso quien está autenticado, tiene ficha de usuario y no está bloqueado. */
+    function conAcceso() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && perfil().activo == true;
+    }
+    function rol() { return perfil().rol; }
+    function esOwner()   { return conAcceso() && rol() == 'owner'; }
+    function esAdmin()   { return conAcceso() && rol() in ['owner', 'admin']; }
+    function puedeEditar() { return conAcceso() && rol() in ['owner', 'admin', 'analyst']; }
+
+    /* --- Información del tablero --- */
+    match /clientes/{id} {
+      allow read:  if conAcceso();
+      allow write: if puedeEditar();
+    }
+    match /sitios/{id} {
+      allow read:  if conAcceso();
+      allow write: if puedeEditar();
+    }
+
+    /* --- Historial: cualquiera con acceso lo escribe, solo admin lo lee,
+           y nadie lo puede modificar ni borrar. --- */
+    match /bitacora/{id} {
+      allow read:   if esAdmin();
+      allow create: if conAcceso();
+      allow update, delete: if false;
+    }
+
+    /* --- Cuentas y permisos ---
+       · Cada quien puede leer su propia ficha (así la página sabe su rol).
+       · Solo admin y owner ven todas.
+       · Un admin NO puede crear, modificar ni borrar a un owner: eso es
+         exclusivo del owner. Así nadie te puede degradar ni bloquear.
+       · Cada quien puede actualizar únicamente su propio 'ultimoAcceso'. --- */
+    match /usuarios/{uid} {
+      allow read: if esAdmin() || (request.auth != null && request.auth.uid == uid);
+
+      allow create: if esOwner()
+                    || (esAdmin() && request.resource.data.rol != 'owner');
+
+      allow update: if esOwner()
+                    || (esAdmin()
+                        && resource.data.rol != 'owner'
+                        && request.resource.data.rol != 'owner')
+                    || (request.auth != null && request.auth.uid == uid
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ultimoAcceso']));
+
+      allow delete: if esOwner() || (esAdmin() && resource.data.rol != 'owner');
+    }
+
+    /* Todo lo que no esté listado arriba queda cerrado. */
+    match /{documento=**} {
+      allow read, write: if false;
+    }
+  }
+}

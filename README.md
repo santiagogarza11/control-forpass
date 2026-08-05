@@ -22,13 +22,21 @@ mensualidades por vencer en 7 días y vigencias que terminan en 45 días.
 
 ## Dónde se guarda la información
 
-En el **navegador** de la computadora que la captura (`localStorage`), no en un
-servidor. Para pasarla a otra máquina o compartirla:
+Funciona de dos maneras según si `CONFIG_NUBE` (arriba de `index.html`) está
+lleno o vacío:
 
-- **Respaldo JSON** descarga todo.
-- **Restaurar** vuelve a cargar ese archivo en otro navegador.
-- **Descargar Excel** genera un `.xlsx` con el formato de *Control de Kioskos
-  Forpass*, con las columnas calculadas como fórmulas vivas.
+**Modo local** (por defecto) — en el navegador de la computadora que la captura.
+Para moverla: **Respaldo JSON** descarga todo y **Restaurar** lo abre en otra
+máquina.
+
+**Modo servidor** — con Firebase configurado: pide correo y contraseña, guarda en
+el servidor, todos ven lo mismo, hay cuatro permisos (Owner, Admin, Analyst,
+Viewer) y queda historial de quién cambió qué. Los pasos están en
+[CONECTAR-SERVIDOR.md](CONECTAR-SERVIDOR.md) y las reglas de seguridad en
+[firestore.rules](firestore.rules).
+
+En los dos modos, **Descargar Excel** genera un `.xlsx` con el formato de
+*Control de Kioskos Forpass*, con las columnas calculadas como fórmulas vivas.
 
 ## Publicar
 
