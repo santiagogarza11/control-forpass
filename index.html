@@ -248,6 +248,100 @@ header.app .sub{font-size:12px; color:var(--gray); margin-left:auto;}
 .toast.visible{transform:translate(-50%,0); opacity:1;}
 .toast.err{background:var(--error);}
 
+/* ---------- Indicador de nube y sesión en el encabezado ---------- */
+.nube-zona{display:flex; align-items:center; gap:9px; margin-left:auto;}
+.pastilla{
+  display:inline-flex; align-items:center; gap:7px; font-size:11.5px; font-weight:600;
+  border-radius:999px; padding:6px 12px; border:1px solid var(--line); background:#fff; color:var(--gray);
+  white-space:nowrap;
+}
+.pastilla .punto{width:8px; height:8px;}
+.pastilla.n-ok{background:var(--ok-suave); color:#2c7a4e; border-color:#c5e6d3;}
+.pastilla.n-trabajo{background:#EEF2FB; color:var(--navy); border-color:#c9d4ec;}
+.pastilla.n-error{background:var(--error-suave); color:#a5322e; border-color:#f0cbc9;}
+.pastilla.n-local{background:var(--neutro-suave); color:#5c6273; border-color:#dfe3ee;}
+.btn-cabeza{
+  font-family:inherit; font-size:12px; font-weight:600; color:var(--navy); background:#fff;
+  border:1.5px solid var(--line); border-radius:9px; padding:7px 11px; cursor:pointer;
+  display:inline-flex; align-items:center; gap:6px; white-space:nowrap; transition:border-color .15s, background .15s;
+}
+.btn-cabeza:hover{border-color:var(--accent); background:#f6f9ff;}
+.btn-cabeza svg{width:14px; height:14px;}
+.correo-sesion{font-size:11.5px; color:var(--gray); max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+@media (max-width:900px){ .correo-sesion{display:none;} }
+@media (max-width:700px){ .pastilla span.txt{display:none;} .pastilla{padding:6px 8px;} }
+
+/* ---------- Pantalla de acceso ---------- */
+.acceso{
+  position:fixed; inset:0; z-index:150; background:var(--bg);
+  display:none; align-items:center; justify-content:center; padding:24px 16px; overflow-y:auto;
+}
+.acceso.abierto{display:flex;}
+.acceso-caja{
+  background:#fff; border:1px solid var(--line); border-radius:18px; padding:34px 30px 28px;
+  width:100%; max-width:392px; box-shadow:0 18px 50px rgba(10,27,77,.14); position:relative; overflow:hidden;
+  animation:sube .3s cubic-bezier(.22,1,.36,1) both;
+}
+.acceso-caja::before{content:""; position:absolute; inset:0 0 auto 0; height:4px; background:linear-gradient(90deg,var(--navy),var(--accent));}
+.acceso-caja img{height:24px; margin-bottom:18px;}
+.acceso-caja h2{font-size:19px; font-weight:700; color:var(--navy);}
+.acceso-caja p.intro{font-size:12.5px; color:var(--gray); line-height:1.55; margin:7px 0 20px;}
+.acceso-caja .btn{width:100%; margin-top:6px; padding:13px;}
+.acceso-error{
+  display:none; font-size:12px; color:#a5322e; background:var(--error-suave); border:1px solid #f0cbc9;
+  border-radius:9px; padding:9px 11px; margin:2px 0 12px; line-height:1.5;
+}
+.acceso-error.visible{display:block;}
+.acceso-pie{font-size:11.5px; color:var(--gray); text-align:center; margin-top:16px; line-height:1.55;}
+.acceso-pie button{background:none; border:none; font-family:inherit; font-size:11.5px; color:var(--accent); font-weight:600; cursor:pointer; padding:0;}
+.acceso-pie button:hover{text-decoration:underline;}
+
+/* ---------- Tablas del panel de administración ---------- */
+.bloque{background:#fff; border:1px solid var(--line); border-radius:15px; padding:20px 20px 16px; margin-bottom:18px; position:relative; overflow:hidden;}
+.bloque::before{content:""; position:absolute; inset:0 0 auto 0; height:4px; background:linear-gradient(90deg,var(--navy),var(--accent));}
+.bloque-cabeza{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px;}
+.bloque-cabeza h3{font-size:15.5px; font-weight:700; color:var(--navy);}
+.bloque-cabeza p{font-size:12px; color:var(--gray); margin-top:2px;}
+.bloque-cabeza .der{margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;}
+
+.rodillo{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+table.tabla{width:100%; border-collapse:collapse; min-width:620px;}
+table.tabla th{
+  font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--gray); font-weight:700;
+  text-align:left; padding:8px 10px; border-bottom:1.5px solid var(--line); white-space:nowrap;
+}
+table.tabla td{font-size:12.5px; color:var(--ink); padding:11px 10px; border-bottom:1px solid var(--line); vertical-align:middle;}
+table.tabla tr:last-child td{border-bottom:none;}
+table.tabla td.acciones{white-space:nowrap; text-align:right;}
+table.tabla td.acciones .btn{margin-left:5px;}
+table.tabla select{
+  padding:6px 9px; border:1px solid #d4d9e6; border-radius:8px; font-family:inherit; font-size:12px;
+  color:var(--ink); background:#fbfcfe; outline:none;
+}
+table.tabla select:focus{border-color:var(--accent);}
+table.tabla .yo{font-size:10.5px; color:var(--accent); font-weight:600;}
+.vacio-chico{font-size:12.5px; color:var(--gray); text-align:center; padding:24px 10px; line-height:1.6;}
+
+/* Credenciales recién creadas */
+.credencial{background:var(--navy); color:#fff; border-radius:13px; padding:16px 18px; margin-top:4px;}
+.credencial .c-fila{display:flex; justify-content:space-between; gap:12px; font-size:12.5px; padding:6px 0; align-items:center;}
+.credencial .c-fila span:first-child{opacity:.72;}
+.credencial .c-fila code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px; font-weight:600; background:rgba(255,255,255,.14); border-radius:6px; padding:3px 8px;}
+.credencial .c-nota{font-size:11px; opacity:.72; margin-top:9px; line-height:1.5;}
+
+/* Historial */
+.bitacora{display:flex; flex-direction:column; gap:2px;}
+.evento{display:flex; gap:12px; align-items:flex-start; padding:10px 2px; border-bottom:1px solid var(--line);}
+.evento:last-child{border-bottom:none;}
+.evento .e-icono{width:28px; height:28px; border-radius:8px; flex-shrink:0; display:grid; place-items:center; background:#EEF2FB; color:var(--navy);}
+.evento .e-icono svg{width:14px; height:14px;}
+.evento.e-alta .e-icono{background:var(--ok-suave); color:#2c7a4e;}
+.evento.e-baja .e-icono{background:var(--error-suave); color:#a5322e;}
+.evento .e-texto{flex:1; min-width:0; font-size:12.5px; color:var(--ink); line-height:1.5;}
+.evento .e-texto b{font-weight:600; color:var(--navy);}
+.evento .e-meta{font-size:11px; color:var(--gray); margin-top:2px;}
+.evento .e-cuando{font-size:11px; color:var(--gray); white-space:nowrap; text-align:right; flex-shrink:0;}
+
 /* ---------- Pie ---------- */
 .pie{padding:18px 24px; text-align:center; font-size:11.5px; color:var(--gray); border-top:1px solid var(--line); background:#fff;}
 
@@ -262,7 +356,18 @@ header.app .sub{font-size:12px; color:var(--gray); margin-left:auto;}
   <img src="data:image/png;base64,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" alt="Forguard">
   <div class="bar"></div>
   <h1>Control de Forpass</h1>
-  <div class="sub">Administración de módulos por cliente y sitio</div>
+  <div class="nube-zona">
+    <span class="correo-sesion" id="correoSesion"></span>
+    <span class="pastilla" id="estadoNube"></span>
+    <button type="button" class="btn-cabeza" id="btnAdmin" style="display:none" title="Panel de administración">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 4v6c0 4.2-2.9 7.9-7 10-4.1-2.1-7-5.8-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+      Admin
+    </button>
+    <button type="button" class="btn-cabeza" id="btnSalir" style="display:none" title="Cerrar sesión">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Salir
+    </button>
+  </div>
 </header>
 
 <div class="wrap">
@@ -270,6 +375,26 @@ header.app .sub{font-size:12px; color:var(--gray); margin-left:auto;}
 </div>
 
 <footer class="pie" id="pieTexto">© Forguard · Uso interno — se prohíbe la reproducción o uso del sistema sin consentimiento.</footer>
+
+<!-- Pantalla de acceso (solo aparece cuando la nube está configurada) -->
+<div class="acceso" id="acceso">
+  <form class="acceso-caja" id="formAcceso" autocomplete="on">
+    <img id="logoAcceso" src="" alt="Forguard">
+    <h2>Control de Forpass</h2>
+    <p class="intro">Entra con tu correo y contraseña para ver la información del equipo.</p>
+    <div class="acceso-error" id="accesoError" role="alert"></div>
+    <div class="campo">
+      <label for="aCorreo">Correo</label>
+      <input type="email" id="aCorreo" name="username" autocomplete="username" placeholder="tu@empresa.com" required>
+    </div>
+    <div class="campo">
+      <label for="aClave">Contraseña</label>
+      <input type="password" id="aClave" name="password" autocomplete="current-password" placeholder="••••••••" required>
+    </div>
+    <button type="submit" class="btn btn-primario" id="aEntrar">Entrar</button>
+    <p class="acceso-pie">¿Olvidaste tu contraseña? <button type="button" id="aOlvide">Que me manden un correo para cambiarla</button></p>
+  </form>
+</div>
 
 <!-- Ventana modal genérica -->
 <div class="telon" id="telon" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
@@ -289,22 +414,42 @@ header.app .sub{font-size:12px; color:var(--gray); margin-left:auto;}
 <script>
 /* =========================================================================
    CONTROL DE FORPASS · Forguard
-   Página estática: todo se guarda en el navegador (localStorage) y se puede
-   respaldar a JSON o exportar a Excel.
+
+   Funciona de dos maneras:
+
+   · MODO LOCAL  — si CONFIG_NUBE está vacío. Todo se guarda solo en este
+                   navegador, como una libreta personal.
+   · MODO NUBE   — al pegar los datos de Firebase abajo. Entonces pide correo
+                   y contraseña, guarda en el servidor, varias personas ven lo
+                   mismo, hay permisos (admin / captura / lectura) y queda
+                   historial de quién cambió qué.
 
    Modelo de datos
    ---------------
-   datos = {
-     v: 1,
-     clientes: [ { id, nombre, contacto, notas } ],
-     sitios:   [ { id, clienteId, nombre, estado, tipo, modulos, mensualidad,
-                   incViaticos, viaticos, incOnboarding, onboarding,
-                   fechaInicio, meses, pagos:[bool], notas } ]
-   }
+   clientes: { id, nombre, contacto, notas }
+   sitios:   { id, clienteId, nombre, estado, tipo, modulos, mensualidad,
+               incViaticos, viaticos, incOnboarding, onboarding,
+               fechaInicio, meses, pagos:[bool], notas }
+   usuarios: { id(uid), correo, nombre, rol, activo, creado, creadoPor, ultimoAcceso }
+   bitacora: { cuando, quien, accion, que, nombre, detalle }
    ========================================================================= */
+
+/* ┌───────────────────────────────────────────────────────────────────────┐
+   │  PEGA AQUÍ LOS DATOS DE TU PROYECTO DE FIREBASE                       │
+   │  Los encuentras en la consola de Firebase, en Configuración del       │
+   │  proyecto → Tus apps → Configuración del SDK.                         │
+   │  Estos dos datos NO son secretos: quien los ve no puede entrar sin     │
+   │  una cuenta. La seguridad real está en las reglas y en el login.       │
+   └───────────────────────────────────────────────────────────────────────┘ */
+const CONFIG_NUBE = {
+  apiKey:    '',   /* ej. 'AIzaSy...' */
+  projectId: ''    /* ej. 'control-forpass' */
+};
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+const HAY_NUBE = !!(CONFIG_NUBE.apiKey && CONFIG_NUBE.projectId);
 
 /* =============================== ALMACÉN =============================== */
 const LLAVE = 'forguard_control_forpass_v1';
@@ -316,15 +461,341 @@ function cargar(){
     if(!cruda) return;
     const d = JSON.parse(cruda);
     if(d && Array.isArray(d.clientes) && Array.isArray(d.sitios)){
-      datos = { v:1, clientes:d.clientes, sitios:d.sitios.map(normalizarSitio) };
+      datos = { v:1, clientes:d.clientes.map(normalizarCliente), sitios:d.sitios.map(normalizarSitio) };
     }
   }catch(e){ console.warn('No se pudo leer el respaldo local:', e); }
 }
-function guardar(){
+/* Copia local: sirve de caché y para que la página siga sirviendo sin internet. */
+function guardarLocal(){
   try{ localStorage.setItem(LLAVE, JSON.stringify(datos)); }
   catch(e){ aviso('No se pudo guardar en este navegador. Descarga un respaldo JSON.', true); }
 }
 function nuevoId(){ return 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function normalizarCliente(c){
+  return { id:c.id || nuevoId(), nombre:c.nombre || 'Cliente', contacto:c.contacto || '', notas:c.notas || '' };
+}
+
+/* ---- Guardado de un registro: local siempre, y a la nube si está activa ---- */
+function guardarCliente(c, accion){
+  guardarLocal();
+  encolar({ tipo:'poner', coleccion:'clientes', id:c.id, obj:c });
+  anotar(accion || 'editó', 'cliente', c.nombre);
+}
+function guardarSitio(s, accion, detalle){
+  guardarLocal();
+  encolar({ tipo:'poner', coleccion:'sitios', id:s.id, obj:s });
+  anotar(accion || 'editó', 'sitio', s.nombre, detalle);
+}
+function borrarRegistro(coleccion, id){
+  guardarLocal();
+  encolar({ tipo:'borrar', coleccion, id });
+}
+
+/* ============================ SESIÓN Y PERMISOS ============================
+   Nada de esto corre en modo local: ahí no hay cuentas ni permisos.
+   ========================================================================== */
+const LLAVE_SESION = 'forguard_forpass_sesion_v1';
+
+/* Los cuatro permisos, de más a menos poder. El Owner es el dueño del tablero:
+   nadie más puede quitarle el permiso ni bloquearlo, y es el único que puede
+   nombrar a otro Owner. */
+const ROLES = {
+  owner:   { nombre:'Owner',   desc:'Dueño del tablero: todo, y nadie lo puede bloquear ni degradar.' },
+  admin:   { nombre:'Admin',   desc:'Todo, incluido el panel de administración y las cuentas.' },
+  analyst: { nombre:'Analyst', desc:'Puede agregar y modificar clientes, sitios y pagos.' },
+  viewer:  { nombre:'Viewer',  desc:'Solo puede ver la información; no modifica nada.' }
+};
+/* Nombres viejos de una versión anterior, por si quedó alguna cuenta con ellos. */
+const ROLES_VIEJOS = { editor:'analyst', lector:'viewer' };
+function normalizarRol(r){
+  const x = ROLES_VIEJOS[r] || r;
+  return ROLES[x] ? x : 'viewer';
+}
+
+const sesion = { correo:null, uid:null, idToken:null, refreshToken:null, expira:0, rol:null, nombre:'' };
+
+function guardarSesion(){ try{ localStorage.setItem(LLAVE_SESION, JSON.stringify(sesion)); }catch(e){} }
+function cargarSesion(){
+  try{ Object.assign(sesion, JSON.parse(localStorage.getItem(LLAVE_SESION) || '{}')); }catch(e){}
+}
+function haySesion(){ return !!(sesion.idToken && sesion.refreshToken); }
+function esOwner(){ return !HAY_NUBE || sesion.rol === 'owner'; }
+function esAdmin(){ return !HAY_NUBE || sesion.rol === 'owner' || sesion.rol === 'admin'; }
+function puedeEditar(){ return !HAY_NUBE || esAdmin() || sesion.rol === 'analyst'; }
+
+function urlAuth(metodo){
+  return 'https://identitytoolkit.googleapis.com/v1/accounts:' + metodo + '?key=' + encodeURIComponent(CONFIG_NUBE.apiKey);
+}
+async function pedirAuth(metodo, cuerpo){
+  const r = await fetch(urlAuth(metodo), {
+    method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(cuerpo)
+  });
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(traducirAuth(d && d.error && d.error.message));
+  return d;
+}
+function traducirAuth(codigo){
+  const c = String(codigo || '');
+  if(/INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND/.test(c)) return 'Correo o contraseña incorrectos.';
+  if(/USER_DISABLED/.test(c)) return 'Esta cuenta está deshabilitada. Pide a un administrador que la reactive.';
+  if(/TOO_MANY_ATTEMPTS/.test(c)) return 'Demasiados intentos fallidos. Espera unos minutos y vuelve a probar.';
+  if(/EMAIL_EXISTS/.test(c)) return 'Ya existe una cuenta con ese correo.';
+  if(/WEAK_PASSWORD/.test(c)) return 'La contraseña debe tener al menos 6 caracteres.';
+  if(/INVALID_EMAIL/.test(c)) return 'Ese correo no tiene un formato válido.';
+  if(/OPERATION_NOT_ALLOWED/.test(c)) return 'Falta activar el acceso por correo y contraseña en Firebase.';
+  return c ? 'No se pudo completar la operación (' + c + ').' : 'No se pudo conectar con el servidor.';
+}
+
+async function entrar(correo, contrasena){
+  const d = await pedirAuth('signInWithPassword', { email:correo, password:contrasena, returnSecureToken:true });
+  sesion.correo = d.email;
+  sesion.uid = d.localId;
+  sesion.idToken = d.idToken;
+  sesion.refreshToken = d.refreshToken;
+  sesion.expira = Date.now() + (Number(d.expiresIn) || 3600) * 1000;
+  guardarSesion();
+  await cargarPerfil();
+}
+async function renovarToken(){
+  const r = await fetch('https://securetoken.googleapis.com/v1/token?key=' + encodeURIComponent(CONFIG_NUBE.apiKey), {
+    method:'POST', headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type:'refresh_token', refresh_token: sesion.refreshToken }).toString()
+  });
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error('SESION_VENCIDA');
+  sesion.idToken = d.id_token;
+  sesion.refreshToken = d.refresh_token || sesion.refreshToken;
+  sesion.expira = Date.now() + (Number(d.expires_in) || 3600) * 1000;
+  guardarSesion();
+}
+async function tokenVigente(){
+  if(!haySesion()) throw new Error('SIN_SESION');
+  if(Date.now() > sesion.expira - 60000) await renovarToken();
+  return sesion.idToken;
+}
+function salir(porVencimiento){
+  Object.assign(sesion, { correo:null, uid:null, idToken:null, refreshToken:null, expira:0, rol:null, nombre:'' });
+  try{ localStorage.removeItem(LLAVE_SESION); }catch(e){}
+  datos = { v:1, clientes:[], sitios:[] };
+  try{ localStorage.removeItem(LLAVE); }catch(e){}
+  estado.vista = 'clientes'; estado.clienteId = null;
+  mostrarAcceso(porVencimiento ? 'Tu sesión expiró. Vuelve a entrar.' : '');
+  render();
+}
+
+/* El perfil dice el rol. Si no existe, la cuenta no tiene acceso concedido. */
+async function cargarPerfil(){
+  const d = await pedirNube('/usuarios/' + encodeURIComponent(sesion.uid), { method:'GET' }, true);
+  if(!d || !d.fields) throw new Error('SIN_PERMISO');
+  const p = deCampos(d.fields);
+  if(p.activo === false) throw new Error('BLOQUEADO');
+  sesion.rol = normalizarRol(p.rol);
+  sesion.nombre = p.nombre || '';
+  guardarSesion();
+  /* Deja constancia del acceso, sin frenar el arranque si falla. */
+  pedirNube('/usuarios/' + encodeURIComponent(sesion.uid) + '?updateMask.fieldPaths=ultimoAcceso', {
+    method:'PATCH', body: JSON.stringify({ fields:{ ultimoAcceso:{ stringValue:new Date().toISOString() } } })
+  }).catch(()=>{});
+}
+
+/* ========================= FIRESTORE POR REST =========================
+   Se habla con Firestore con fetch normal, sin librerías, para que la
+   página siga siendo un solo archivo.
+   ====================================================================== */
+const RAIZ_NUBE = () =>
+  'https://firestore.googleapis.com/v1/projects/' + CONFIG_NUBE.projectId + '/databases/(default)/documents';
+
+function aValor(v){
+  if(v === null || v === undefined) return { nullValue:null };
+  if(typeof v === 'boolean') return { booleanValue:v };
+  if(typeof v === 'number') return Number.isInteger(v) ? { integerValue:String(v) } : { doubleValue:v };
+  if(Array.isArray(v)) return { arrayValue:{ values: v.map(aValor) } };
+  if(typeof v === 'object') return { mapValue:{ fields: aCampos(v) } };
+  return { stringValue:String(v) };
+}
+function aCampos(o){ const f = {}; Object.keys(o).forEach(k=>{ f[k] = aValor(o[k]); }); return f; }
+function deValor(v){
+  if(!v || typeof v !== 'object') return null;
+  if('booleanValue' in v) return v.booleanValue;
+  if('integerValue' in v) return Number(v.integerValue);
+  if('doubleValue' in v)  return Number(v.doubleValue);
+  if('stringValue' in v)  return v.stringValue;
+  if('timestampValue' in v) return v.timestampValue;
+  if('nullValue' in v)    return null;
+  if('arrayValue' in v)   return (v.arrayValue.values || []).map(deValor);
+  if('mapValue' in v)     return deCampos(v.mapValue.fields || {});
+  return null;
+}
+function deCampos(f){ const o = {}; Object.keys(f).forEach(k=>{ o[k] = deValor(f[k]); }); return o; }
+
+async function pedirNube(ruta, opciones, permitirVacio, esReintento){
+  const t = await tokenVigente();
+  const op = Object.assign({}, opciones);
+  op.headers = Object.assign({ 'Authorization':'Bearer ' + t, 'Content-Type':'application/json' }, op.headers || {});
+  const r = await fetch(RAIZ_NUBE() + ruta, op);
+  if(r.status === 401 && !esReintento){
+    await renovarToken();
+    return pedirNube(ruta, opciones, permitirVacio, true);
+  }
+  if(r.status === 404 && permitirVacio) return null;
+  if(r.status === 403) throw new Error('SIN_PERMISO');
+  if(!r.ok){
+    const t2 = await r.text().catch(()=>'');
+    throw new Error('HTTP ' + r.status + ' ' + t2.slice(0,200));
+  }
+  if(r.status === 204) return null;
+  return r.json().catch(()=>null);
+}
+
+async function listarNube(coleccion){
+  const salida = [];
+  let pagina = '';
+  do{
+    const d = await pedirNube('/' + coleccion + '?pageSize=300' + (pagina ? '&pageToken=' + encodeURIComponent(pagina) : ''), { method:'GET' });
+    ((d && d.documents) || []).forEach(doc=>{
+      const o = deCampos(doc.fields || {});
+      o.id = doc.name.split('/').pop();
+      salida.push(o);
+    });
+    pagina = (d && d.nextPageToken) || '';
+  }while(pagina);
+  return salida;
+}
+/* updateMask explícito: sin él, Firestore no reemplaza el registro de forma predecible. */
+async function escribirNube(coleccion, id, obj){
+  const campos = Object.assign({}, obj);
+  delete campos.id;
+  const mascara = Object.keys(campos).map(k => 'updateMask.fieldPaths=' + encodeURIComponent(k)).join('&');
+  return pedirNube('/' + coleccion + '/' + encodeURIComponent(id) + '?' + mascara, {
+    method:'PATCH', body: JSON.stringify({ fields: aCampos(campos) })
+  });
+}
+async function borrarNube(coleccion, id){
+  return pedirNube('/' + coleccion + '/' + encodeURIComponent(id), { method:'DELETE' }, true);
+}
+async function crearNube(coleccion, obj){
+  return pedirNube('/' + coleccion, { method:'POST', body: JSON.stringify({ fields: aCampos(obj) }) });
+}
+
+/* ===================== COLA DE CAMBIOS PENDIENTES =====================
+   Cada cambio se guarda primero local y se apunta en una cola. La cola se
+   vacía contra el servidor; si no hay internet, espera y reintenta. Así no
+   se pierde nada aunque se cierre la pestaña.
+   ====================================================================== */
+const LLAVE_COLA = 'forguard_forpass_cola_v1';
+let cola = [];
+let vaciando = false, intentosFallidos = 0, temporizadorCola = null;
+
+function cargarCola(){ try{ cola = JSON.parse(localStorage.getItem(LLAVE_COLA) || '[]'); }catch(e){ cola = []; } }
+function guardarCola(){ try{ localStorage.setItem(LLAVE_COLA, JSON.stringify(cola)); }catch(e){} }
+
+function encolar(op){
+  if(!HAY_NUBE) return;
+  /* Si ya había un cambio pendiente del mismo registro, este lo reemplaza. */
+  cola = cola.filter(x => !(x.coleccion === op.coleccion && x.id === op.id));
+  cola.push(op);
+  guardarCola();
+  pintarEstadoNube();
+  vaciarCola();
+}
+
+async function vaciarCola(){
+  if(vaciando || !HAY_NUBE || !haySesion() || !cola.length) return;
+  clearTimeout(temporizadorCola);
+  vaciando = true;
+  pintarEstadoNube();
+  try{
+    while(cola.length){
+      const op = cola[0];
+      if(op.tipo === 'borrar') await borrarNube(op.coleccion, op.id);
+      else                     await escribirNube(op.coleccion, op.id, op.obj);
+      cola.shift();
+      guardarCola();
+      pintarEstadoNube();
+    }
+    intentosFallidos = 0;
+  }catch(e){
+    const m = String(e.message || '');
+    if(/SIN_SESION|SESION_VENCIDA/.test(m)){ vaciando = false; salir(true); return; }
+    if(/SIN_PERMISO/.test(m)){
+      vaciando = false;
+      aviso('Tu cuenta no tiene permiso para guardar cambios. Los dejé pendientes.', true);
+      pintarEstadoNube();
+      return;
+    }
+    intentosFallidos = Math.min(intentosFallidos + 1, 6);
+    temporizadorCola = setTimeout(vaciarCola, 1500 * Math.pow(2, intentosFallidos - 1));
+    console.warn('Reintentando guardar en la nube:', m);
+  }finally{
+    vaciando = false;
+    pintarEstadoNube();
+  }
+}
+
+/* Trae del servidor y reemplaza la copia local.
+   Si el servidor está completamente vacío pero aquí sí hay información, no la
+   borra: devuelve 'vacia' para que quien arranca decida subirla. Así nadie
+   pierde lo que ya había capturado antes de conectar la nube. */
+async function bajarDeLaNube(){
+  const [cl, si] = await Promise.all([listarNube('clientes'), listarNube('sitios')]);
+  if(!cl.length && !si.length && (datos.clientes.length || datos.sitios.length)) return 'vacia';
+  datos = { v:1, clientes: cl.map(normalizarCliente), sitios: si.map(normalizarSitio) };
+  guardarLocal();
+  return 'ok';
+}
+/* Sube todo lo que hay local (para la primera vez o al restaurar un respaldo). */
+function subirTodo(){
+  datos.clientes.forEach(c => encolar({ tipo:'poner', coleccion:'clientes', id:c.id, obj:c }));
+  datos.sitios.forEach(s => encolar({ tipo:'poner', coleccion:'sitios', id:s.id, obj:s }));
+}
+
+/* ============================== BITÁCORA ==============================
+   Historial de quién cambió qué. Solo los administradores lo pueden leer;
+   cualquiera con acceso puede escribir en él, y nadie puede modificarlo.
+   ====================================================================== */
+function anotar(accion, que, nombre, detalle){
+  if(!HAY_NUBE || !haySesion()) return;
+  crearNube('bitacora', {
+    cuando: new Date().toISOString(),
+    quien: sesion.correo || '',
+    uid: sesion.uid || '',
+    accion: accion || '',
+    que: que || '',
+    nombre: nombre || '',
+    detalle: detalle || ''
+  }).catch(e => console.warn('No se pudo anotar en la bitácora:', e.message));
+}
+
+/* ====================== INDICADOR DE ESTADO ====================== */
+function pintarEstadoNube(){
+  const p = $('estadoNube');
+  if(!p) return;
+  if(!HAY_NUBE){
+    p.className = 'pastilla n-local';
+    p.innerHTML = '<span class="punto p-neutro"></span><span class="txt">Solo en esta compu</span>';
+    p.title = 'La información se guarda únicamente en este navegador. Configura Firebase para compartirla.';
+    return;
+  }
+  if(!haySesion()){
+    p.className = 'pastilla n-local';
+    p.innerHTML = '<span class="punto p-neutro"></span><span class="txt">Sin sesión</span>';
+    return;
+  }
+  if(cola.length){
+    const err = intentosFallidos > 0;
+    p.className = 'pastilla ' + (err ? 'n-error' : 'n-trabajo');
+    p.innerHTML = '<span class="punto ' + (err ? 'p-error' : 'p-alerta') + '"></span><span class="txt">'
+                + (err ? 'Sin conexión · ' + cola.length + ' por guardar' : 'Guardando…') + '</span>';
+    p.title = err
+      ? 'No se pudo llegar al servidor. Los cambios están guardados aquí y se suben solos cuando vuelva el internet.'
+      : 'Subiendo cambios al servidor.';
+    return;
+  }
+  p.className = 'pastilla n-ok';
+  p.innerHTML = '<span class="punto p-ok"></span><span class="txt">Guardado en la nube</span>';
+  p.title = 'Todo está guardado en el servidor.';
+}
 
 /* Rellena valores faltantes para que un sitio viejo o importado no rompa la vista. */
 function normalizarSitio(s){
@@ -700,6 +1171,14 @@ function vistaVacia(icono, titulo, texto, accion, textoBoton){
 }
 
 function avisoLocal(){
+  if(HAY_NUBE){
+    if(sesion.rol === 'viewer'){
+      return '<div class="aviso">' + ICONO.info
+           + '<div>Tu cuenta es <b>Viewer</b>: puedes ver todo y descargar el Excel, pero no cambiar nada. '
+           + 'Si necesitas capturar, pide que te suban a <b>Analyst</b>.</div></div>';
+    }
+    return '';
+  }
   return '<div class="aviso">' + ICONO.info
        + '<div>La información se guarda <b>en este navegador</b>, no en un servidor. '
        + 'Si vas a usar otra computadora o quieres compartir el control, descarga el <b>Respaldo JSON</b> '
@@ -707,7 +1186,11 @@ function avisoLocal(){
 }
 
 function render(){
-  $('vista').innerHTML = estado.vista === 'cliente' ? vistaCliente() : vistaClientes();
+  pintarEstadoNube();
+  pintarCabecera();
+  $('vista').innerHTML = estado.vista === 'admin'  ? vistaAdmin()
+                       : estado.vista === 'cliente' ? vistaCliente()
+                       : vistaClientes();
   const b = $('buscaCliente');
   if(b){
     b.addEventListener('input', ()=>{ estado.busca = b.value; renderConservandoFoco(b); });
@@ -715,6 +1198,21 @@ function render(){
     f.value = estado.filtro;
     f.addEventListener('change', ()=>{ estado.filtro = f.value; render(); });
   }
+  if(estado.vista === 'admin') montarAdmin();
+}
+
+function pintarCabecera(){
+  $('correoSesion').textContent = HAY_NUBE && haySesion()
+    ? sesion.correo + (sesion.rol ? ' · ' + ROLES[sesion.rol].nombre : '') : '';
+  $('btnAdmin').style.display = (HAY_NUBE && haySesion() && esAdmin()) ? '' : 'none';
+  $('btnSalir').style.display = (HAY_NUBE && haySesion()) ? '' : 'none';
+}
+
+/* Corta la acción si la cuenta no tiene permiso de modificar. */
+function exigirPermiso(){
+  if(puedeEditar()) return true;
+  aviso('Tu cuenta es Viewer: no puede hacer cambios.', true);
+  return false;
 }
 /* Redibuja sin perder el cursor del buscador. */
 function renderConservandoFoco(input){
@@ -723,6 +1221,308 @@ function renderConservandoFoco(input){
   const nuevo = $('buscaCliente');
   if(nuevo){ nuevo.focus(); try{ nuevo.setSelectionRange(pos,pos); }catch(e){} }
 }
+
+/* ====================== PANEL DE ADMINISTRACIÓN ======================
+   Solo visible para el rol admin. Muestra las cuentas (no las contraseñas:
+   Firebase las guarda encriptadas y nadie las puede leer) y el historial.
+   ==================================================================== */
+const admin = { usuarios:null, bitacora:null, cargando:false, error:'' };
+
+function vistaAdmin(){
+  let h = '<div class="migas">'
+        + '<button type="button" data-accion="ir-clientes">Clientes</button>'
+        + '<span class="sep">/</span><span class="actual">Administración</span></div>';
+
+  h += '<div class="titulo-zona"><div><h2>Administración</h2>'
+     + '<p>Cuentas con acceso al tablero e historial de cambios.</p></div>'
+     + '<div class="acciones">'
+     +   '<button type="button" class="btn btn-suave btn-mini" data-accion="refrescar-admin">Actualizar</button>'
+     +   '<button type="button" class="btn btn-primario" data-accion="nueva-cuenta">' + ICONO.mas + 'Crear cuenta</button>'
+     + '</div></div>';
+
+  h += '<div class="aviso">' + ICONO.info
+     + '<div><b>Las contraseñas no se pueden ver.</b> Firebase las guarda encriptadas de un solo sentido, '
+     + 'así que ni tú ni nadie puede leerlas — eso es lo que protege las cuentas. '
+     + 'Cuando creas una cuenta le pones una contraseña temporal y se la pasas; si alguien la olvida, '
+     + 'usa <b>Mandar correo para cambiarla</b> y la persona pone una nueva.</div></div>';
+
+  h += '<div class="bloque"><div class="bloque-cabeza"><div>'
+     +   '<h3>Cuentas</h3><p id="adminResumen">Cargando…</p></div></div>'
+     +   '<div class="rodillo" id="tablaUsuarios"></div>'
+     + '</div>';
+
+  h += '<div class="bloque"><div class="bloque-cabeza"><div>'
+     +   '<h3>Historial de cambios</h3><p>Últimos 150 movimientos, del más reciente al más viejo.</p></div></div>'
+     +   '<div id="listaBitacora"></div>'
+     + '</div>';
+  return h;
+}
+
+async function montarAdmin(forzar){
+  if(!esAdmin()) return;
+  if(admin.cargando) return;
+  if(admin.usuarios && !forzar){ pintarUsuarios(); pintarBitacora(); return; }
+  admin.cargando = true; admin.error = '';
+  $('tablaUsuarios').innerHTML = '<div class="vacio-chico">Cargando cuentas…</div>';
+  $('listaBitacora').innerHTML = '<div class="vacio-chico">Cargando historial…</div>';
+  try{
+    const [us, bi] = await Promise.all([listarNube('usuarios'), listarNube('bitacora')]);
+    admin.usuarios = us;
+    admin.bitacora = bi.sort((a,b)=> String(b.cuando||'').localeCompare(String(a.cuando||''))).slice(0,150);
+  }catch(e){
+    admin.error = /SIN_PERMISO/.test(String(e.message)) ? 'permiso' : String(e.message);
+  }finally{
+    admin.cargando = false;
+  }
+  pintarUsuarios(); pintarBitacora();
+}
+
+function pintarUsuarios(){
+  const cont = $('tablaUsuarios');
+  if(!cont) return;
+  if(admin.error){
+    cont.innerHTML = '<div class="vacio-chico">' + (admin.error === 'permiso'
+      ? 'Tu cuenta no tiene permiso de administrador para ver las cuentas.'
+      : 'No se pudieron cargar las cuentas: ' + esc(admin.error)) + '</div>';
+    $('adminResumen').textContent = '';
+    return;
+  }
+  const ORDEN_ROL = ['owner','admin','analyst','viewer'];
+  const us = (admin.usuarios || []).slice()
+    .map(u => Object.assign({}, u, { rol: normalizarRol(u.rol) }))
+    .sort((a,b)=> ORDEN_ROL.indexOf(a.rol) - ORDEN_ROL.indexOf(b.rol)
+                  || String(a.correo||'').localeCompare(String(b.correo||'')));
+
+  const cuenta = r => us.filter(u => u.rol === r).length;
+  const bloqueados = us.filter(u => u.activo === false).length;
+  $('adminResumen').textContent = us.length + ' ' + plural(us.length,'cuenta','cuentas') + ' · '
+    + ORDEN_ROL.filter(r => cuenta(r)).map(r => cuenta(r) + ' ' + ROLES[r].nombre).join(' · ')
+    + (bloqueados ? ' · ' + bloqueados + ' ' + plural(bloqueados,'bloqueada','bloqueadas') : '');
+
+  if(!us.length){ cont.innerHTML = '<div class="vacio-chico">Todavía no hay cuentas registradas.</div>'; return; }
+
+  cont.innerHTML = '<table class="tabla"><thead><tr>'
+    + '<th>Cuenta</th><th>Permiso</th><th>Estado</th><th>Creada</th><th>Último acceso</th><th></th>'
+    + '</tr></thead><tbody>'
+    + us.map(u=>{
+        const yo = u.id === sesion.uid;
+        const esDueno = u.rol === 'owner';
+        /* Solo un Owner puede tocar a otro Owner o nombrar uno nuevo. */
+        const protegido = yo || (esDueno && !esOwner());
+        const rolesQuePuedeDar = Object.keys(ROLES).filter(r => r !== 'owner' || esOwner());
+        const opciones = rolesQuePuedeDar.map(r =>
+          '<option value="' + r + '"' + (u.rol === r ? ' selected' : '') + '>' + esc(ROLES[r].nombre) + '</option>').join('');
+        const razon = yo ? 'No puedes cambiarte tu propio permiso'
+                         : 'Solo un Owner puede cambiar el permiso de un Owner';
+
+        return '<tr>'
+          + '<td><b>' + esc(u.correo || '—') + '</b>' + (yo ? ' <span class="yo">(tú)</span>' : '')
+          +   (u.nombre ? '<div style="font-size:11.5px; color:var(--gray)">' + esc(u.nombre) + '</div>' : '') + '</td>'
+          + '<td>' + (protegido
+                ? '<span class="insignia ' + (esDueno ? 'i-info' : 'i-neutro') + '" title="' + esc(razon) + '">'
+                  + esc(ROLES[u.rol].nombre) + '</span>'
+                : '<select data-rol="' + esc(u.id) + '">' + opciones + '</select>') + '</td>'
+          + '<td>' + (u.activo === false
+                ? '<span class="insignia i-error">Bloqueada</span>'
+                : '<span class="insignia i-ok"><span class="punto p-ok"></span>Activa</span>') + '</td>'
+          + '<td>' + esc(fechaHora(u.creado, true)) + '</td>'
+          + '<td>' + esc(fechaHora(u.ultimoAcceso, true)) + '</td>'
+          + '<td class="acciones">'
+          +   '<button type="button" class="btn btn-suave btn-mini" data-reset="' + esc(u.correo || '') + '">Mandar correo para cambiarla</button>'
+          +   (protegido ? '' : '<button type="button" class="btn ' + (u.activo === false ? 'btn-verde' : 'btn-peligro')
+                 + ' btn-mini" data-bloquear="' + esc(u.id) + '">' + (u.activo === false ? 'Reactivar' : 'Bloquear') + '</button>')
+          + '</td></tr>';
+      }).join('')
+    + '</tbody></table>';
+}
+
+const ICONO_EVENTO = {
+  'creó':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  'eliminó':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
+  'marcó pagada':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  'entró':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>',
+  '_':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.8 2.8 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>'
+};
+
+function pintarBitacora(){
+  const cont = $('listaBitacora');
+  if(!cont) return;
+  if(admin.error){
+    cont.innerHTML = '<div class="vacio-chico">' + (admin.error === 'permiso'
+      ? 'Tu cuenta no tiene permiso de administrador para ver el historial.'
+      : 'No se pudo cargar el historial.') + '</div>';
+    return;
+  }
+  const bi = admin.bitacora || [];
+  if(!bi.length){
+    cont.innerHTML = '<div class="vacio-chico">Todavía no hay movimientos registrados. '
+      + 'De aquí en adelante, cada cambio que alguien haga va a quedar apuntado aquí.</div>';
+    return;
+  }
+  cont.innerHTML = '<div class="bitacora">' + bi.map(e=>{
+    const clase = e.accion === 'creó' ? 'e-alta' : e.accion === 'eliminó' ? 'e-baja' : '';
+    return '<div class="evento ' + clase + '">'
+      + '<div class="e-icono">' + (ICONO_EVENTO[e.accion] || ICONO_EVENTO._) + '</div>'
+      + '<div class="e-texto"><b>' + esc(e.quien || 'alguien') + '</b> ' + esc(e.accion || 'cambió')
+      +   ' el ' + esc(e.que || 'registro') + ' <b>' + esc(e.nombre || '') + '</b>'
+      +   (e.detalle ? '<div class="e-meta">' + esc(e.detalle) + '</div>' : '') + '</div>'
+      + '<div class="e-cuando">' + esc(fechaHora(e.cuando)) + '</div>'
+      + '</div>';
+  }).join('') + '</div>';
+}
+
+/* Fecha y hora legibles a partir de un texto ISO. */
+function fechaHora(iso, soloFecha){
+  if(!iso) return '—';
+  const d = new Date(iso);
+  if(isNaN(d)) return '—';
+  const MES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const base = String(d.getDate()).padStart(2,'0') + ' ' + MES[d.getMonth()] + ' ' + d.getFullYear();
+  if(soloFecha) return base;
+  return base + ', ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+
+/* Contraseña temporal fácil de dictar por teléfono. */
+function claveSugerida(){
+  const silabas = ['for','pass','guard','kio','sco','mex','nova','ter','lum','vera','sol','rio'];
+  const s = () => silabas[Math.floor(Math.random()*silabas.length)];
+  return s() + '-' + s() + '-' + String(Math.floor(Math.random()*9000) + 1000);
+}
+
+/* ------------------------- Modal: crear cuenta ------------------------- */
+function modalCuenta(){
+  const sugerida = claveSugerida();
+  /* Solo un Owner puede crear otro Owner. */
+  const opciones = Object.keys(ROLES).filter(r => r !== 'owner' || esOwner()).map(r =>
+    '<option value="' + r + '"' + (r === 'analyst' ? ' selected' : '') + '>' + esc(ROLES[r].nombre) + ' — ' + esc(ROLES[r].desc) + '</option>').join('');
+
+  abrirModal('Crear cuenta',
+      '<div class="campo"><label>Correo de la persona *</label>'
+    +   '<input type="email" id="uCorreo" placeholder="nombre@empresa.com" autocomplete="off"></div>'
+    + '<div class="campo"><label>Nombre (opcional)</label>'
+    +   '<input type="text" id="uNombre" placeholder="Ej. Ana Torres"></div>'
+    + '<div class="campo"><label>Permiso *</label><select id="uRol">' + opciones + '</select></div>'
+    + '<div class="campo"><label>Contraseña temporal *</label>'
+    +   '<input type="text" id="uClave" value="' + esc(sugerida) + '">'
+    +   '<div class="pista">Mínimo 6 caracteres. Se la pasas a la persona y ella puede cambiarla después '
+    +   'con el enlace de «¿Olvidaste tu contraseña?». Tú no la vas a poder volver a ver.</div></div>',
+      '<button type="button" class="btn btn-suave" data-modal="cancelar">Cancelar</button>'
+    + '<button type="button" class="btn btn-primario" data-modal="guardar">Crear cuenta</button>');
+
+  cerrarModalActual = async ()=>{
+    const correo = $('uCorreo').value.trim();
+    const clave  = $('uClave').value;
+    const rol    = $('uRol').value;
+    const nombre = $('uNombre').value.trim();
+    if(!correo){ $('uCorreo').setAttribute('aria-invalid','true'); $('uCorreo').focus(); aviso('Falta el correo.', true); return; }
+    if(clave.length < 6){ $('uClave').setAttribute('aria-invalid','true'); aviso('La contraseña necesita al menos 6 caracteres.', true); return; }
+
+    const btn = $('modalPie').querySelector('[data-modal="guardar"]');
+    btn.disabled = true; btn.textContent = 'Creando…';
+    try{
+      /* Se crea la cuenta en Firebase. Los tokens que devuelve se descartan:
+         tu sesión de administrador no se toca. */
+      const d = await pedirAuth('signUp', { email:correo, password:clave, returnSecureToken:false });
+      const perfil = {
+        correo, nombre, rol, activo:true,
+        creado: new Date().toISOString(),
+        creadoPor: sesion.correo || '',
+        ultimoAcceso: ''
+      };
+      await escribirNube('usuarios', d.localId, perfil);
+      anotar('creó', 'cuenta', correo, ROLES[rol].nombre);
+      admin.usuarios = (admin.usuarios || []).concat([Object.assign({ id:d.localId }, perfil)]);
+
+      abrirModal('Cuenta creada',
+          '<p style="font-size:13.5px; color:#3a4256; line-height:1.65; margin-bottom:14px">'
+        +   'Ya puede entrar. Pásale estos datos a <b>' + esc(correo) + '</b>:</p>'
+        + '<div class="credencial">'
+        +   '<div class="c-fila"><span>Página</span><code>' + esc(location.origin + location.pathname) + '</code></div>'
+        +   '<div class="c-fila"><span>Correo</span><code>' + esc(correo) + '</code></div>'
+        +   '<div class="c-fila"><span>Contraseña</span><code>' + esc(clave) + '</code></div>'
+        +   '<div class="c-nota">Esta es la única vez que ves la contraseña. Si se pierde, no se recupera: '
+        +   'se manda un correo para poner una nueva.</div>'
+        + '</div>',
+          '<button type="button" class="btn btn-suave izq" id="copiarDatos">Copiar los datos</button>'
+        + '<button type="button" class="btn btn-primario" data-modal="cancelar">Listo</button>');
+
+      $('copiarDatos').addEventListener('click', ()=>{
+        const texto = 'Control de Forpass\n' + location.origin + location.pathname
+                    + '\nCorreo: ' + correo + '\nContraseña: ' + clave;
+        navigator.clipboard.writeText(texto)
+          .then(()=> aviso('Datos copiados.'))
+          .catch(()=> aviso('No se pudo copiar. Selecciona el texto a mano.', true));
+      });
+      cerrarModalActual = null;
+      pintarUsuarios();
+    }catch(e){
+      btn.disabled = false; btn.textContent = 'Crear cuenta';
+      aviso(e.message, true);
+    }
+  };
+}
+
+/* --------------------- Acciones del panel de admin --------------------- */
+$('vista').addEventListener('change', async ev=>{
+  const sel = ev.target.closest('[data-rol]');
+  if(!sel) return;
+  const uid = sel.dataset.rol, rol = sel.value;
+  const u = (admin.usuarios || []).find(x => x.id === uid);
+  if(!u) return;
+  const anterior = u.rol;
+  sel.disabled = true;
+  try{
+    await escribirNube('usuarios', uid, Object.assign({}, u, { rol, id:undefined }));
+    u.rol = rol;
+    anotar('cambió permiso de', 'cuenta', u.correo, ROLES[anterior] ? ROLES[anterior].nombre + ' → ' + ROLES[rol].nombre : ROLES[rol].nombre);
+    aviso(u.correo + ' ahora es ' + ROLES[rol].nombre + '.');
+  }catch(e){
+    sel.value = anterior;
+    aviso('No se pudo cambiar el permiso: ' + e.message, true);
+  }finally{
+    sel.disabled = false;
+  }
+});
+
+$('vista').addEventListener('click', async ev=>{
+  const reset = ev.target.closest('[data-reset]');
+  if(reset){
+    const correo = reset.dataset.reset;
+    if(!correo){ aviso('Esa cuenta no tiene correo registrado.', true); return; }
+    confirmar('Mandar correo para cambiar la contraseña',
+      'Se le va a enviar a <b>' + esc(correo) + '</b> un correo con un enlace para poner una contraseña nueva. '
+      + 'La contraseña actual sigue sirviendo hasta que la cambie.',
+      'Sí, mandar el correo', async ()=>{
+        try{
+          await pedirAuth('sendOobCode', { requestType:'PASSWORD_RESET', email:correo });
+          anotar('mandó cambio de contraseña a', 'cuenta', correo);
+          aviso('Correo enviado a ' + correo + '.');
+        }catch(e){ aviso(e.message, true); }
+      });
+    return;
+  }
+
+  const blo = ev.target.closest('[data-bloquear]');
+  if(blo){
+    const u = (admin.usuarios || []).find(x => x.id === blo.dataset.bloquear);
+    if(!u) return;
+    const bloquear = u.activo !== false;
+    confirmar(bloquear ? 'Bloquear cuenta' : 'Reactivar cuenta',
+      bloquear
+        ? 'A <b>' + esc(u.correo) + '</b> se le va a quitar el acceso de inmediato. La cuenta no se borra: la puedes reactivar cuando quieras.'
+        : 'A <b>' + esc(u.correo) + '</b> se le devuelve el acceso con el permiso de <b>' + esc(ROLES[u.rol] ? ROLES[u.rol].nombre : u.rol) + '</b>.',
+      bloquear ? 'Sí, bloquear' : 'Sí, reactivar', async ()=>{
+        try{
+          await escribirNube('usuarios', u.id, Object.assign({}, u, { activo:!bloquear, id:undefined }));
+          u.activo = !bloquear;
+          anotar(bloquear ? 'bloqueó' : 'reactivó', 'cuenta', u.correo);
+          pintarUsuarios();
+          aviso(bloquear ? 'Cuenta bloqueada.' : 'Cuenta reactivada.');
+        }catch(e){ aviso('No se pudo actualizar: ' + e.message, true); }
+      });
+    return;
+  }
+});
 
 /* ============================ VENTANA MODAL ============================ */
 let cerrarModalActual = null;
@@ -775,12 +1575,16 @@ function modalCliente(id){
   cerrarModalActual = ()=>{
     const nombre = $('cNombre').value.trim();
     if(!nombre){ $('cNombre').setAttribute('aria-invalid','true'); $('cNombre').focus(); aviso('El cliente necesita un nombre.', true); return; }
+    let reg;
     if(c){
       c.nombre = nombre; c.contacto = $('cContacto').value.trim(); c.notas = $('cNotas').value.trim();
+      reg = c;
     }else{
-      datos.clientes.push({ id:nuevoId(), nombre, contacto:$('cContacto').value.trim(), notas:$('cNotas').value.trim() });
+      reg = normalizarCliente({ id:nuevoId(), nombre, contacto:$('cContacto').value.trim(), notas:$('cNotas').value.trim() });
+      datos.clientes.push(reg);
     }
-    guardar(); cerrarModal(); render();
+    guardarCliente(reg, c ? 'editó' : 'creó');
+    cerrarModal(); render();
     aviso(c ? 'Cliente actualizado.' : 'Cliente agregado.');
   };
 }
@@ -930,9 +1734,10 @@ function modalSitio(clienteId, sitioId){
     if(!f.nombre){ $('sNombre').setAttribute('aria-invalid','true'); $('sNombre').focus(); aviso('El sitio necesita un nombre.', true); return; }
     if(!f.clienteId){ aviso('Selecciona un cliente.', true); return; }
     const limpio = normalizarSitio(Object.assign({}, f, { pagos:pagosTmp, id: s ? s.id : nuevoId() }));
-    if(s) Object.assign(s, limpio);
-    else datos.sitios.push(limpio);
-    guardar(); cerrarModal();
+    if(s){ Object.assign(s, limpio); }
+    else{ datos.sitios.push(limpio); }
+    guardarSitio(s || limpio, s ? 'editó' : 'creó');
+    cerrarModal();
     estado.vista = 'cliente'; estado.clienteId = limpio.clienteId;
     render();
     aviso(s ? 'Sitio actualizado.' : 'Sitio agregado.');
@@ -978,13 +1783,15 @@ $('vista').addEventListener('click', ev=>{
   const acc = t.closest('[data-accion]');
   if(acc){
     const a = acc.dataset.accion;
-    if(a === 'nuevo-cliente') modalCliente(null);
-    else if(a === 'nuevo-sitio') modalSitio(estado.clienteId, null);
+    if(a === 'nuevo-cliente'){ if(exigirPermiso()) modalCliente(null); }
+    else if(a === 'nuevo-sitio'){ if(exigirPermiso()) modalSitio(estado.clienteId, null); }
     else if(a === 'ir-clientes'){ estado.vista = 'clientes'; estado.clienteId = null; render(); }
     else if(a === 'excel') descargarExcel(null);
     else if(a === 'excel-cliente') descargarExcel(estado.clienteId);
     else if(a === 'respaldo') descargarRespaldo();
     else if(a === 'restaurar') $('archivoRestaurar').click();
+    else if(a === 'nueva-cuenta') modalCuenta();
+    else if(a === 'refrescar-admin') montarAdmin(true);
     return;
   }
 
@@ -992,53 +1799,64 @@ $('vista').addEventListener('click', ev=>{
   if(ver){ entrarCliente(ver.dataset.ver); return; }
 
   const edC = t.closest('[data-editar-cliente]');
-  if(edC){ modalCliente(edC.dataset.editarCliente); return; }
+  if(edC){ if(exigirPermiso()) modalCliente(edC.dataset.editarCliente); return; }
 
   const boC = t.closest('[data-borrar-cliente]');
   if(boC){
+    if(!exigirPermiso()) return;
     const c = clientePorId(boC.dataset.borrarCliente);
     const n = sitiosDe(c.id).length;
     confirmar('Eliminar cliente',
       'Se va a eliminar <b>' + esc(c.nombre) + '</b>' + (n ? ' junto con sus <b>' + n + ' ' + plural(n,'sitio','sitios') + '</b>' : '') + '. Esta acción no se puede deshacer.',
       'Sí, eliminar', ()=>{
+        sitiosDe(c.id).forEach(s => borrarRegistro('sitios', s.id));
         datos.sitios = datos.sitios.filter(s => s.clienteId !== c.id);
         datos.clientes = datos.clientes.filter(x => x.id !== c.id);
         if(estado.clienteId === c.id){ estado.vista = 'clientes'; estado.clienteId = null; }
-        guardar(); render(); aviso('Cliente eliminado.');
+        borrarRegistro('clientes', c.id);
+        anotar('eliminó', 'cliente', c.nombre, n ? 'junto con ' + n + ' ' + plural(n,'sitio','sitios') : '');
+        render(); aviso('Cliente eliminado.');
       });
     return;
   }
 
   const edS = t.closest('[data-editar-sitio]');
-  if(edS){ modalSitio(null, edS.dataset.editarSitio); return; }
+  if(edS){ if(exigirPermiso()) modalSitio(null, edS.dataset.editarSitio); return; }
 
   const boS = t.closest('[data-borrar-sitio]');
   if(boS){
+    if(!exigirPermiso()) return;
     const s = sitioPorId(boS.dataset.borrarSitio);
     confirmar('Eliminar sitio', 'Se va a eliminar el sitio <b>' + esc(s.nombre) + '</b> y su historial de pagos. Esta acción no se puede deshacer.',
       'Sí, eliminar', ()=>{
         datos.sitios = datos.sitios.filter(x => x.id !== s.id);
-        guardar(); render(); aviso('Sitio eliminado.');
+        borrarRegistro('sitios', s.id);
+        anotar('eliminó', 'sitio', s.nombre);
+        render(); aviso('Sitio eliminado.');
       });
     return;
   }
 
   const pago = t.closest('[data-pago]');
   if(pago){
+    if(!exigirPermiso()) return;
     const s = sitioPorId(pago.dataset.pago);
     const i = +pago.dataset.idx;
     s.pagos[i] = !s.pagos[i];
-    guardar(); render();
+    guardarSitio(s, s.pagos[i] ? 'marcó pagada' : 'desmarcó', 'mensualidad ' + (i+1) + ' de ' + s.meses);
+    render();
     return;
   }
 
   const marcar = t.closest('[data-marcar]');
   if(marcar){
+    if(!exigirPermiso()) return;
     const s = sitioPorId(marcar.dataset.marcar);
     const i = s.pagos.findIndex(p => !p);
     if(i === -1){ aviso('Todas las mensualidades ya están pagadas.'); return; }
     s.pagos[i] = true;
-    guardar(); render();
+    guardarSitio(s, 'marcó pagada', 'mensualidad ' + (i+1) + ' de ' + s.meses);
+    render();
     aviso('Mensualidad ' + (i+1) + ' de ' + s.nombre + ' marcada como pagada.');
     return;
   }
@@ -1085,13 +1903,27 @@ $('archivoRestaurar').addEventListener('change', ev=>{
     try{ d = JSON.parse(lector.result); }
     catch(e){ aviso('El archivo no es un respaldo JSON válido.', true); return; }
     if(!d || !Array.isArray(d.clientes) || !Array.isArray(d.sitios)){ aviso('El archivo no tiene el formato esperado.', true); return; }
+    if(HAY_NUBE && !puedeEditar()){ aviso('Tu cuenta es Viewer: no puede restaurar respaldos.', true); return; }
     confirmar('Restaurar respaldo',
-      'Se van a reemplazar los datos de este navegador por los del archivo: <b>' + d.clientes.length + ' ' + plural(d.clientes.length,'cliente','clientes')
-      + '</b> y <b>' + d.sitios.length + ' ' + plural(d.sitios.length,'sitio','sitios') + '</b>. Lo que tienes ahora se va a perder.',
-      'Sí, restaurar', ()=>{
-        datos = { v:1, clientes:d.clientes, sitios:d.sitios.map(normalizarSitio) };
+      'Se van a reemplazar los datos ' + (HAY_NUBE ? '<b>del servidor</b>' : 'de este navegador') + ' por los del archivo: <b>'
+      + d.clientes.length + ' ' + plural(d.clientes.length,'cliente','clientes')
+      + '</b> y <b>' + d.sitios.length + ' ' + plural(d.sitios.length,'sitio','sitios') + '</b>. Lo que hay ahora se va a perder'
+      + (HAY_NUBE ? ' para todo el equipo' : '') + '.',
+      'Sí, restaurar', async ()=>{
+        const previos = { clientes:datos.clientes.map(c=>c.id), sitios:datos.sitios.map(s=>s.id) };
+        datos = { v:1, clientes:d.clientes.map(normalizarCliente), sitios:d.sitios.map(normalizarSitio) };
         estado.vista = 'clientes'; estado.clienteId = null;
-        guardar(); render(); aviso('Respaldo restaurado.');
+        guardarLocal();
+        if(HAY_NUBE){
+          /* Borra del servidor lo que ya no viene en el respaldo y sube el resto. */
+          const vivos = { clientes:new Set(datos.clientes.map(c=>c.id)), sitios:new Set(datos.sitios.map(s=>s.id)) };
+          previos.clientes.filter(id => !vivos.clientes.has(id)).forEach(id => encolar({ tipo:'borrar', coleccion:'clientes', id }));
+          previos.sitios.filter(id => !vivos.sitios.has(id)).forEach(id => encolar({ tipo:'borrar', coleccion:'sitios', id }));
+          subirTodo();
+          anotar('restauró', 'respaldo', 'archivo JSON',
+                 datos.clientes.length + ' clientes y ' + datos.sitios.length + ' sitios');
+        }
+        render(); aviso('Respaldo restaurado.');
       });
   };
   lector.readAsText(f);
@@ -1344,9 +2176,165 @@ function descargarExcel(clienteId){
   aviso('Excel descargado con ' + filas.length + ' ' + plural(filas.length,'sitio','sitios') + '.');
 }
 
+/* ======================== PANTALLA DE ACCESO ======================== */
+function mostrarAcceso(mensaje){
+  $('acceso').classList.add('abierto');
+  document.body.style.overflow = 'hidden';
+  errorAcceso(mensaje || '');
+  setTimeout(()=>{ const c = $('aCorreo'); if(c && !c.value) c.focus(); }, 80);
+}
+function ocultarAcceso(){
+  $('acceso').classList.remove('abierto');
+  document.body.style.overflow = '';
+  $('aClave').value = '';
+}
+function errorAcceso(txt){
+  const e = $('accesoError');
+  e.textContent = txt || '';
+  e.classList.toggle('visible', !!txt);
+}
+
+$('formAcceso').addEventListener('submit', async ev=>{
+  ev.preventDefault();
+  const correo = $('aCorreo').value.trim(), clave = $('aClave').value;
+  if(!correo || !clave){ errorAcceso('Escribe tu correo y tu contraseña.'); return; }
+  const btn = $('aEntrar');
+  btn.disabled = true; btn.textContent = 'Entrando…';
+  errorAcceso('');
+  try{
+    await entrar(correo, clave);
+    ocultarAcceso();
+    anotar('entró', 'sesión', sesion.correo);
+    await arrancarNube();
+  }catch(e){
+    const m = String(e.message || '');
+    if(/SIN_PERMISO/.test(m)){
+      errorAcceso('Tu cuenta existe pero todavía no tiene acceso concedido. Pide a un administrador que te lo dé.');
+      salirSilencioso();
+    }else if(/BLOQUEADO/.test(m)){
+      errorAcceso('Tu cuenta está bloqueada. Pide a un administrador que la reactive.');
+      salirSilencioso();
+    }else{
+      errorAcceso(m);
+    }
+  }finally{
+    btn.disabled = false; btn.textContent = 'Entrar';
+  }
+});
+
+/* Limpia la sesión sin redibujar ni mover al usuario de pantalla. */
+function salirSilencioso(){
+  Object.assign(sesion, { correo:null, uid:null, idToken:null, refreshToken:null, expira:0, rol:null, nombre:'' });
+  try{ localStorage.removeItem(LLAVE_SESION); }catch(e){}
+}
+
+$('aOlvide').addEventListener('click', async ()=>{
+  const correo = $('aCorreo').value.trim();
+  if(!correo){ errorAcceso('Escribe primero tu correo y vuelve a darle.'); $('aCorreo').focus(); return; }
+  try{
+    await pedirAuth('sendOobCode', { requestType:'PASSWORD_RESET', email:correo });
+    errorAcceso('');
+    aviso('Te mandamos un correo a ' + correo + ' para poner una contraseña nueva.');
+  }catch(e){ errorAcceso(e.message); }
+});
+
+$('btnSalir').addEventListener('click', ()=>{
+  if(cola.length){
+    confirmar('Salir con cambios pendientes',
+      'Hay <b>' + cola.length + ' ' + plural(cola.length,'cambio','cambios') + '</b> que todavía no se subieron al servidor. '
+      + 'Si sales ahora se pierden. Conéctate a internet y espera a que diga «Guardado en la nube».',
+      'Salir de todos modos', ()=>{ cola = []; guardarCola(); salir(); });
+    return;
+  }
+  salir();
+});
+
+$('btnAdmin').addEventListener('click', ()=>{
+  if(!esAdmin()) return;
+  estado.vista = 'admin'; estado.clienteId = null;
+  render();
+  window.scrollTo({ top:0, behavior:'smooth' });
+});
+
+/* ===================== SINCRONIZACIÓN PERIÓDICA =====================
+   Firestore por REST no avisa solo de los cambios de otros, así que se
+   vuelve a consultar cada medio minuto mientras la pestaña esté a la vista
+   y no haya nada pendiente ni un formulario abierto.
+   ==================================================================== */
+async function refrescarDesdeNube(){
+  if(!HAY_NUBE || !haySesion()) return;
+  if(cola.length || vaciando) return;
+  if($('telon').classList.contains('abierto')) return;
+  if(document.hidden) return;
+  try{
+    const antes = JSON.stringify(datos);
+    await bajarDeLaNube();
+    if(JSON.stringify(datos) !== antes) render();
+  }catch(e){
+    if(/SIN_SESION|SESION_VENCIDA/.test(String(e.message))) salir(true);
+  }
+}
+
+async function arrancarNube(){
+  try{
+    const r = await bajarDeLaNube();
+    /* Primera conexión: el servidor está vacío y aquí ya había capturas. Se suben. */
+    if(r === 'vacia'){
+      if(puedeEditar()){
+        subirTodo();
+        anotar('subió', 'información local', 'primera sincronización',
+               datos.clientes.length + ' clientes y ' + datos.sitios.length + ' sitios');
+        aviso('Subiendo al servidor lo que tenías capturado en esta computadora…');
+      }else{
+        aviso('El servidor está vacío y tu cuenta es Viewer: lo que ves sigue siendo local.', true);
+      }
+    }
+  }catch(e){
+    const m = String(e.message || '');
+    if(/SIN_SESION|SESION_VENCIDA/.test(m)){ salir(true); return; }
+    if(/SIN_PERMISO/.test(m)){
+      salirSilencioso();
+      mostrarAcceso('Tu cuenta no tiene acceso concedido a esta información. Pide a un administrador que te lo dé.');
+      render();
+      return;
+    }
+    aviso('No se pudo leer del servidor; se muestra la última copia local.', true);
+  }
+  render();
+  vaciarCola();
+}
+
 /* =============================== ARRANQUE =============================== */
+$('logoAcceso').src = document.querySelector('header.app img').src;
+
 cargar();
-render();
+cargarCola();
+
+if(!HAY_NUBE){
+  /* Modo local: igual que siempre, sin cuentas. */
+  render();
+}else{
+  cargarSesion();
+  if(haySesion()){
+    render();                       /* pinta ya con la copia local, sin esperar la red */
+    cargarPerfil()
+      .then(arrancarNube)
+      .catch(e=>{
+        const m = String(e.message || '');
+        salirSilencioso();
+        mostrarAcceso(/SIN_PERMISO/.test(m) ? 'Tu cuenta ya no tiene acceso concedido. Habla con un administrador.'
+                     : /BLOQUEADO/.test(m) ? 'Tu cuenta está bloqueada. Pide a un administrador que la reactive.'
+                     : '');
+        render();
+      });
+  }else{
+    mostrarAcceso();
+    render();
+  }
+  setInterval(refrescarDesdeNube, 30000);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ vaciarCola(); refrescarDesdeNube(); } });
+  window.addEventListener('online', ()=>{ intentosFallidos = 0; vaciarCola(); });
+}
 </script>
 
 </body>
