@@ -109,7 +109,21 @@ header.app .sub{font-size:12px; color:var(--gray); margin-left:auto;}
 .t-avatar{
   width:40px; height:40px; border-radius:11px; flex-shrink:0; display:grid; place-items:center;
   background:linear-gradient(135deg,var(--navy-2),var(--accent)); color:#fff; font-size:14.5px; font-weight:700; letter-spacing:.02em;
+  overflow:hidden;
 }
+/* Con logo: fondo blanco y la imagen completa, sin recortarla ni deformarla. */
+.t-avatar.con-logo{background:#fff; border:1px solid var(--line); padding:3px;}
+.t-avatar.con-logo img{width:100%; height:100%; object-fit:contain; display:block;}
+
+/* Zona de carga del logo dentro del formulario */
+.logo-zona{display:flex; align-items:center; gap:14px; flex-wrap:wrap;}
+.logo-previa{
+  width:64px; height:64px; border-radius:14px; flex-shrink:0; display:grid; place-items:center; overflow:hidden;
+  background:linear-gradient(135deg,var(--navy-2),var(--accent)); color:#fff; font-size:20px; font-weight:700;
+}
+.logo-previa.con-logo{background:#fff; border:1px solid var(--line); padding:4px;}
+.logo-previa img{width:100%; height:100%; object-fit:contain; display:block;}
+.logo-botones{display:flex; gap:8px; flex-wrap:wrap;}
 
 /* Botón de tres puntos junto al nombre del sitio */
 .tres-puntos{
@@ -496,7 +510,77 @@ function guardarLocal(){
 function nuevoId(){ return 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
 function normalizarCliente(c){
-  return { id:c.id || nuevoId(), nombre:c.nombre || 'Cliente', contacto:c.contacto || '', notas:c.notas || '' };
+  return {
+    id: c.id || nuevoId(),
+    nombre: c.nombre || 'Cliente',
+    contacto: c.contacto || '',
+    notas: c.notas || '',
+    /* Logo del cliente ya reducido, guardado dentro del propio registro. */
+    logo: typeof c.logo === 'string' && c.logo.startsWith('data:image/') ? c.logo : ''
+  };
+}
+
+/* ---------------------------- Logos de cliente ----------------------------
+   La imagen se reduce a 256 px y se recomprime antes de guardarla. Sin esto,
+   una foto del celular de 4 MB se iría tal cual a la base de datos y al cabo
+   de unos clientes ya no cabría nada.
+   ------------------------------------------------------------------------- */
+const LOGO_LADO = 256;
+const LOGO_MAX_ENTRADA = 10 * 1024 * 1024;   /* 10 MB de archivo original */
+const LOGO_MAX_GUARDADO = 120 * 1024;        /* ~120 KB ya reducido */
+
+function cargarImagen(archivo){
+  return new Promise((listo, falla)=>{
+    const lector = new FileReader();
+    lector.onerror = ()=> falla(new Error('No se pudo leer el archivo.'));
+    lector.onload = ()=>{
+      const img = new Image();
+      img.onload = ()=> listo(img);
+      img.onerror = ()=> falla(new Error('Ese archivo no parece ser una imagen válida.'));
+      img.src = lector.result;
+    };
+    lector.readAsDataURL(archivo);
+  });
+}
+
+async function prepararLogo(archivo){
+  if(!archivo.type || !archivo.type.startsWith('image/')) throw new Error('Elige una imagen (PNG, JPG, WEBP o SVG).');
+  if(archivo.size > LOGO_MAX_ENTRADA) throw new Error('La imagen pesa más de 10 MB. Usa una más chica.');
+
+  const img = await cargarImagen(archivo);
+  const lado = Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height) || LOGO_LADO;
+  const escala = Math.min(1, LOGO_LADO / lado);
+  const w = Math.max(1, Math.round((img.naturalWidth  || img.width)  * escala));
+  const h = Math.max(1, Math.round((img.naturalHeight || img.height) * escala));
+
+  const lienzo = document.createElement('canvas');
+  lienzo.width = w; lienzo.height = h;
+  lienzo.getContext('2d').drawImage(img, 0, 0, w, h);
+
+  /* Se prueban varios formatos y se toma el más liviano que el navegador
+     realmente haya producido (WEBP y PNG conservan los fondos transparentes). */
+  const candidatos = [];
+  [['image/webp', 0.92], ['image/png', undefined], ['image/webp', 0.7]].forEach(([tipo, calidad])=>{
+    try{
+      const d = lienzo.toDataURL(tipo, calidad);
+      if(d && d.indexOf('data:' + tipo) === 0) candidatos.push(d);
+    }catch(e){}
+  });
+  if(!candidatos.length) throw new Error('Este navegador no pudo procesar la imagen.');
+
+  const mejor = candidatos.sort((a,b)=> a.length - b.length)[0];
+  if(mejor.length > LOGO_MAX_GUARDADO * 1.37){   /* base64 abulta ~37% */
+    throw new Error('La imagen quedó muy pesada aun reduciéndola. Prueba con un logo más simple o en PNG.');
+  }
+  return mejor;
+}
+
+/* Avatar del cliente: su logo si lo tiene, y si no las iniciales. */
+function avatarCliente(c, tamano){
+  const estilo = tamano ? ' style="width:' + tamano + 'px; height:' + tamano + 'px"' : '';
+  return c.logo
+    ? '<div class="t-avatar con-logo"' + estilo + '><img src="' + esc(c.logo) + '" alt="' + esc(c.nombre) + '"></div>'
+    : '<div class="t-avatar"' + estilo + '>' + esc(iniciales(c.nombre)) + '</div>';
 }
 
 /* ---- Guardado de un registro: local siempre, y a la nube si está activa ---- */
@@ -1084,10 +1168,12 @@ function vistaClientes(){
     const ss = sitiosDe(c.id);
     const rr = resumir(ss);
     const tono = rr.atrasados ? 'error' : (rr.porPagar ? 'alerta' : (rr.forpass ? 'ok' : 'neutro'));
-    const puntoTono = tono === 'error' ? 'p-error' : (tono === 'alerta' ? 'p-alerta' : (rr.forpass ? 'p-ok' : 'p-neutro'));
 
+    /* Esta bolita habla SOLO de si hay Forpass encendidos: verde si sí, gris si
+       no. El estatus de pago tiene sus propias insignias más abajo; mezclarlos
+       aquí hacía que un "3 Forpass activos" saliera con punto rojo. */
     let chips = '<span class="insignia ' + (rr.forpass ? 'i-ok' : 'i-neutro') + '">'
-              + '<span class="punto ' + puntoTono + '"></span>'
+              + '<span class="punto ' + (rr.forpass ? 'p-ok' : 'p-neutro') + '"></span>'
               + numero(rr.forpass) + ' ' + plural(rr.forpass,'Forpass activo','Forpass activos') + '</span>';
     if(rr.atrasados) chips += '<span class="insignia i-error">' + rr.atrasados + ' ' + plural(rr.atrasados,'sitio atrasado','sitios atrasados') + '</span>';
     else if(rr.porPagar) chips += '<span class="insignia i-alerta">' + rr.porPagar + ' por pagar</span>';
@@ -1095,7 +1181,7 @@ function vistaClientes(){
 
     return '<div class="tarjeta tarjeta-clic t-' + tono + '" data-cliente="' + esc(c.id) + '" style="--d:' + (i*45) + 'ms" tabindex="0" role="button">'
          +   '<div class="t-cabeza">'
-         +     '<div class="t-avatar">' + esc(iniciales(c.nombre)) + '</div>'
+         +     avatarCliente(c)
          +     '<div style="flex:1; min-width:0">'
          +       '<div class="t-nombre">' + esc(c.nombre) + '</div>'
          +       '<div class="t-sub">' + numero(rr.sitios) + ' ' + plural(rr.sitios,'sitio','sitios')
@@ -1136,12 +1222,15 @@ function vistaCliente(){
 
   h += botonRegresar();
 
-  h += '<div class="titulo-zona"><div>'
+  h += '<div class="titulo-zona">'
+     + '<div style="display:flex; align-items:center; gap:14px">'
+     +   avatarCliente(c, 52)
+     +   '<div>'
      +   '<h2>' + esc(c.nombre) + '</h2>'
      +   '<p>' + numero(rTodos.sitios) + ' ' + plural(rTodos.sitios,'sitio','sitios')
      +   ' · ' + numero(rTodos.forpass) + ' ' + plural(rTodos.forpass,'Forpass activo','Forpass activos')
      +   (c.contacto ? ' · ' + esc(c.contacto) : '') + '</p>'
-     + '</div><div class="acciones">'
+     + '</div></div><div class="acciones">'
      +   '<button type="button" class="btn btn-suave btn-mini" data-accion="excel-cliente">' + ICONO.excel + 'Excel de este cliente</button>'
      +   '<button type="button" class="btn btn-primario" data-accion="nuevo-sitio">' + ICONO.mas + 'Agregar sitio</button>'
      + '</div></div>';
@@ -1677,8 +1766,24 @@ function aviso(texto, esError){
 /* --------------------------- Modal: cliente --------------------------- */
 function modalCliente(id){
   const c = id ? clientePorId(id) : null;
+  let logoTmp = c ? c.logo : '';          /* vive mientras el modal está abierto */
+
   const cuerpo =
-      '<div class="campo"><label>Nombre del cliente *</label>'
+      '<div class="campo"><label>Logo del cliente (opcional)</label>'
+    +   '<div class="logo-zona">'
+    +     '<div id="logoPrevia"></div>'
+    +     '<div>'
+    +       '<div class="logo-botones">'
+    +         '<button type="button" class="btn btn-suave btn-mini" id="btnSubirLogo">Subir logo…</button>'
+    +         '<button type="button" class="btn btn-peligro btn-mini" id="btnQuitarLogo">Quitar</button>'
+    +       '</div>'
+    +       '<div class="pista" id="pistaLogo">PNG, JPG o WEBP. Se reduce sola para no pesar. '
+    +         'Si no pones logo, se usan las iniciales.</div>'
+    +     '</div>'
+    +   '</div>'
+    +   '<input type="file" id="archivoLogo" accept="image/*" style="display:none">'
+    + '</div>'
+    + '<div class="campo"><label>Nombre del cliente *</label>'
     +   '<input type="text" id="cNombre" placeholder="Ej. Mercado Libre" value="' + esc(c ? c.nombre : '') + '"></div>'
     + '<div class="campo"><label>Contacto (opcional)</label>'
     +   '<input type="text" id="cContacto" placeholder="Ej. Juan Pérez · compras@cliente.com" value="' + esc(c ? c.contacto : '') + '"></div>'
@@ -1690,15 +1795,49 @@ function modalCliente(id){
 
   abrirModal(c ? 'Editar cliente' : 'Agregar cliente', cuerpo, pie);
 
+  function pintarPrevia(){
+    const nombre = $('cNombre').value.trim() || (c ? c.nombre : '');
+    $('logoPrevia').outerHTML = logoTmp
+      ? '<div class="logo-previa con-logo" id="logoPrevia"><img src="' + esc(logoTmp) + '" alt=""></div>'
+      : '<div class="logo-previa" id="logoPrevia">' + esc(iniciales(nombre) || '—') + '</div>';
+    $('btnQuitarLogo').style.display = logoTmp ? '' : 'none';
+  }
+  pintarPrevia();
+
+  $('cNombre').addEventListener('input', ()=>{ if(!logoTmp) pintarPrevia(); });
+  $('btnSubirLogo').addEventListener('click', ()=> $('archivoLogo').click());
+  $('btnQuitarLogo').addEventListener('click', ()=>{
+    logoTmp = '';
+    $('archivoLogo').value = '';
+    pintarPrevia();
+    $('pistaLogo').textContent = 'Se van a usar las iniciales.';
+  });
+  $('archivoLogo').addEventListener('change', async ev=>{
+    const archivo = ev.target.files && ev.target.files[0];
+    if(!archivo) return;
+    $('pistaLogo').textContent = 'Procesando la imagen…';
+    try{
+      logoTmp = await prepararLogo(archivo);
+      pintarPrevia();
+      $('pistaLogo').textContent = 'Listo: ' + Math.round(logoTmp.length * 0.73 / 1024) + ' KB después de reducirla.';
+    }catch(e){
+      $('pistaLogo').textContent = e.message;
+      aviso(e.message, true);
+    }
+    ev.target.value = '';
+  });
+
   cerrarModalActual = ()=>{
     const nombre = $('cNombre').value.trim();
     if(!nombre){ $('cNombre').setAttribute('aria-invalid','true'); $('cNombre').focus(); aviso('El cliente necesita un nombre.', true); return; }
     let reg;
     if(c){
       c.nombre = nombre; c.contacto = $('cContacto').value.trim(); c.notas = $('cNotas').value.trim();
+      c.logo = logoTmp;
       reg = c;
     }else{
-      reg = normalizarCliente({ id:nuevoId(), nombre, contacto:$('cContacto').value.trim(), notas:$('cNotas').value.trim() });
+      reg = normalizarCliente({ id:nuevoId(), nombre, contacto:$('cContacto').value.trim(),
+                                notas:$('cNotas').value.trim(), logo:logoTmp });
       datos.clientes.push(reg);
     }
     guardarCliente(reg, c ? 'editó' : 'creó');
