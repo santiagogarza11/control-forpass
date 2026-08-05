@@ -116,14 +116,29 @@ header.app .sub{font-size:12px; color:var(--gray); margin-left:auto;}
 .t-avatar.con-logo img{width:100%; height:100%; object-fit:contain; display:block;}
 
 /* Zona de carga del logo dentro del formulario */
-.logo-zona{display:flex; align-items:center; gap:14px; flex-wrap:wrap;}
+.logo-zona{display:flex; align-items:flex-start; gap:16px; flex-wrap:wrap;}
 .logo-previa{
   width:64px; height:64px; border-radius:14px; flex-shrink:0; display:grid; place-items:center; overflow:hidden;
   background:linear-gradient(135deg,var(--navy-2),var(--accent)); color:#fff; font-size:20px; font-weight:700;
 }
 .logo-previa.con-logo{background:#fff; border:1px solid var(--line); padding:4px;}
 .logo-previa img{width:100%; height:100%; object-fit:contain; display:block;}
-.logo-botones{display:flex; gap:8px; flex-wrap:wrap;}
+.logo-botones{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+
+/* Editor de encuadre: cuadro con la imagen y control de zoom */
+.logo-lienzo{
+  width:128px; height:128px; border-radius:16px; border:1px solid var(--line); background:#fff;
+  display:block; flex-shrink:0; cursor:grab; touch-action:none;
+  background-image:linear-gradient(45deg,#f3f5fa 25%,transparent 25%,transparent 75%,#f3f5fa 75%),
+                   linear-gradient(45deg,#f3f5fa 25%,transparent 25%,transparent 75%,#f3f5fa 75%);
+  background-size:14px 14px; background-position:0 0, 7px 7px;   /* damero: se nota la transparencia */
+}
+.logo-lienzo:active{cursor:grabbing;}
+.logo-zoom{display:flex; align-items:center; gap:10px; margin-top:2px;}
+.logo-zoom label{font-size:11.5px; font-weight:600; color:#3a4256; white-space:nowrap;}
+.logo-zoom input[type="range"]{flex:1; min-width:120px; accent-color:var(--navy); cursor:pointer;}
+.logo-zoom output{font-size:11.5px; color:var(--gray); min-width:34px; text-align:right; font-variant-numeric:tabular-nums;}
+.logo-lado{flex:1; min-width:190px;}
 
 /* Botón de tres puntos junto al nombre del sitio */
 .tres-puntos{
@@ -543,22 +558,16 @@ function cargarImagen(archivo){
   });
 }
 
-async function prepararLogo(archivo){
+/* Valida el archivo y devuelve la imagen ya cargada, lista para encuadrar. */
+async function leerLogo(archivo){
   if(!archivo.type || !archivo.type.startsWith('image/')) throw new Error('Elige una imagen (PNG, JPG, WEBP o SVG).');
   if(archivo.size > LOGO_MAX_ENTRADA) throw new Error('La imagen pesa más de 10 MB. Usa una más chica.');
+  return cargarImagen(archivo);
+}
 
-  const img = await cargarImagen(archivo);
-  const lado = Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height) || LOGO_LADO;
-  const escala = Math.min(1, LOGO_LADO / lado);
-  const w = Math.max(1, Math.round((img.naturalWidth  || img.width)  * escala));
-  const h = Math.max(1, Math.round((img.naturalHeight || img.height) * escala));
-
-  const lienzo = document.createElement('canvas');
-  lienzo.width = w; lienzo.height = h;
-  lienzo.getContext('2d').drawImage(img, 0, 0, w, h);
-
-  /* Se prueban varios formatos y se toma el más liviano que el navegador
-     realmente haya producido (WEBP y PNG conservan los fondos transparentes). */
+/* Se prueban varios formatos y se toma el más liviano que el navegador
+   realmente haya producido (WEBP y PNG conservan los fondos transparentes). */
+function comprimirLienzo(lienzo){
   const candidatos = [];
   [['image/webp', 0.92], ['image/png', undefined], ['image/webp', 0.7]].forEach(([tipo, calidad])=>{
     try{
@@ -573,6 +582,27 @@ async function prepararLogo(archivo){
     throw new Error('La imagen quedó muy pesada aun reduciéndola. Prueba con un logo más simple o en PNG.');
   }
   return mejor;
+}
+
+/* Dibuja la imagen en un cuadro de LOGO_LADO con el zoom y el desplazamiento
+   que eligió el usuario. Con zoom 1 la imagen entra completa; de ahí para
+   arriba se acerca, y arrastrando se decide qué parte queda a la vista. */
+function dibujarLogo(lienzo, img, zoom, offX, offY){
+  const L = lienzo.width;
+  const ctx = lienzo.getContext('2d');
+  ctx.clearRect(0, 0, L, L);
+  const anchoOrig = img.naturalWidth  || img.width;
+  const altoOrig  = img.naturalHeight || img.height;
+  const base = Math.min(L / anchoOrig, L / altoOrig);
+  const e = base * zoom;
+  const w = anchoOrig * e, h = altoOrig * e;
+  ctx.drawImage(img, (L - w) / 2 + offX, (L - h) / 2 + offY, w, h);
+  return { w, h };
+}
+/* Evita que la imagen se pueda arrastrar tan lejos que quede fuera del cuadro. */
+function limitarOffset(v, tamano, L){
+  const tope = Math.max(tamano, L) / 2;
+  return Math.max(-tope, Math.min(tope, v));
 }
 
 /* Avatar del cliente: su logo si lo tiene, y si no las iniciales. */
@@ -1771,8 +1801,9 @@ function modalCliente(id){
   const cuerpo =
       '<div class="campo"><label>Logo del cliente (opcional)</label>'
     +   '<div class="logo-zona">'
-    +     '<div id="logoPrevia"></div>'
-    +     '<div>'
+    +     '<div id="logoCaja"></div>'
+    +     '<div class="logo-lado">'
+    +       '<div id="logoZoom"></div>'
     +       '<div class="logo-botones">'
     +         '<button type="button" class="btn btn-suave btn-mini" id="btnSubirLogo">Subir logo…</button>'
     +         '<button type="button" class="btn btn-peligro btn-mini" id="btnQuitarLogo">Quitar</button>'
@@ -1795,21 +1826,82 @@ function modalCliente(id){
 
   abrirModal(c ? 'Editar cliente' : 'Agregar cliente', cuerpo, pie);
 
-  function pintarPrevia(){
-    const nombre = $('cNombre').value.trim() || (c ? c.nombre : '');
-    $('logoPrevia').outerHTML = logoTmp
-      ? '<div class="logo-previa con-logo" id="logoPrevia"><img src="' + esc(logoTmp) + '" alt=""></div>'
-      : '<div class="logo-previa" id="logoPrevia">' + esc(iniciales(nombre) || '—') + '</div>';
-    $('btnQuitarLogo').style.display = logoTmp ? '' : 'none';
-  }
-  pintarPrevia();
+  /* Estado del encuadre mientras el modal está abierto. */
+  let imgLogo = null;                 /* la imagen cargada, si hay una para encuadrar */
+  let zoom = 1, offX = 0, offY = 0;
+  const lienzo = document.createElement('canvas');
+  lienzo.width = lienzo.height = LOGO_LADO;
+  lienzo.className = 'logo-lienzo';
+  lienzo.title = 'Arrastra para mover el logo';
 
-  $('cNombre').addEventListener('input', ()=>{ if(!logoTmp) pintarPrevia(); });
+  /* Solo dibuja. Comprimir en cada movimiento del dedo sería un desperdicio:
+     la compresión se hace una sola vez, al guardar. */
+  function refrescarEncuadre(){
+    $('pistaLogo').textContent = 'Arrastra la imagen para encuadrarla. Se guarda a '
+      + LOGO_LADO + '×' + LOGO_LADO + ' px.';
+    return dibujarLogo(lienzo, imgLogo, zoom, offX, offY);
+  }
+
+  function pintarLogoUI(){
+    const caja = $('logoCaja');
+    const nombre = $('cNombre').value.trim() || (c ? c.nombre : '');
+
+    if(imgLogo){
+      if(lienzo.parentNode !== caja){ caja.innerHTML = ''; caja.appendChild(lienzo); }
+      $('logoZoom').innerHTML =
+          '<div class="logo-zoom"><label for="rangoZoom">Zoom</label>'
+        + '<input type="range" id="rangoZoom" min="100" max="400" step="5" value="' + Math.round(zoom*100) + '">'
+        + '<output id="valorZoom">' + Math.round(zoom*100) + '%</output></div>';
+      $('rangoZoom').addEventListener('input', ev=>{
+        zoom = (+ev.target.value) / 100;
+        $('valorZoom').textContent = Math.round(zoom*100) + '%';
+        refrescarEncuadre();
+      });
+      refrescarEncuadre();
+    }else{
+      caja.innerHTML = logoTmp
+        ? '<div class="logo-previa con-logo"><img src="' + esc(logoTmp) + '" alt=""></div>'
+        : '<div class="logo-previa">' + esc(iniciales(nombre) || '—') + '</div>';
+      $('logoZoom').innerHTML = '';
+    }
+    $('btnQuitarLogo').style.display = (logoTmp || imgLogo) ? '' : 'none';
+    $('btnSubirLogo').textContent = (logoTmp || imgLogo) ? 'Cambiar logo…' : 'Subir logo…';
+  }
+
+  /* Arrastrar dentro del cuadro para mover el logo. */
+  let arrastrando = false, xPrev = 0, yPrev = 0;
+  lienzo.addEventListener('pointerdown', ev=>{
+    if(!imgLogo) return;
+    arrastrando = true; xPrev = ev.clientX; yPrev = ev.clientY;
+    lienzo.setPointerCapture(ev.pointerId);
+  });
+  lienzo.addEventListener('pointermove', ev=>{
+    if(!arrastrando || !imgLogo) return;
+    /* El cuadro se ve a 128 px pero mide 256: hay que escalar el movimiento. */
+    const factor = LOGO_LADO / lienzo.getBoundingClientRect().width;
+    const tam = dibujarLogo(lienzo, imgLogo, zoom, offX, offY);
+    offX = limitarOffset(offX + (ev.clientX - xPrev) * factor, tam.w, LOGO_LADO);
+    offY = limitarOffset(offY + (ev.clientY - yPrev) * factor, tam.h, LOGO_LADO);
+    xPrev = ev.clientX; yPrev = ev.clientY;
+    refrescarEncuadre();
+  });
+  lienzo.addEventListener('pointerup', ()=>{ arrastrando = false; });
+  lienzo.addEventListener('pointercancel', ()=>{ arrastrando = false; });
+
+  /* Si el cliente ya tenía logo, se carga para poder reencuadrarlo. */
+  if(logoTmp){
+    const previo = new Image();
+    previo.onload = ()=>{ imgLogo = previo; zoom = 1; offX = offY = 0; pintarLogoUI(); };
+    previo.src = logoTmp;
+  }
+  pintarLogoUI();
+
+  $('cNombre').addEventListener('input', ()=>{ if(!logoTmp && !imgLogo) pintarLogoUI(); });
   $('btnSubirLogo').addEventListener('click', ()=> $('archivoLogo').click());
   $('btnQuitarLogo').addEventListener('click', ()=>{
-    logoTmp = '';
+    logoTmp = ''; imgLogo = null; zoom = 1; offX = offY = 0;
     $('archivoLogo').value = '';
-    pintarPrevia();
+    pintarLogoUI();
     $('pistaLogo').textContent = 'Se van a usar las iniciales.';
   });
   $('archivoLogo').addEventListener('change', async ev=>{
@@ -1817,9 +1909,9 @@ function modalCliente(id){
     if(!archivo) return;
     $('pistaLogo').textContent = 'Procesando la imagen…';
     try{
-      logoTmp = await prepararLogo(archivo);
-      pintarPrevia();
-      $('pistaLogo').textContent = 'Listo: ' + Math.round(logoTmp.length * 0.73 / 1024) + ' KB después de reducirla.';
+      imgLogo = await leerLogo(archivo);
+      zoom = 1; offX = offY = 0;
+      pintarLogoUI();
     }catch(e){
       $('pistaLogo').textContent = e.message;
       aviso(e.message, true);
@@ -1830,6 +1922,15 @@ function modalCliente(id){
   cerrarModalActual = ()=>{
     const nombre = $('cNombre').value.trim();
     if(!nombre){ $('cNombre').setAttribute('aria-invalid','true'); $('cNombre').focus(); aviso('El cliente necesita un nombre.', true); return; }
+
+    /* El encuadre se convierte a imagen aquí, una sola vez. */
+    if(imgLogo){
+      try{
+        dibujarLogo(lienzo, imgLogo, zoom, offX, offY);
+        logoTmp = comprimirLienzo(lienzo);
+      }catch(e){ aviso(e.message, true); return; }
+    }
+
     let reg;
     if(c){
       c.nombre = nombre; c.contacto = $('cContacto').value.trim(); c.notas = $('cNotas').value.trim();
