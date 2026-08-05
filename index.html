@@ -111,6 +111,16 @@ header.app .sub{font-size:12px; color:var(--gray); margin-left:auto;}
   background:linear-gradient(135deg,var(--navy-2),var(--accent)); color:#fff; font-size:14.5px; font-weight:700; letter-spacing:.02em;
 }
 
+/* Botón de tres puntos junto al nombre del sitio */
+.tres-puntos{
+  background:none; border:1px solid transparent; border-radius:8px; cursor:pointer; padding:3px 5px;
+  color:#a3aabb; display:grid; place-items:center; flex-shrink:0; margin-left:auto;
+  transition:color .15s, background .15s, border-color .15s;
+}
+.tres-puntos svg{width:16px; height:16px;}
+.tres-puntos:hover{color:var(--navy); background:#EEF2FB; border-color:#c9d4ec;}
+.tres-puntos:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
 /* Punto de estado */
 .punto{width:9px; height:9px; border-radius:50%; display:inline-block; flex-shrink:0;}
 .punto.p-ok{background:var(--ok); box-shadow:0 0 0 3px rgba(63,166,107,.18);}
@@ -192,6 +202,7 @@ header.app .sub{font-size:12px; color:var(--gray); margin-left:auto;}
   background:#fff; border-radius:18px; width:100%; max-width:620px; box-shadow:0 24px 70px rgba(0,0,0,.3);
   animation:sube .24s cubic-bezier(.22,1,.36,1) both; overflow:hidden;
 }
+.modal.ancho{max-width:860px;}
 @keyframes sube{ from{opacity:0; transform:translateY(16px) scale(.99);} to{opacity:1; transform:none;} }
 .modal-cabeza{padding:19px 22px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:12px; position:sticky; top:0; background:#fff; z-index:2;}
 .modal-cabeza h3{font-size:16px; font-weight:700; color:var(--navy); flex:1;}
@@ -212,6 +223,8 @@ header.app .sub{font-size:12px; color:var(--gray); margin-left:auto;}
   font-family:inherit; font-size:13px; color:var(--ink); background:#fbfcfe; outline:none; transition:border-color .15s, background .15s;
 }
 .campo input:focus, .campo select:focus, .campo textarea:focus{border-color:var(--accent); background:#fff;}
+.campo input[readonly]{background:#f1f3f8; color:#5c6273; cursor:default;}
+.campo input[readonly]:focus{border-color:#d4d9e6;}
 .campo textarea{resize:vertical; min-height:66px; font-size:12.5px; line-height:1.5;}
 .campo input[aria-invalid="true"]{border-color:var(--error); background:#fffafa;}
 .fila2{display:grid; grid-template-columns:1fr 1fr; gap:11px;}
@@ -832,7 +845,18 @@ function pintarEstadoNube(){
 function normalizarSitio(s){
   const meses = Math.max(1, Math.min(MAX_MESES, parseInt(s.meses,10) || 12));
   const pagos = Array.from({length:meses}, (_,i)=> !!(Array.isArray(s.pagos) && s.pagos[i]));
+  /* Un renglón por mensualidad con su OC y quién la capturó. Va en paralelo a
+     "pagos" para no romper los sitios que se capturaron antes de esta versión. */
+  const pagosDetalle = Array.from({length:meses}, (_,i)=>{
+    const d = (Array.isArray(s.pagosDetalle) && s.pagosDetalle[i]) || null;
+    return {
+      oc:     d && d.oc     ? String(d.oc)     : '',
+      quien:  d && d.quien  ? String(d.quien)  : '',
+      cuando: d && d.cuando ? String(d.cuando) : ''
+    };
+  });
   return {
+    pagosDetalle,
     id: s.id || nuevoId(),
     clienteId: s.clienteId || '',
     nombre: s.nombre || 'Sitio',
@@ -959,7 +983,7 @@ function resumir(sitios){
 }
 
 /* =============================== VISTAS =============================== */
-const estado = { vista:'clientes', clienteId:null, busca:'', filtro:'todos' };
+const estado = { vista:'clientes', clienteId:null, busca:'', filtro:'todos', sitioFiltro:'' };
 
 const ICONO = {
   mas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
@@ -1099,30 +1123,52 @@ function vistaClientes(){
 function vistaCliente(){
   const c = clientePorId(estado.clienteId);
   if(!c){ estado.vista = 'clientes'; return vistaClientes(); }
-  const ss = sitiosDe(c.id);
+  const todos = sitiosDe(c.id);
+
+  /* El filtro decide qué sitios entran a los indicadores y a la lista.
+     Si el sitio elegido ya no existe, se regresa a "todos". */
+  if(estado.sitioFiltro && !todos.some(s => s.id === estado.sitioFiltro)) estado.sitioFiltro = '';
+  const ss = estado.sitioFiltro ? todos.filter(s => s.id === estado.sitioFiltro) : todos;
   const r = resumir(ss);
+  const rTodos = resumir(todos);
+  const uno = !!estado.sitioFiltro;
   let h = '';
 
   h += botonRegresar();
 
   h += '<div class="titulo-zona"><div>'
      +   '<h2>' + esc(c.nombre) + '</h2>'
-     +   '<p>' + numero(r.sitios) + ' ' + plural(r.sitios,'sitio','sitios')
-     +   ' · ' + numero(r.forpass) + ' ' + plural(r.forpass,'Forpass activo','Forpass activos')
+     +   '<p>' + numero(rTodos.sitios) + ' ' + plural(rTodos.sitios,'sitio','sitios')
+     +   ' · ' + numero(rTodos.forpass) + ' ' + plural(rTodos.forpass,'Forpass activo','Forpass activos')
      +   (c.contacto ? ' · ' + esc(c.contacto) : '') + '</p>'
      + '</div><div class="acciones">'
      +   '<button type="button" class="btn btn-suave btn-mini" data-accion="excel-cliente">' + ICONO.excel + 'Excel de este cliente</button>'
      +   '<button type="button" class="btn btn-primario" data-accion="nuevo-sitio">' + ICONO.mas + 'Agregar sitio</button>'
      + '</div></div>';
 
+  /* Filtro por sitio: ver el total de todos o de uno solo. */
+  if(todos.length > 1){
+    const opciones = todos.slice().sort((a,b)=> a.nombre.localeCompare(b.nombre,'es')).map(s =>
+      '<option value="' + esc(s.id) + '"' + (s.id === estado.sitioFiltro ? ' selected' : '') + '>'
+      + esc(s.nombre) + ' — ' + dinero(s.mensualidad) + '/mes</option>').join('');
+    h += '<div class="barra-busca">'
+       +   '<label for="filtroSitio" style="font-size:12.5px; color:var(--gray); align-self:center; font-weight:600">Ver totales de:</label>'
+       +   '<select id="filtroSitio" style="flex:1; min-width:210px">'
+       +     '<option value="">Todos los sitios (' + todos.length + ')</option>' + opciones
+       +   '</select>'
+       + '</div>';
+  }
+
+  const pieMrr = uno ? 'Solo este sitio · ' + dinero(rTodos.mrr) + ' entre todos' : 'Sitios activos (sin IVA)';
+
   h += '<div class="kpis">'
      + tarjetaKpi('Forpass activos', numero(r.forpass), r.sitiosActivos + ' ' + plural(r.sitiosActivos,'sitio activo','sitios activos'), 'k-ok')
-     + tarjetaKpi('Mensualidad total', dinero(r.mrr), 'Sitios activos (sin IVA)')
+     + tarjetaKpi('Mensualidad total', dinero(r.mrr), pieMrr)
      + tarjetaKpi('Mensualidades vencidas', numero(r.mensualidadesAtrasadas), r.adeudo ? dinero(r.adeudo) + ' por cobrar' : 'Nada pendiente', r.mensualidadesAtrasadas ? 'k-error' : '')
      + tarjetaKpi('Vigencias por vencer', numero(r.porVencer), 'Terminan en 45 días', r.porVencer ? 'k-alerta' : '')
      + '</div>';
 
-  if(!ss.length){
+  if(!todos.length){
     h += vistaVacia('credencial','Este cliente aún no tiene sitios','Registra un sitio (por ejemplo MXCD13) con sus Forpass, la mensualidad, la vigencia y si incluyó viáticos u onboarding.','nuevo-sitio','Agregar sitio');
     return h;
   }
@@ -1142,15 +1188,16 @@ function tarjetaSitio(s, i){
   const clasePunto = c.tono === 'error' ? 'p-error late' : c.tono === 'alerta' ? 'p-alerta' : (c.activo ? 'p-ok' : 'p-neutro');
   const claseIns = c.tono === 'error' ? 'i-error' : c.tono === 'alerta' ? 'i-alerta' : c.tono === 'ok' ? 'i-ok' : 'i-neutro';
 
-  /* Texto de la siguiente mensualidad, con su monto (el mes 1 trae los extras) */
+  /* Siguiente pago: se muestra el MONTO como dato principal y la fecha abajo.
+     Así el analista ve de una lo que hay que cobrar, sin cuentas mentales. */
   const iSig = s.pagos.findIndex(p => !p);
   let txtProx = 'Contrato cubierto', tonoProx = 'ok', pieProx = 'Las ' + s.meses + ' mensualidades están pagadas';
   if(c.proximo){
-    txtProx = fmtFecha(c.proximo);
-    const monto = ' · ' + dinero(c.montos[iSig]);
-    if(c.diasRest < 0){ tonoProx = 'error'; pieProx = 'Vencida hace ' + Math.abs(c.diasRest) + ' ' + plural(Math.abs(c.diasRest),'día','días') + monto; }
-    else if(c.diasRest === 0){ tonoProx = 'error'; pieProx = 'Se vence hoy' + monto; }
-    else{ tonoProx = c.diasRest <= 7 ? 'alerta' : 'ok'; pieProx = 'Faltan ' + c.diasRest + ' ' + plural(c.diasRest,'día','días') + monto; }
+    txtProx = dinero(c.montos[iSig]);
+    const cuando = fmtFecha(c.proximo) + ' · mensualidad ' + (iSig + 1);
+    if(c.diasRest < 0){ tonoProx = 'error'; pieProx = cuando + ' · vencida hace ' + Math.abs(c.diasRest) + ' ' + plural(Math.abs(c.diasRest),'día','días'); }
+    else if(c.diasRest === 0){ tonoProx = 'error'; pieProx = cuando + ' · se vence hoy'; }
+    else{ tonoProx = c.diasRest <= 7 ? 'alerta' : 'ok'; pieProx = cuando + ' · faltan ' + c.diasRest + ' ' + plural(c.diasRest,'día','días'); }
   }
 
   const casillas = s.pagos.map((p,idx)=>{
@@ -1164,19 +1211,15 @@ function tarjetaSitio(s, i){
          + 'aria-pressed="' + (p ? 'true' : 'false') + '">' + (idx+1) + '</button>';
   }).join('');
 
-  /* Desglose del pago 1: los extras van ahí y en ningún otro mes. */
-  const partes = [];
-  if(s.incOnboarding && s.onboarding) partes.push('onboarding ' + dinero(s.onboarding));
-  if(s.incViaticos && s.viaticos) partes.push('viáticos ' + dinero(s.viaticos));
-  const chipExtras = partes.length
-    ? '<div class="t-chips"><span class="insignia i-info">Pago 1 incluye ' + esc(partes.join(' + ')) + '</span></div>'
-    : '';
-
   return '<div class="tarjeta t-' + c.tono + '" style="--d:' + (i*45) + 'ms">'
        +   '<div class="t-cabeza">'
        +     '<div style="flex:1; min-width:0">'
        +       '<div class="t-nombre" style="display:flex; align-items:center; gap:9px">'
        +         '<span class="punto ' + clasePunto + '"></span>' + esc(s.nombre)
+       +         '<button type="button" class="tres-puntos" data-plan="' + esc(s.id) + '" '
+       +           'title="Ver el plan de pagos mes por mes" aria-label="Plan de pagos de ' + esc(s.nombre) + '">'
+       +           '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>'
+       +         '</button>'
        +       '</div>'
        +       '<div class="t-sub">' + numero(s.modulos) + ' Forpass'
        +         (c.activo ? plural(s.modulos,' activo',' activos') : ' · ' + ETIQUETA_ESTADO[s.estado] + (c.vigente ? '' : ' · vigencia terminada'))
@@ -1186,22 +1229,14 @@ function tarjetaSitio(s, i){
        +   '</div>'
 
        +   '<div class="t-datos">'
-       +     '<div class="t-dato"><div class="d-label">Mensualidad</div><div class="d-valor">' + dinero(s.mensualidad) + '</div>'
-       +       (c.extras ? '<div class="d-label" style="text-transform:none; letter-spacing:0; font-weight:500; margin-top:2px">del mes 2 al ' + s.meses + '</div>' : '') + '</div>'
-       +     '<div class="t-dato"><div class="d-label">Siguiente mensualidad</div><div class="d-valor ' + tonoProx + '">' + esc(txtProx) + '</div><div class="d-label" style="text-transform:none; letter-spacing:0; font-weight:500; margin-top:2px">' + esc(pieProx) + '</div></div>'
-       +     (c.extras
-              ? '<div class="t-dato"><div class="d-label">Pago 1 (con extras)</div><div class="d-valor">' + dinero(c.primerPago) + '</div>'
-                + '<div class="d-label" style="text-transform:none; letter-spacing:0; font-weight:500; margin-top:2px">'
-                + dinero(s.mensualidad) + ' + ' + dinero(c.extras) + ' una sola vez</div></div>'
-              : '')
+       +     '<div class="t-dato"><div class="d-label">Siguiente pago</div><div class="d-valor ' + tonoProx + '">' + esc(txtProx) + '</div><div class="d-label" style="text-transform:none; letter-spacing:0; font-weight:500; margin-top:2px">' + esc(pieProx) + '</div></div>'
+       +     '<div class="t-dato"><div class="d-label">Mensualidad</div><div class="d-valor">' + dinero(s.mensualidad) + '</div></div>'
        +     '<div class="t-dato"><div class="d-label">Inicio</div><div class="d-valor chico">' + fmtFecha(s.fechaInicio) + '</div></div>'
        +     '<div class="t-dato"><div class="d-label">Vigencia</div><div class="d-valor chico">' + fmtFecha(c.fin)
        +       '</div><div class="d-label" style="text-transform:none; letter-spacing:0; font-weight:500; margin-top:2px">'
        +       (c.vigente ? 'Faltan ' + c.diasVigencia + ' ' + plural(c.diasVigencia,'día','días') : 'Terminó hace ' + Math.abs(c.diasVigencia) + ' ' + plural(Math.abs(c.diasVigencia),'día','días'))
        +       '</div></div>'
        +   '</div>'
-
-       +   chipExtras
 
        +   '<div class="progreso">'
        +     '<div class="p-cabeza"><span>Mensualidades pagadas</span><span>' + c.pagados + ' de ' + s.meses
@@ -1256,6 +1291,8 @@ function render(){
     f.value = estado.filtro;
     f.addEventListener('change', ()=>{ estado.filtro = f.value; render(); });
   }
+  const fs = $('filtroSitio');
+  if(fs) fs.addEventListener('change', ()=>{ estado.sitioFiltro = fs.value; render(); });
   if(estado.vista === 'admin') montarAdmin();
 }
 
@@ -1303,7 +1340,9 @@ function vistaAdmin(){
      + '<div><b>Las contraseñas no se pueden ver.</b> Firebase las guarda encriptadas de un solo sentido, '
      + 'así que ni tú ni nadie puede leerlas — eso es lo que protege las cuentas. '
      + 'Cuando creas una cuenta le pones una contraseña temporal y se la pasas; si alguien la olvida, '
-     + 'usa <b>Mandar correo para cambiarla</b> y la persona pone una nueva.</div></div>';
+     + 'usa el enlace <b>«¿Olvidaste tu contraseña?»</b> de la pantalla de entrada y él mismo la cambia.'
+     + '<br><br><b>Bloquear</b> quita el acceso de forma temporal y se puede deshacer. '
+     + '<b>Borrar</b> lo quita para siempre.</div></div>';
 
   h += '<div class="bloque"><div class="bloque-cabeza"><div>'
      +   '<h3>Cuentas</h3><p id="adminResumen">Cargando…</p></div></div>'
@@ -1368,6 +1407,9 @@ function pintarUsuarios(){
         const esDueno = u.rol === 'owner';
         /* Solo un Owner puede tocar a otro Owner o nombrar uno nuevo. */
         const protegido = yo || (esDueno && !esOwner());
+        /* El Owner borra a cualquiera; un Admin a todos menos a un Owner.
+           Nadie se borra a sí mismo: sería quedarse fuera sin vuelta. */
+        const puedeBorrar = !yo && (esOwner() || (esAdmin() && !esDueno));
         const rolesQuePuedeDar = Object.keys(ROLES).filter(r => r !== 'owner' || esOwner());
         const opciones = rolesQuePuedeDar.map(r =>
           '<option value="' + r + '"' + (u.rol === r ? ' selected' : '') + '>' + esc(ROLES[r].nombre) + '</option>').join('');
@@ -1386,9 +1428,10 @@ function pintarUsuarios(){
           + '<td>' + esc(fechaHora(u.creado, true)) + '</td>'
           + '<td>' + esc(fechaHora(u.ultimoAcceso, true)) + '</td>'
           + '<td class="acciones">'
-          +   '<button type="button" class="btn btn-suave btn-mini" data-reset="' + esc(u.correo || '') + '">Mandar correo para cambiarla</button>'
-          +   (protegido ? '' : '<button type="button" class="btn ' + (u.activo === false ? 'btn-verde' : 'btn-peligro')
+          +   (protegido ? '' : '<button type="button" class="btn ' + (u.activo === false ? 'btn-verde' : 'btn-suave')
                  + ' btn-mini" data-bloquear="' + esc(u.id) + '">' + (u.activo === false ? 'Reactivar' : 'Bloquear') + '</button>')
+          +   (puedeBorrar ? '<button type="button" class="btn btn-peligro btn-mini" data-borrar-usuario="' + esc(u.id) + '" '
+                 + 'title="Borrar el acceso de esta cuenta">' + ICONO.basura + '</button>' : '')
           + '</td></tr>';
       }).join('')
     + '</tbody></table>';
@@ -1545,19 +1588,33 @@ $('vista').addEventListener('change', async ev=>{
 });
 
 $('vista').addEventListener('click', async ev=>{
-  const reset = ev.target.closest('[data-reset]');
-  if(reset){
-    const correo = reset.dataset.reset;
-    if(!correo){ aviso('Esa cuenta no tiene correo registrado.', true); return; }
-    confirmar('Mandar correo para cambiar la contraseña',
-      'Se le va a enviar a <b>' + esc(correo) + '</b> un correo con un enlace para poner una contraseña nueva. '
-      + 'La contraseña actual sigue sirviendo hasta que la cambie.',
-      'Sí, mandar el correo', async ()=>{
+  const bor = ev.target.closest('[data-borrar-usuario]');
+  if(bor){
+    const u = (admin.usuarios || []).find(x => x.id === bor.dataset.borrarUsuario);
+    if(!u) return;
+    if(u.id === sesion.uid){ aviso('No puedes borrar tu propia cuenta.', true); return; }
+    if(normalizarRol(u.rol) === 'owner' && !esOwner()){ aviso('Solo un Owner puede borrar a un Owner.', true); return; }
+
+    confirmar('Borrar el acceso de ' + nombreDe(u),
+      'A <b>' + esc(nombreDe(u)) + '</b> (' + esc(u.correo) + ') se le quita el acceso <b>de inmediato y para siempre</b>: '
+      + 'ya no podrá ver ni capturar nada.'
+      + '<br><br>Un detalle importante: <b>su correo y contraseña siguen existiendo</b> en Firebase. '
+      + 'Si intenta entrar, la página le va a decir que no tiene acceso y no verá información. '
+      + 'Para borrar también el usuario de raíz, hay que eliminarlo en la consola de Firebase, '
+      + 'en Authentication → Users.'
+      + '<br><br>Si solo quieres quitarle el acceso un rato, usa <b>Bloquear</b>: eso sí se puede deshacer.',
+      'Sí, borrar el acceso', async ()=>{
         try{
-          await pedirAuth('sendOobCode', { requestType:'PASSWORD_RESET', email:correo });
-          anotar('mandó cambio de contraseña a', 'cuenta', correo);
-          aviso('Correo enviado a ' + correo + '.');
-        }catch(e){ aviso(e.message, true); }
+          await borrarNube('usuarios', u.id);
+          admin.usuarios = (admin.usuarios || []).filter(x => x.id !== u.id);
+          anotar('borró el acceso de', 'cuenta', u.correo, ROLES[normalizarRol(u.rol)].nombre);
+          pintarUsuarios();
+          aviso('Acceso de ' + nombreDe(u) + ' borrado.');
+        }catch(e){
+          aviso(/SIN_PERMISO/.test(String(e.message))
+            ? 'El servidor no te dejó borrar esa cuenta. Solo un Owner puede borrar a un Owner.'
+            : 'No se pudo borrar: ' + e.message, true);
+        }
       });
     return;
   }
@@ -1598,6 +1655,7 @@ function abrirModal(titulo, cuerpo, pie){
 }
 function cerrarModal(){
   $('telon').classList.remove('abierto');
+  $('modal').classList.remove('ancho');
   $('modalCuerpo').innerHTML = '';
   $('modalPie').innerHTML = '';
   document.body.style.overflow = '';
@@ -1819,6 +1877,135 @@ function modalSitio(clienteId, sitioId){
   };
 }
 
+/* ----------------------- Modal: plan de pagos -----------------------------
+   El desglose mes por mes: cuánto toca cada mensualidad, si ya se pagó, con
+   qué OC y quién la capturó. Los extras van en el mes 1 y se ven ahí mismo,
+   sin necesidad de explicarlo con textos en la tarjeta.
+   ------------------------------------------------------------------------- */
+function modalPlanDePagos(sitioId){
+  const s = sitioPorId(sitioId);
+  if(!s) return;
+  const c = calcular(s);
+
+  const filas = s.pagos.map((pagado, i)=>{
+    const det = s.pagosDetalle[i] || {};
+    const fecha = sumarMeses(s.fechaInicio, i);
+    const vencida = !pagado && i < c.debidas;
+
+    let concepto = 'Mensualidad';
+    if(i === 0){
+      const extras = [];
+      if(s.incOnboarding && s.onboarding) extras.push('onboarding ' + dinero(s.onboarding));
+      if(s.incViaticos && s.viaticos)     extras.push('viáticos ' + dinero(s.viaticos));
+      if(extras.length) concepto = 'Mensualidad + ' + extras.join(' + ');
+    }
+
+    let estado;
+    if(pagado) estado = '<span class="rol c-analyst">Pagada</span>';
+    else if(vencida) estado = '<span class="rol c-owner">Vencida</span>';
+    else estado = '<span class="rol c-viewer">Pendiente</span>';
+
+    const detalle = pagado
+      ? '<div style="font-size:11px; color:var(--gray); margin-top:3px">'
+        + (det.oc ? 'OC <b>' + esc(det.oc) + '</b>' : 'sin OC registrada')
+        + (det.quien ? ' · capturó ' + esc(det.quien) : '')
+        + (det.cuando ? ' · ' + esc(fechaHora(det.cuando)) : '') + '</div>'
+      : '';
+
+    return '<tr>'
+      + '<td style="text-align:center; font-weight:700; color:var(--navy)">' + (i+1) + '</td>'
+      + '<td>' + fmtFecha(fecha) + '</td>'
+      + '<td>' + esc(concepto) + detalle + '</td>'
+      + '<td style="text-align:right; font-weight:700">' + dinero(c.montos[i]) + '</td>'
+      + '<td style="text-align:right">' + estado + '</td>'
+      + '</tr>';
+  }).join('');
+
+  const cuerpo =
+      '<div class="resumen" style="margin-bottom:16px">'
+    +   '<div class="r-fila"><span>Mensualidades pagadas</span><span>' + c.pagados + ' de ' + s.meses + '</span></div>'
+    +   '<div class="r-fila"><span>Cobrado</span><span>' + dinero(c.cobrado) + '</span></div>'
+    +   (c.adeudo ? '<div class="r-fila"><span>Vencido por cobrar</span><span>' + dinero(c.adeudo) + '</span></div>' : '')
+    +   '<div class="r-fila r-total"><span>Valor total del contrato</span><span>' + dinero(c.valorContrato) + '</span></div>'
+    + '</div>'
+    + '<div class="rodillo"><table class="tabla" style="min-width:520px"><thead><tr>'
+    +   '<th style="text-align:center">Mes</th><th>Fecha de corte</th><th>Concepto</th>'
+    +   '<th style="text-align:right">Monto</th><th style="text-align:right">Estado</th>'
+    + '</tr></thead><tbody>' + filas + '</tbody></table></div>';
+
+  abrirModal('Plan de pagos · ' + s.nombre, cuerpo,
+    '<button type="button" class="btn btn-suave" data-modal="cancelar">Cerrar</button>');
+  $('modal').classList.add('ancho');
+  cerrarModalActual = null;
+}
+
+/* --------------------- Modal: capturar una mensualidad ---------------------
+   Cada pago queda con su número de OC y con el nombre de quien lo capturó.
+   ------------------------------------------------------------------------- */
+const LLAVE_CAPTURADOR = 'forguard_forpass_capturador_v1';
+function nombreCapturador(){
+  if(HAY_NUBE && haySesion()) return nombreDe(sesion);
+  try{ return localStorage.getItem(LLAVE_CAPTURADOR) || ''; }catch(e){ return ''; }
+}
+function recordarCapturador(nombre){
+  try{ localStorage.setItem(LLAVE_CAPTURADOR, nombre || ''); }catch(e){}
+}
+
+function modalCapturarPago(sitioId, idx){
+  const s = sitioPorId(sitioId);
+  if(!s || idx < 0 || idx >= s.meses) return;
+  const c = calcular(s);
+  const det = s.pagosDetalle[idx] || { oc:'', quien:'', cuando:'' };
+  const conCuenta = HAY_NUBE && haySesion();
+  const partes = [];
+  if(idx === 0 && s.incOnboarding && s.onboarding) partes.push('onboarding ' + dinero(s.onboarding));
+  if(idx === 0 && s.incViaticos && s.viaticos)     partes.push('viáticos ' + dinero(s.viaticos));
+
+  const cuerpo =
+      '<div class="resumen" style="margin-bottom:18px">'
+    +   '<div class="r-fila"><span>Sitio</span><span>' + esc(s.nombre) + '</span></div>'
+    +   '<div class="r-fila"><span>Mensualidad</span><span>' + (idx+1) + ' de ' + s.meses + '</span></div>'
+    +   '<div class="r-fila"><span>Fecha de corte</span><span>' + fmtFecha(sumarMeses(s.fechaInicio, idx)) + '</span></div>'
+    +   (partes.length ? '<div class="r-fila"><span>Incluye</span><span>' + esc(partes.join(' + ')) + '</span></div>' : '')
+    +   '<div class="r-fila r-total"><span>Monto de esta mensualidad</span><span>' + dinero(c.montos[idx]) + '</span></div>'
+    + '</div>'
+
+    + '<div class="campo"><label>Nombre de quien captura *</label>'
+    +   (conCuenta
+          ? '<input type="text" id="pQuien" value="' + esc(nombreDe(sesion)) + '" readonly>'
+            + '<div class="pista">Es tu cuenta (' + esc(sesion.correo) + '). Queda registrada en el historial de cambios.</div>'
+          : '<input type="text" id="pQuien" placeholder="Ej. Santiago Garza" value="' + esc(nombreCapturador()) + '">'
+            + '<div class="pista">Se guarda para las siguientes capturas de esta computadora.</div>')
+    + '</div>'
+
+    + '<div class="campo"><label>Número de OC *</label>'
+    +   '<input type="text" id="pOC" placeholder="Ej. 4500123" value="' + esc(det.oc) + '">'
+    +   '<div class="pista">La orden de compra con la que se pagó <b>esta</b> mensualidad. Cada pago lleva la suya.</div>'
+    + '</div>';
+
+  abrirModal('Capturar mensualidad ' + (idx+1), cuerpo,
+      '<button type="button" class="btn btn-suave" data-modal="cancelar">Cancelar</button>'
+    + '<button type="button" class="btn btn-verde" data-modal="guardar">' + ICONO.cheque + 'Capturar mensualidad</button>');
+
+  setTimeout(()=>{ const oc = $('pOC'); if(oc) oc.focus(); }, 70);
+
+  cerrarModalActual = ()=>{
+    const quien = $('pQuien').value.trim();
+    const oc    = $('pOC').value.trim();
+    if(!quien){ $('pQuien').setAttribute('aria-invalid','true'); $('pQuien').focus(); aviso('Falta el nombre de quien captura.', true); return; }
+    if(!oc){ $('pOC').setAttribute('aria-invalid','true'); $('pOC').focus(); aviso('Falta el número de OC.', true); return; }
+
+    s.pagos[idx] = true;
+    s.pagosDetalle[idx] = { oc, quien, cuando: new Date().toISOString() };
+    if(!conCuenta) recordarCapturador(quien);
+
+    guardarSitio(s, 'marcó pagada', 'mensualidad ' + (idx+1) + ' de ' + s.meses + ' · OC ' + oc + ' · capturó ' + quien);
+    cerrarModal();
+    render();
+    aviso('Mensualidad ' + (idx+1) + ' de ' + s.nombre + ' capturada con OC ' + oc + '.');
+  };
+}
+
 /* --------------------------- Modal: confirmar --------------------------- */
 function confirmar(titulo, texto, textoBoton, alAceptar){
   abrirModal(titulo, '<p style="font-size:13.5px; color:#3a4256; line-height:1.65">' + texto + '</p>',
@@ -1917,9 +2104,22 @@ $('vista').addEventListener('click', ev=>{
     if(!exigirPermiso()) return;
     const s = sitioPorId(pago.dataset.pago);
     const i = +pago.dataset.idx;
-    s.pagos[i] = !s.pagos[i];
-    guardarSitio(s, s.pagos[i] ? 'marcó pagada' : 'desmarcó', 'mensualidad ' + (i+1) + ' de ' + s.meses);
-    render();
+    if(s.pagos[i]){
+      /* Ya estaba pagada: se pregunta antes de deshacer, porque se pierde la OC. */
+      const det = s.pagosDetalle[i] || {};
+      confirmar('Deshacer esta captura',
+        'La mensualidad <b>' + (i+1) + '</b> de <b>' + esc(s.nombre) + '</b> quedaría como no pagada'
+        + (det.oc ? ', y se borra su <b>OC ' + esc(det.oc) + '</b>' : '') + '.',
+        'Sí, deshacer', ()=>{
+          s.pagos[i] = false;
+          s.pagosDetalle[i] = { oc:'', quien:'', cuando:'' };
+          guardarSitio(s, 'deshizo la captura de', 'mensualidad ' + (i+1) + ' de ' + s.meses
+                       + (det.oc ? ' · OC ' + det.oc : ''));
+          render();
+        });
+    }else{
+      modalCapturarPago(s.id, i);
+    }
     return;
   }
 
@@ -1929,12 +2129,12 @@ $('vista').addEventListener('click', ev=>{
     const s = sitioPorId(marcar.dataset.marcar);
     const i = s.pagos.findIndex(p => !p);
     if(i === -1){ aviso('Todas las mensualidades ya están pagadas.'); return; }
-    s.pagos[i] = true;
-    guardarSitio(s, 'marcó pagada', 'mensualidad ' + (i+1) + ' de ' + s.meses);
-    render();
-    aviso('Mensualidad ' + (i+1) + ' de ' + s.nombre + ' marcada como pagada.');
+    modalCapturarPago(s.id, i);
     return;
   }
+
+  const plan = t.closest('[data-plan]');
+  if(plan){ modalPlanDePagos(plan.dataset.plan); return; }
 
   const tar = t.closest('[data-cliente]');
   if(tar){ entrarCliente(tar.dataset.cliente); return; }
@@ -1948,6 +2148,7 @@ $('vista').addEventListener('keydown', ev=>{
 
 function entrarCliente(id){
   estado.vista = 'cliente'; estado.clienteId = id;
+  estado.sitioFiltro = '';            /* cada cliente arranca viendo todos sus sitios */
   render();
   window.scrollTo({ top:0, behavior:'smooth' });
 }
@@ -2150,9 +2351,9 @@ function planoHoja(filasSitios){
   const meses = Array.from({length:nMeses}, (_,i)=>'Mes ' + (i+1));
   const finales = ['Pagados','Pendientes','Debió pagar (a hoy)','Estatus de pago',
                    'Onboarding ($)','Viáticos ($)','Primer pago ($)','Valor del contrato ($)',
-                   'Próximo pago','Días restantes','Estado del sitio','Notas'];
+                   'Próximo pago','Días restantes','Estado del sitio','OC por mensualidad','Notas'];
   const encabezados = fijas.concat(meses, finales);
-  const anchos = [22,14,9,22,15,12,13,12].concat(meses.map(()=>6), [9,11,17,15, 15,13,14,19,12,13,14,42]);
+  const anchos = [22,14,9,22,15,12,13,12].concat(meses.map(()=>6), [9,11,17,15, 15,13,14,19,12,13,14,46,42]);
 
   const iMes0 = fijas.length;                 /* primera columna de mes */
   const i = {
@@ -2212,6 +2413,12 @@ function construirHoja(filasSitios){
     /* Días restantes: fórmula viva contra la fecha de «Próximo pago». */
     celdas.push(c.proximo ? cX(L(i.proximo) + n + '-TODAY()', c.diasRest, 5) : cT('—', 5));
     celdas.push(cT(ETIQUETA_ESTADO[s.estado], 5));
+    /* Las OC de cada mensualidad pagada, en una sola celda para el vistazo
+       rápido. El detalle completo va en la hoja «Pagos con OC». */
+    celdas.push(cT(s.pagos.map((p, m) => {
+      const d = s.pagosDetalle[m] || {};
+      return (p && d.oc) ? 'M' + (m+1) + ' ' + d.oc : '';
+    }).filter(Boolean).join(' · '), 4));
     celdas.push(cT(s.notas, 4));
 
     xml += filaXml(n, celdas);
@@ -2224,6 +2431,65 @@ function construirHoja(filasSitios){
     + '<conditionalFormatting sqref="' + colEstatus + '5:' + colEstatus + ultima + '">'
     + '<cfRule type="cellIs" dxfId="0" priority="1" operator="equal"><formula>"Atrasado"</formula></cfRule>'
     + '<cfRule type="cellIs" dxfId="1" priority="2" operator="equal"><formula>"Al día"</formula></cfRule>'
+    + '</conditionalFormatting>'
+    + '<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>'
+    + '</worksheet>';
+  return xml;
+}
+
+/* Segunda hoja: un renglón por mensualidad, con su OC y quién la capturó.
+   Es la que sirve para filtrar y cuadrar pagos contra órdenes de compra. */
+const ENC_PAGOS = ['Cliente','Sitio','Mensualidad','Fecha de corte','Concepto','Monto ($)',
+                   'Estatus','Número de OC','Capturó','Fecha de captura'];
+const ANCHOS_PAGOS = [22,14,12,14,34,13,12,18,22,18];
+
+function construirHojaPagos(filasSitios){
+  let xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    + '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+    + '<sheetViews><sheetView showGridLines="0" workbookViewId="0">'
+    + '<pane ySplit="2" topLeftCell="A3" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+    + '<sheetFormatPr defaultRowHeight="15"/>'
+    + '<cols>' + ANCHOS_PAGOS.map((w,k)=>'<col min="' + (k+1) + '" max="' + (k+1) + '" width="' + w + '" customWidth="1"/>').join('') + '</cols>'
+    + '<sheetData>';
+
+  xml += filaXml(1, [cT('Pagos con su orden de compra', 1)]);
+  xml += filaXml(2, ENC_PAGOS.map(h => cT(h, 3)));
+
+  let fila = 2;
+  filasSitios.forEach(f=>{
+    const s = f.sitio, c = f.calc;
+    for(let m = 0; m < s.meses; m++){
+      const d = s.pagosDetalle[m] || {};
+      const pagado = !!s.pagos[m];
+      const vencida = !pagado && m < c.debidas;
+
+      let concepto = 'Mensualidad';
+      if(m === 0){
+        const extras = [];
+        if(s.incOnboarding && s.onboarding) extras.push('onboarding ' + dinero(s.onboarding));
+        if(s.incViaticos && s.viaticos)     extras.push('viáticos ' + dinero(s.viaticos));
+        if(extras.length) concepto = 'Mensualidad + ' + extras.join(' + ');
+      }
+
+      fila++;
+      xml += filaXml(fila, [
+        cT(f.cliente, 4), cT(s.nombre, 4), cN(m + 1, 5),
+        cF(sumarMeses(s.fechaInicio, m), 6),
+        cT(concepto, 4), cN(c.montos[m], 7),
+        cT(pagado ? 'Pagada' : (vencida ? 'Vencida' : 'Pendiente'), 5),
+        cT(pagado ? (d.oc || '(sin OC)') : '', 4),
+        cT(pagado ? (d.quien || '') : '', 4),
+        d.cuando ? cF(String(d.cuando).slice(0, 10), 6) : cT('', 5)
+      ]);
+    }
+  });
+
+  const ultima = Math.max(3, fila);
+  xml += '</sheetData>'
+    + '<autoFilter ref="A2:' + letraCol(ENC_PAGOS.length) + ultima + '"/>'
+    + '<conditionalFormatting sqref="G3:G' + ultima + '">'
+    + '<cfRule type="cellIs" dxfId="0" priority="1" operator="equal"><formula>"Vencida"</formula></cfRule>'
+    + '<cfRule type="cellIs" dxfId="1" priority="2" operator="equal"><formula>"Pagada"</formula></cfRule>'
     + '</conditionalFormatting>'
     + '<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>'
     + '</worksheet>';
@@ -2251,6 +2517,7 @@ function descargarExcel(clienteId){
       + '<Default Extension="xml" ContentType="application/xml"/>'
       + '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
       + '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+      + '<Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
       + '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
       + '</Types>') },
     { nombre:'_rels/.rels', datos: aBytes('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
@@ -2260,15 +2527,18 @@ function descargarExcel(clienteId){
     { nombre:'xl/workbook.xml', datos: aBytes('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       + '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
       + 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-      + '<sheets><sheet name="Control Forpass" sheetId="1" r:id="rId1"/></sheets>'
+      + '<sheets><sheet name="Control Forpass" sheetId="1" r:id="rId1"/>'
+      +   '<sheet name="Pagos con OC" sheetId="2" r:id="rId3"/></sheets>'
       + '<calcPr calcId="124519" fullCalcOnLoad="1"/></workbook>') },
     { nombre:'xl/_rels/workbook.xml.rels', datos: aBytes('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
       + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+      + '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>'
       + '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
       + '</Relationships>') },
     { nombre:'xl/styles.xml', datos: aBytes(XLSX_ESTILOS) },
-    { nombre:'xl/worksheets/sheet1.xml', datos: aBytes(construirHoja(filas)) }
+    { nombre:'xl/worksheets/sheet1.xml', datos: aBytes(construirHoja(filas)) },
+    { nombre:'xl/worksheets/sheet2.xml', datos: aBytes(construirHojaPagos(filas)) }
   ];
 
   const cli = clienteId ? clientePorId(clienteId) : null;
