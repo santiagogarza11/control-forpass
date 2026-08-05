@@ -451,6 +451,9 @@ const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 
 const HAY_NUBE = !!(CONFIG_NUBE.apiKey && CONFIG_NUBE.projectId);
 
+/* Tope de mensualidades por contrato (12 meses es lo normal, 24 el máximo). */
+const MAX_MESES = 24;
+
 /* =============================== ALMACÉN =============================== */
 const LLAVE = 'forguard_control_forpass_v1';
 let datos = { v:1, clientes:[], sitios:[] };
@@ -799,7 +802,7 @@ function pintarEstadoNube(){
 
 /* Rellena valores faltantes para que un sitio viejo o importado no rompa la vista. */
 function normalizarSitio(s){
-  const meses = Math.max(1, Math.min(120, parseInt(s.meses,10) || 12));
+  const meses = Math.max(1, Math.min(MAX_MESES, parseInt(s.meses,10) || 12));
   const pagos = Array.from({length:meses}, (_,i)=> !!(Array.isArray(s.pagos) && s.pagos[i]));
   return {
     id: s.id || nuevoId(),
@@ -890,13 +893,21 @@ function calcular(s){
   const activo = s.estado === 'activo' && vigente;
   const forpassActivos = activo ? s.modulos : 0;
 
+  /* Los viáticos y el onboarding se cobran UNA sola vez, en el pago 1.
+     De la mensualidad 2 en adelante es la renta normal. */
   const extras = (s.incViaticos ? s.viaticos : 0) + (s.incOnboarding ? s.onboarding : 0);
+  const montos = Array.from({length:s.meses}, (_,i)=> s.mensualidad + (i === 0 ? extras : 0));
+  const primerPago = montos[0];
   const valorContrato = s.mensualidad * s.meses + extras;
-  const cobrado = s.mensualidad * pagados + extras;   /* los extras se cobran al arranque */
+  const cobrado = s.pagos.reduce((t,p,i)=> t + (p ? montos[i] : 0), 0);
+
+  /* Dinero vencido: solo las mensualidades que ya debieron pagarse y no están pagadas. */
+  let adeudo = 0;
+  for(let i = 0; i < debidas; i++) if(!s.pagos[i]) adeudo += montos[i];
 
   return { hoy, fin, pagados, pendientes, debidas, atrasadas, proximo, diasRest,
            vigente, suscripcion, diasVigencia, estatus, tono, activo, forpassActivos,
-           extras, valorContrato, cobrado };
+           extras, montos, primerPago, valorContrato, cobrado, adeudo };
 }
 
 const ETIQUETA_TIPO = { hw:'Software + Hardware', sw:'Solo Software' };
@@ -912,7 +923,7 @@ function resumir(sitios){
   sitios.forEach(s=>{
     const c = calcular(s);
     if(c.activo){ r.sitiosActivos++; r.forpass += s.modulos; r.mrr += s.mensualidad; }
-    if(c.tono === 'error'){ r.atrasados++; r.mensualidadesAtrasadas += c.atrasadas; r.adeudo += c.atrasadas * s.mensualidad; }
+    if(c.tono === 'error'){ r.atrasados++; r.mensualidadesAtrasadas += c.atrasadas; r.adeudo += c.adeudo; }
     else if(c.estatus === 'Por pagar') r.porPagar++;
     if(c.activo && c.diasVigencia >= 0 && c.diasVigencia <= 45) r.porVencer++;
   });
@@ -1098,27 +1109,35 @@ function tarjetaSitio(s, i){
   const clasePunto = c.tono === 'error' ? 'p-error late' : c.tono === 'alerta' ? 'p-alerta' : (c.activo ? 'p-ok' : 'p-neutro');
   const claseIns = c.tono === 'error' ? 'i-error' : c.tono === 'alerta' ? 'i-alerta' : c.tono === 'ok' ? 'i-ok' : 'i-neutro';
 
-  /* Texto de la siguiente mensualidad */
+  /* Texto de la siguiente mensualidad, con su monto (el mes 1 trae los extras) */
+  const iSig = s.pagos.findIndex(p => !p);
   let txtProx = 'Contrato cubierto', tonoProx = 'ok', pieProx = 'Las ' + s.meses + ' mensualidades están pagadas';
   if(c.proximo){
     txtProx = fmtFecha(c.proximo);
-    if(c.diasRest < 0){ tonoProx = 'error'; pieProx = 'Vencida hace ' + Math.abs(c.diasRest) + ' ' + plural(Math.abs(c.diasRest),'día','días'); }
-    else if(c.diasRest === 0){ tonoProx = 'error'; pieProx = 'Se vence hoy'; }
-    else{ tonoProx = c.diasRest <= 7 ? 'alerta' : 'ok'; pieProx = 'Faltan ' + c.diasRest + ' ' + plural(c.diasRest,'día','días'); }
+    const monto = ' · ' + dinero(c.montos[iSig]);
+    if(c.diasRest < 0){ tonoProx = 'error'; pieProx = 'Vencida hace ' + Math.abs(c.diasRest) + ' ' + plural(Math.abs(c.diasRest),'día','días') + monto; }
+    else if(c.diasRest === 0){ tonoProx = 'error'; pieProx = 'Se vence hoy' + monto; }
+    else{ tonoProx = c.diasRest <= 7 ? 'alerta' : 'ok'; pieProx = 'Faltan ' + c.diasRest + ' ' + plural(c.diasRest,'día','días') + monto; }
   }
 
   const casillas = s.pagos.map((p,idx)=>{
     const cl = p ? 'pagado' : (idx < c.debidas ? 'debido' : '');
     const fecha = fmtFecha(sumarMeses(s.fechaInicio, idx));
+    const detalle = 'Mensualidad ' + (idx+1) + ' · ' + fecha + ' · ' + dinero(c.montos[idx])
+                  + (idx === 0 && c.extras ? ' (incluye onboarding y viáticos)' : '')
+                  + (p ? ' · pagada' : ' · sin pagar');
     return '<button type="button" class="mes ' + cl + '" data-pago="' + esc(s.id) + '" data-idx="' + idx + '" '
-         + 'title="Mensualidad ' + (idx+1) + ' · ' + fecha + (p ? ' · pagada' : ' · sin pagar') + '" '
-         + 'aria-label="Mensualidad ' + (idx+1) + ' ' + fecha + (p ? ', pagada' : ', sin pagar') + '" '
+         + 'title="' + esc(detalle) + '" aria-label="' + esc(detalle) + '" '
          + 'aria-pressed="' + (p ? 'true' : 'false') + '">' + (idx+1) + '</button>';
   }).join('');
 
-  let extras = [];
-  if(s.incOnboarding && s.onboarding) extras.push('Onboarding ' + dinero(s.onboarding));
-  if(s.incViaticos && s.viaticos) extras.push('Viáticos ' + dinero(s.viaticos));
+  /* Desglose del pago 1: los extras van ahí y en ningún otro mes. */
+  const partes = [];
+  if(s.incOnboarding && s.onboarding) partes.push('onboarding ' + dinero(s.onboarding));
+  if(s.incViaticos && s.viaticos) partes.push('viáticos ' + dinero(s.viaticos));
+  const chipExtras = partes.length
+    ? '<div class="t-chips"><span class="insignia i-info">Pago 1 incluye ' + esc(partes.join(' + ')) + '</span></div>'
+    : '';
 
   return '<div class="tarjeta t-' + c.tono + '" style="--d:' + (i*45) + 'ms">'
        +   '<div class="t-cabeza">'
@@ -1134,8 +1153,14 @@ function tarjetaSitio(s, i){
        +   '</div>'
 
        +   '<div class="t-datos">'
-       +     '<div class="t-dato"><div class="d-label">Mensualidad</div><div class="d-valor">' + dinero(s.mensualidad) + '</div></div>'
+       +     '<div class="t-dato"><div class="d-label">Mensualidad</div><div class="d-valor">' + dinero(s.mensualidad) + '</div>'
+       +       (c.extras ? '<div class="d-label" style="text-transform:none; letter-spacing:0; font-weight:500; margin-top:2px">del mes 2 al ' + s.meses + '</div>' : '') + '</div>'
        +     '<div class="t-dato"><div class="d-label">Siguiente mensualidad</div><div class="d-valor ' + tonoProx + '">' + esc(txtProx) + '</div><div class="d-label" style="text-transform:none; letter-spacing:0; font-weight:500; margin-top:2px">' + esc(pieProx) + '</div></div>'
+       +     (c.extras
+              ? '<div class="t-dato"><div class="d-label">Pago 1 (con extras)</div><div class="d-valor">' + dinero(c.primerPago) + '</div>'
+                + '<div class="d-label" style="text-transform:none; letter-spacing:0; font-weight:500; margin-top:2px">'
+                + dinero(s.mensualidad) + ' + ' + dinero(c.extras) + ' una sola vez</div></div>'
+              : '')
        +     '<div class="t-dato"><div class="d-label">Inicio</div><div class="d-valor chico">' + fmtFecha(s.fechaInicio) + '</div></div>'
        +     '<div class="t-dato"><div class="d-label">Vigencia</div><div class="d-valor chico">' + fmtFecha(c.fin)
        +       '</div><div class="d-label" style="text-transform:none; letter-spacing:0; font-weight:500; margin-top:2px">'
@@ -1143,7 +1168,7 @@ function tarjetaSitio(s, i){
        +       '</div></div>'
        +   '</div>'
 
-       +   (extras.length ? '<div class="t-chips">' + extras.map(e=>'<span class="insignia i-info">' + esc(e) + '</span>').join('') + '</div>' : '')
+       +   chipExtras
 
        +   '<div class="progreso">'
        +     '<div class="p-cabeza"><span>Mensualidades pagadas</span><span>' + c.pagados + ' de ' + s.meses
@@ -1623,12 +1648,16 @@ function modalSitio(clienteId, sitioId){
     +     '<input type="text" id="sMensualidad" inputmode="decimal" placeholder="Ej. 1,500" value="' + (s && s.mensualidad ? numero(s.mensualidad) : '') + '">'
     +     '<div class="pista" id="pistaUnitario">Es el total mensual del sitio, sumando todos sus Forpass.</div></div>'
 
+    +   '<div class="aviso" style="margin:2px 0 14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-5M12 8h.01"/></svg>'
+    +     '<div>El onboarding y los viáticos se cobran <b>una sola vez, en el pago 1</b>. '
+    +     'De la mensualidad 2 en adelante se cobra nada más la mensualidad.</div></div>'
+
     +   '<label class="casilla"><input type="checkbox" id="sIncOnboarding"' + (s && s.incOnboarding ? ' checked':'') + '> Incluyó arranque y onboarding</label>'
-    +   '<div class="campo" id="wrapOnboarding"><label>Monto de onboarding (MX$)</label>'
+    +   '<div class="campo" id="wrapOnboarding"><label>Monto de onboarding (MX$) — solo en el pago 1</label>'
     +     '<input type="text" id="sOnboarding" inputmode="decimal" placeholder="Ej. 16,000" value="' + (s && s.onboarding ? numero(s.onboarding) : '') + '"></div>'
 
     +   '<label class="casilla"><input type="checkbox" id="sIncViaticos"' + (s && s.incViaticos ? ' checked':'') + '> Incluyó viáticos</label>'
-    +   '<div class="campo" id="wrapViaticos"><label>Monto de viáticos (MX$)</label>'
+    +   '<div class="campo" id="wrapViaticos"><label>Monto de viáticos (MX$) — solo en el pago 1</label>'
     +     '<input type="text" id="sViaticos" inputmode="decimal" placeholder="Ej. 5,000" value="' + (s && s.viaticos ? numero(s.viaticos) : '') + '"></div>'
     + '</div>'
 
@@ -1638,7 +1667,8 @@ function modalSitio(clienteId, sitioId){
     +       '<input type="date" id="sInicio" value="' + esc(s ? s.fechaInicio : hoyISO()) + '">'
     +       '<div class="pista">El día de esta fecha marca el día de corte de cada mensualidad.</div></div>'
     +     '<div class="campo"><label>Mensualidades del contrato *</label>'
-    +       '<input type="number" id="sMeses" min="1" max="120" step="1" value="' + (s ? s.meses : 12) + '"></div>'
+    +       '<input type="number" id="sMeses" min="1" max="' + MAX_MESES + '" step="1" value="' + (s ? s.meses : 12) + '">'
+    +       '<div class="pista">De 1 a ' + MAX_MESES + '. Lo normal son 12.</div></div>'
     +   '</div>'
     +   '<div class="campo"><label>Mensualidades ya pagadas</label>'
     +     '<div class="meses-modal" id="mesesModal"></div>'
@@ -1657,7 +1687,7 @@ function modalSitio(clienteId, sitioId){
   let pagosTmp = s ? s.pagos.slice() : [];
 
   function leerForm(){
-    const meses = Math.max(1, Math.min(120, parseInt($('sMeses').value,10) || 12));
+    const meses = Math.max(1, Math.min(MAX_MESES, parseInt($('sMeses').value,10) || 12));
     return {
       nombre: $('sNombre').value.trim(),
       clienteId: $('sCliente').value,
@@ -1677,11 +1707,15 @@ function modalSitio(clienteId, sitioId){
 
   function pintarMeses(){
     const f = leerForm();
+    const extras = (f.incOnboarding ? f.onboarding : 0) + (f.incViaticos ? f.viaticos : 0);
     pagosTmp = Array.from({length:f.meses}, (_,i)=> !!pagosTmp[i]);
-    $('mesesModal').innerHTML = pagosTmp.map((p,i)=>
-      '<button type="button" class="mes ' + (p ? 'pagado' : '') + '" data-mtmp="' + i + '" '
-      + 'title="Mensualidad ' + (i+1) + ' · ' + fmtFecha(sumarMeses(f.fechaInicio, i)) + '" '
-      + 'aria-pressed="' + (p ? 'true' : 'false') + '">' + (i+1) + '</button>').join('');
+    $('mesesModal').innerHTML = pagosTmp.map((p,i)=>{
+      const monto = f.mensualidad + (i === 0 ? extras : 0);
+      const t = 'Mensualidad ' + (i+1) + ' · ' + fmtFecha(sumarMeses(f.fechaInicio, i)) + ' · ' + dinero(monto)
+              + (i === 0 && extras ? ' (incluye onboarding y viáticos)' : '');
+      return '<button type="button" class="mes ' + (p ? 'pagado' : '') + '" data-mtmp="' + i + '" '
+        + 'title="' + esc(t) + '" aria-pressed="' + (p ? 'true' : 'false') + '">' + (i+1) + '</button>';
+    }).join('');
   }
 
   function pintarResumen(){
@@ -1702,8 +1736,14 @@ function modalSitio(clienteId, sitioId){
         '<div class="r-fila"><span>Vigencia</span><span>' + fmtFecha(f.fechaInicio) + ' → ' + fmtFecha(c.fin) + '</span></div>'
       + '<div class="r-fila"><span>Siguiente mensualidad</span><span>' + esc(prox) + '</span></div>'
       + '<div class="r-fila"><span>Mensualidades pagadas</span><span>' + c.pagados + ' de ' + f.meses + (c.atrasadas ? ' · ' + c.atrasadas + ' vencida' + (c.atrasadas===1?'':'s') : '') + '</span></div>'
+      + (c.extras
+          ? '<div class="r-fila"><span>Pago 1 — mensualidad + extras</span><span>' + dinero(c.primerPago) + '</span></div>'
+            + (f.meses > 1
+                ? '<div class="r-fila"><span>Pagos 2 al ' + f.meses + ' — cada uno</span><span>' + dinero(f.mensualidad) + '</span></div>'
+                : '')
+          : '<div class="r-fila"><span>Cada mensualidad</span><span>' + dinero(f.mensualidad) + '</span></div>')
       + '<div class="r-fila"><span>Renta ' + f.meses + ' ' + plural(f.meses,'mes','meses') + '</span><span>' + dinero(f.mensualidad * f.meses) + '</span></div>'
-      + (c.extras ? '<div class="r-fila"><span>Onboarding y viáticos</span><span>' + dinero(c.extras) + '</span></div>' : '')
+      + (c.extras ? '<div class="r-fila"><span>Onboarding y viáticos (una vez)</span><span>' + dinero(c.extras) + '</span></div>' : '')
       + '<div class="r-fila r-total"><span>Valor total del contrato</span><span>' + dinero(c.valorContrato) + '</span></div>';
 
     $('wrapOnboarding').style.display = f.incOnboarding ? '' : 'none';
@@ -2065,30 +2105,53 @@ const XLSX_ESTILOS = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
 + '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
 + '</styleSheet>';
 
-const ENCABEZADOS = ['Cliente','Sitio','Módulos','Tipo','Mensualidad ($)','Fecha inicio','Vigencia (fin)','Suscripción',
-  'Mes 1','Mes 2','Mes 3','Mes 4','Mes 5','Mes 6','Mes 7','Mes 8','Mes 9','Mes 10','Mes 11','Mes 12',
-  'Pagados','Pendientes','Debió pagar (a hoy)','Estatus de pago',
-  'Onboarding ($)','Viáticos ($)','Valor del contrato ($)','Próximo pago','Días restantes','Estado del sitio','Notas'];
+/* La hoja se arma según el contrato más largo que se esté exportando: con
+   contratos de 12 meses sale igual que el formato de siempre, y solo crece a
+   Mes 13…24 si hace falta. Las letras de columna se calculan, nunca se
+   escriben a mano, para que nada se descuadre al mover columnas. */
+function planoHoja(filasSitios){
+  const nMeses = Math.max(12, ...filasSitios.map(f => f.sitio.meses));
+  const fijas = ['Cliente','Sitio','Módulos','Tipo','Mensualidad ($)','Fecha inicio','Vigencia (fin)','Suscripción'];
+  const meses = Array.from({length:nMeses}, (_,i)=>'Mes ' + (i+1));
+  const finales = ['Pagados','Pendientes','Debió pagar (a hoy)','Estatus de pago',
+                   'Onboarding ($)','Viáticos ($)','Primer pago ($)','Valor del contrato ($)',
+                   'Próximo pago','Días restantes','Estado del sitio','Notas'];
+  const encabezados = fijas.concat(meses, finales);
+  const anchos = [22,14,9,22,15,12,13,12].concat(meses.map(()=>6), [9,11,17,15, 15,13,14,19,12,13,14,42]);
 
-const ANCHOS = [22,14,9,22,15,12,13,12, 6,6,6,6,6,6,6,6,6,6,7,7, 9,11,17,15, 15,13,19,12,13,14,42];
+  const iMes0 = fijas.length;                 /* primera columna de mes */
+  const i = {
+    inicio:5, vigencia:6, mes0:iMes0, mesN:iMes0 + nMeses - 1,
+    pagados:iMes0 + nMeses, pendientes:iMes0 + nMeses + 1,
+    debio:iMes0 + nMeses + 2, estatus:iMes0 + nMeses + 3,
+    proximo:iMes0 + nMeses + 8
+  };
+  /* Letra de columna a partir del índice (0 → A). */
+  const L = idx => letraCol(idx + 1);
+  return { nMeses, encabezados, anchos, i, L };
+}
 
 function construirHoja(filasSitios){
   const HOY = hoyISO();
+  const { nMeses, encabezados, anchos, i, L } = planoHoja(filasSitios);
+  const ultimaCol = letraCol(encabezados.length);
+
   let xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     + '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-    + '<dimension ref="A1:' + letraCol(ENCABEZADOS.length) + Math.max(5, 4 + filasSitios.length) + '"/>'
+    + '<dimension ref="A1:' + ultimaCol + Math.max(5, 4 + filasSitios.length) + '"/>'
     + '<sheetViews><sheetView showGridLines="0" tabSelected="1" workbookViewId="0">'
     + '<pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
     + '<sheetFormatPr defaultRowHeight="15"/>'
-    + '<cols>' + ANCHOS.map((w,i)=>'<col min="' + (i+1) + '" max="' + (i+1) + '" width="' + w + '" customWidth="1"/>').join('') + '</cols>'
+    + '<cols>' + anchos.map((w,k)=>'<col min="' + (k+1) + '" max="' + (k+1) + '" width="' + w + '" customWidth="1"/>').join('') + '</cols>'
     + '<sheetData>';
 
   xml += filaXml(1, [cT('Control de Kioskos Forpass', 1)]);
   xml += filaXml(2, [cT('Instrucciones: una fila por sitio. Escribe 1 en el mes cuando se pague esa mensualidad (0 o vacío si no). '
+    + 'El onboarding y los viáticos se cobran una sola vez, en el pago 1: por eso la columna «Primer pago» es más alta que la «Mensualidad». '
     + 'La columna «Suscripción» dice si el contrato sigue Activa o ya Terminó según las fechas. «Estatus de pago» te avisa si el cliente va Al día o Atrasado. '
-    + 'Las columnas grises se calculan solas.', 2)]);
+    + 'Las columnas calculadas se actualizan solas al abrir el archivo.', 2)]);
   xml += filaXml(3, [cT('Fecha de hoy:', 9), cX('TODAY()', serialExcel(HOY), 8), cT('(cambia sola cada día que abres el archivo)', 2)]);
-  xml += filaXml(4, ENCABEZADOS.map(h => cT(h, 3)));
+  xml += filaXml(4, encabezados.map(h => cT(h, 3)));
 
   filasSitios.forEach((f, k)=>{
     const n = 5 + k;                       /* número de fila en Excel */
@@ -2096,21 +2159,23 @@ function construirHoja(filasSitios){
     const celdas = [
       cT(f.cliente, 4), cT(s.nombre, 4), cN(s.modulos, 5), cT(ETIQUETA_TIPO[s.tipo], 4),
       cN(s.mensualidad, 7), cF(s.fechaInicio, 6), cF(c.fin, 6),
-      cX('IF(TODAY()<=G' + n + ',"Activa","Terminó")', c.suscripcion, 5)
+      cX('IF(TODAY()<=' + L(i.vigencia) + n + ',"Activa","Terminó")', c.suscripcion, 5)
     ];
-    /* Mes 1 … Mes 12 */
-    for(let m=0; m<12; m++) celdas.push(m < s.meses ? cN(s.pagos[m] ? 1 : 0, 5) : cT('', 5));
+    /* Una casilla por mes; los meses fuera del contrato quedan en blanco. */
+    for(let m=0; m<nMeses; m++) celdas.push(m < s.meses ? cN(s.pagos[m] ? 1 : 0, 5) : cT('', 5));
 
-    celdas.push(cX('SUM(I' + n + ':T' + n + ')', c.pagados, 5));
-    celdas.push(cX(s.meses + '-U' + n, c.pendientes, 5));
-    celdas.push(cX('IF(TODAY()<F' + n + ',0,MIN(' + s.meses + ',DATEDIF(F' + n + ',TODAY(),"m")+1))', c.debidas, 5));
-    celdas.push(cX('IF(U' + n + '>=W' + n + ',"Al día","Atrasado")', c.atrasadas > 0 ? 'Atrasado' : 'Al día', 5));
+    const F = L(i.inicio) + n, U = L(i.pagados) + n, W = L(i.debio) + n;
+    celdas.push(cX('SUM(' + L(i.mes0) + n + ':' + L(i.mesN) + n + ')', c.pagados, 5));
+    celdas.push(cX(s.meses + '-' + U, c.pendientes, 5));
+    celdas.push(cX('IF(TODAY()<' + F + ',0,MIN(' + s.meses + ',DATEDIF(' + F + ',TODAY(),"m")+1))', c.debidas, 5));
+    celdas.push(cX('IF(' + U + '>=' + W + ',"Al día","Atrasado")', c.atrasadas > 0 ? 'Atrasado' : 'Al día', 5));
     celdas.push(cN(s.incOnboarding ? s.onboarding : 0, 7));
     celdas.push(cN(s.incViaticos ? s.viaticos : 0, 7));
+    celdas.push(cN(c.primerPago, 7));       /* mensualidad + onboarding + viáticos */
     celdas.push(cN(c.valorContrato, 7));
-    celdas.push(c.proximo ? cF(c.proximo, 6) : cT('Cubierto', 5));          /* AB · próximo pago */
-    /* AC · días restantes: fórmula viva contra la fecha de la columna AB */
-    celdas.push(c.proximo ? cX('AB' + n + '-TODAY()', c.diasRest, 5) : cT('—', 5));
+    celdas.push(c.proximo ? cF(c.proximo, 6) : cT('Cubierto', 5));
+    /* Días restantes: fórmula viva contra la fecha de «Próximo pago». */
+    celdas.push(c.proximo ? cX(L(i.proximo) + n + '-TODAY()', c.diasRest, 5) : cT('—', 5));
     celdas.push(cT(ETIQUETA_ESTADO[s.estado], 5));
     celdas.push(cT(s.notas, 4));
 
@@ -2118,9 +2183,10 @@ function construirHoja(filasSitios){
   });
 
   const ultima = Math.max(5, 4 + filasSitios.length);
+  const colEstatus = L(i.estatus);
   xml += '</sheetData>'
-    + '<autoFilter ref="A4:' + letraCol(ENCABEZADOS.length) + ultima + '"/>'
-    + '<conditionalFormatting sqref="X5:X' + ultima + '">'
+    + '<autoFilter ref="A4:' + ultimaCol + ultima + '"/>'
+    + '<conditionalFormatting sqref="' + colEstatus + '5:' + colEstatus + ultima + '">'
     + '<cfRule type="cellIs" dxfId="0" priority="1" operator="equal"><formula>"Atrasado"</formula></cfRule>'
     + '<cfRule type="cellIs" dxfId="1" priority="2" operator="equal"><formula>"Al día"</formula></cfRule>'
     + '</conditionalFormatting>'
