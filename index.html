@@ -75,6 +75,13 @@ header.app .sub{font-size:12px; color:var(--gray); margin-left:auto;}
 .kpi .k-valor{font-size:24px; font-weight:700; color:var(--navy); margin-top:5px; line-height:1.1;}
 .kpi .k-pie{font-size:11px; color:var(--gray); margin-top:3px;}
 
+/* Indicadores que se pueden abrir para ver el detalle */
+button.kpi{font-family:inherit; text-align:left; width:100%; cursor:pointer;}
+.kpi-clic{transition:transform .15s, box-shadow .15s, border-color .15s;}
+.kpi-clic:hover{transform:translateY(-2px); box-shadow:0 8px 22px rgba(10,27,77,.10); border-color:#c9d4ec;}
+.kpi-clic:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+.kpi .k-mas{display:block; font-size:11px; font-weight:600; color:var(--accent); margin-top:7px;}
+
 /* ---------- Buscador ---------- */
 .barra-busca{display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;}
 .barra-busca input, .barra-busca select{
@@ -1126,10 +1133,15 @@ function iniciales(nombre){
   return (p.length === 1 ? p[0].slice(0,2) : p[0][0] + p[1][0]).toUpperCase();
 }
 
-function tarjetaKpi(label, valor, pie, clase){
-  return '<div class="kpi ' + (clase||'') + '"><div class="k-label">' + esc(label) + '</div>'
-       + '<div class="k-valor">' + valor + '</div>'
-       + (pie ? '<div class="k-pie">' + esc(pie) + '</div>' : '') + '</div>';
+function tarjetaKpi(label, valor, pie, clase, accion){
+  const cuerpo = '<div class="k-label">' + esc(label) + '</div>'
+               + '<div class="k-valor">' + valor + '</div>'
+               + (pie ? '<div class="k-pie">' + esc(pie) + '</div>' : '');
+  /* Algunos indicadores se pueden abrir para ver el detalle. */
+  return accion
+    ? '<button type="button" class="kpi kpi-clic ' + (clase||'') + '" data-accion="' + esc(accion) + '">'
+      + cuerpo + '<span class="k-mas">Ver cuáles →</span></button>'
+    : '<div class="kpi ' + (clase||'') + '">' + cuerpo + '</div>';
 }
 
 function barraHerramientas(){
@@ -1157,7 +1169,7 @@ function vistaClientes(){
      + tarjetaKpi('Mensualidad total', dinero(r.mrr), 'Suma de sitios activos (sin IVA)')
      + tarjetaKpi('Sitios atrasados', numero(r.atrasados), r.mensualidadesAtrasadas + ' ' + plural(r.mensualidadesAtrasadas,'mensualidad vencida','mensualidades vencidas') + ' · ' + dinero(r.adeudo), r.atrasados ? 'k-error' : '')
      + tarjetaKpi('Por pagar (7 días)', numero(r.porPagar), 'Mensualidad próxima a vencer', r.porPagar ? 'k-alerta' : '')
-     + tarjetaKpi('Vigencias por vencer', numero(r.porVencer), 'Contratos que terminan en 45 días', r.porVencer ? 'k-alerta' : '')
+     + tarjetaKpi('Vigencias por vencer', numero(r.porVencer), 'Contratos que terminan en 45 días', r.porVencer ? 'k-alerta' : '', 'ver-por-vencer')
      + '</div>';
 
   h += avisoLocal();
@@ -1284,7 +1296,7 @@ function vistaCliente(){
      + tarjetaKpi('Forpass activos', numero(r.forpass), r.sitiosActivos + ' ' + plural(r.sitiosActivos,'sitio activo','sitios activos'), 'k-ok')
      + tarjetaKpi('Mensualidad total', dinero(r.mrr), pieMrr)
      + tarjetaKpi('Mensualidades vencidas', numero(r.mensualidadesAtrasadas), r.adeudo ? dinero(r.adeudo) + ' por cobrar' : 'Nada pendiente', r.mensualidadesAtrasadas ? 'k-error' : '')
-     + tarjetaKpi('Vigencias por vencer', numero(r.porVencer), 'Terminan en 45 días', r.porVencer ? 'k-alerta' : '')
+     + tarjetaKpi('Vigencias por vencer', numero(r.porVencer), 'Terminan en 45 días', r.porVencer ? 'k-alerta' : '', 'ver-por-vencer-cliente')
      + '</div>';
 
   if(!todos.length){
@@ -2117,6 +2129,79 @@ function modalSitio(clienteId, sitioId){
   };
 }
 
+/* -------------------- Modal: vigencias por vencer -------------------------
+   El indicador cuenta los contratos activos que terminan dentro de 45 días.
+   Aquí se ve cuáles son, para poder renovarlos a tiempo. Se añaden aparte los
+   que YA se vencieron y siguen marcados como activos, que urgen más.
+   ------------------------------------------------------------------------- */
+const DIAS_POR_VENCER = 45;
+
+function modalPorVencer(clienteId){
+  const lista = clienteId ? sitiosDe(clienteId) : datos.sitios;
+
+  const conDatos = lista
+    .map(s => ({ s, c: calcular(s), cli: clientePorId(s.clienteId) }))
+    .filter(x => x.s.estado === 'activo');
+
+  const porVencer = conDatos
+    .filter(x => x.c.diasVigencia >= 0 && x.c.diasVigencia <= DIAS_POR_VENCER)
+    .sort((a,b)=> a.c.diasVigencia - b.c.diasVigencia);
+  const yaVencidos = conDatos
+    .filter(x => x.c.diasVigencia < 0)
+    .sort((a,b)=> a.c.diasVigencia - b.c.diasVigencia);
+
+  function tabla(filas, urgente){
+    return '<div class="rodillo"><table class="tabla" style="min-width:560px"><thead><tr>'
+      + '<th>Cliente</th><th>Sitio</th><th>Forpass</th><th>Vigencia</th>'
+      + '<th style="text-align:right">' + (urgente ? 'Terminó' : 'Faltan') + '</th>'
+      + '<th style="text-align:right">Mensualidad</th>'
+      + '</tr></thead><tbody>'
+      + filas.map(x=>{
+          const d = Math.abs(x.c.diasVigencia);
+          const etiqueta = urgente
+            ? '<span class="rol c-owner">hace ' + d + ' ' + plural(d,'día','días') + '</span>'
+            : '<span class="rol ' + (x.c.diasVigencia <= 15 ? 'c-owner' : 'c-admin') + '">'
+              + d + ' ' + plural(d,'día','días') + '</span>';
+          return '<tr>'
+            + '<td>' + esc(x.cli ? x.cli.nombre : '—') + '</td>'
+            + '<td><b>' + esc(x.s.nombre) + '</b></td>'
+            + '<td style="text-align:center">' + numero(x.s.modulos) + '</td>'
+            + '<td>' + fmtFecha(x.c.fin) + '</td>'
+            + '<td style="text-align:right">' + etiqueta + '</td>'
+            + '<td style="text-align:right; font-weight:700">' + dinero(x.s.mensualidad) + '</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table></div>';
+  }
+
+  let cuerpo = '';
+  if(!porVencer.length && !yaVencidos.length){
+    cuerpo = '<div class="vacio-chico">Ningún contrato activo termina en los próximos '
+           + DIAS_POR_VENCER + ' días. Nada que renovar por ahora.</div>';
+  }else{
+    if(yaVencidos.length){
+      const mrr = yaVencidos.reduce((t,x)=> t + x.s.mensualidad, 0);
+      cuerpo += '<h4 style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#a5322e; font-weight:700; margin-bottom:10px">'
+             +  'Ya se vencieron y siguen activos · ' + dinero(mrr) + ' al mes</h4>'
+             +  tabla(yaVencidos, true)
+             +  '<p class="pista" style="margin:8px 0 20px">Estos contratos ya terminaron pero el sitio sigue marcado como Activo. '
+             +  'Hay que renovarlos o cambiarles el estado a Baja.</p>';
+    }
+    if(porVencer.length){
+      const mrr = porVencer.reduce((t,x)=> t + x.s.mensualidad, 0);
+      cuerpo += '<h4 style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--navy); font-weight:700; margin-bottom:10px">'
+             +  'Terminan en los próximos ' + DIAS_POR_VENCER + ' días · ' + dinero(mrr) + ' al mes en juego</h4>'
+             +  tabla(porVencer, false);
+    }
+  }
+
+  const cli = clienteId ? clientePorId(clienteId) : null;
+  abrirModal('Vigencias por vencer' + (cli ? ' · ' + cli.nombre : ''), cuerpo,
+    '<button type="button" class="btn btn-suave" data-modal="cancelar">Cerrar</button>');
+  $('modal').classList.add('ancho');
+  cerrarModalActual = null;
+}
+
 /* ----------------------- Modal: plan de pagos -----------------------------
    El desglose mes por mes: cuánto toca cada mensualidad, si ya se pagó, con
    qué OC y quién la capturó. Los extras van en el mes 1 y se ven ahí mismo,
@@ -2292,6 +2377,8 @@ $('vista').addEventListener('click', ev=>{
     else if(a === 'excel-cliente') descargarExcel(estado.clienteId);
     else if(a === 'respaldo') descargarRespaldo();
     else if(a === 'restaurar') $('archivoRestaurar').click();
+    else if(a === 'ver-por-vencer') modalPorVencer(null);
+    else if(a === 'ver-por-vencer-cliente') modalPorVencer(estado.clienteId);
     else if(a === 'nueva-cuenta') modalCuenta();
     else if(a === 'refrescar-admin') montarAdmin(true);
     return;
