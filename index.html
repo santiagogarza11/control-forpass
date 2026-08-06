@@ -2661,15 +2661,21 @@ function modalCapturarPago(sitioId, idx){
     if(!quien){ $('pQuien').setAttribute('aria-invalid','true'); $('pQuien').focus(); aviso('Falta el nombre de quien captura.', true); return; }
     if(!oc){ $('pOC').setAttribute('aria-invalid','true'); $('pOC').focus(); aviso('Falta el número de OC.', true); return; }
 
+    /* Se leen los campos ANTES de cerrar: cerrarModal reemplaza el contenedor
+       y después de eso ya no existen. */
+    const facturado = $('pFacturado').checked;
+
     s.pagos[idx] = true;
-    s.pagosDetalle[idx] = { oc, quien, cuando: new Date().toISOString(), facturado: $('pFacturado').checked };
+    s.pagosDetalle[idx] = { oc, quien, cuando: new Date().toISOString(), facturado };
     if(!conCuenta) recordarCapturador(quien);
 
-    guardarSitio(s, 'marcó pagada', 'mensualidad ' + (idx+1) + ' de ' + s.meses + ' · OC ' + oc + ' · capturó ' + quien);
+    guardarSitio(s, yaPagada ? 'corrigió el pago de' : 'marcó pagada',
+      'mensualidad ' + (idx+1) + ' de ' + s.meses + ' · OC ' + oc
+      + ' · ' + (facturado ? 'facturada' : 'sin facturar') + ' · capturó ' + quien);
     cerrarModal();
     render();
     aviso('Mensualidad ' + (idx+1) + ' de ' + s.nombre + (yaPagada ? ' actualizada' : ' capturada')
-          + ' con OC ' + oc + ($('pFacturado').checked ? ' · facturada' : ' · sin facturar') + '.');
+          + ' con OC ' + oc + (facturado ? ' · facturada' : ' · sin facturar') + '.');
   };
 }
 
