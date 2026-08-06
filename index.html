@@ -98,11 +98,35 @@ button.kpi{font-family:inherit; text-align:left; width:100%; cursor:pointer;}
 
 .tarjeta{
   background:#fff; border:1px solid var(--line); border-radius:15px; padding:18px 18px 16px;
-  position:relative; overflow:hidden; transition:transform .15s, box-shadow .15s, border-color .15s;
+  position:relative; transition:transform .15s, box-shadow .15s, border-color .15s;
   animation:aparece .3s cubic-bezier(.22,1,.36,1) both; animation-delay:var(--d,0ms);
 }
+/* Las tarjetas de sitio no recortan, para que la etiqueta del encargado pueda
+   asomarse por fuera del borde. La barra de color de arriba lleva su propio
+   redondeo, que antes lo daba el overflow:hidden. */
+.grid .tarjeta{overflow:hidden;}
+.grid-sitios .tarjeta{overflow:visible;}
+
+/* Etiqueta del encargado: sobresale del borde superior de la tarjeta. */
+.encargado{
+  position:absolute; top:-12px; left:16px; z-index:2;
+  display:inline-flex; align-items:center; gap:6px; max-width:calc(100% - 32px);
+  background:#fff; border:1.5px solid var(--marca-borde, #c9d4ec); border-radius:999px;
+  padding:4px 12px; font-family:inherit; font-size:11.5px; font-weight:600; color:var(--navy);
+  box-shadow:0 2px 8px rgba(10,27,77,.10); white-space:nowrap;
+}
+.encargado svg{width:13px; height:13px; flex-shrink:0; color:var(--accent);}
+.encargado span{overflow:hidden; text-overflow:ellipsis;}
+.encargado.vacio{color:var(--gray); border-color:var(--line); border-style:dashed;}
+.encargado.vacio svg{color:#b6bccb;}
+button.encargado{cursor:pointer; transition:border-color .15s, color .15s, box-shadow .15s;}
+button.encargado:hover{border-color:var(--accent); color:var(--accent); box-shadow:0 4px 12px rgba(10,27,77,.14);}
+button.encargado:hover svg{color:var(--accent);}
+button.encargado:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+/* Con la etiqueta encima hay que bajar un poco el contenido. */
+.grid-sitios .tarjeta{margin-top:8px;}
 @keyframes aparece{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
-.tarjeta::before{content:""; position:absolute; inset:0 0 auto 0; height:4px; background:linear-gradient(90deg,var(--navy),var(--accent));}
+.tarjeta::before{content:""; position:absolute; inset:0 0 auto 0; height:4px; border-radius:15px 15px 0 0; background:linear-gradient(90deg,var(--navy),var(--accent));}
 .tarjeta.t-ok::before{background:linear-gradient(90deg,var(--ok),#7ccfa1);}
 .tarjeta.t-alerta::before{background:linear-gradient(90deg,var(--alerta),#f3c987);}
 .tarjeta.t-error::before{background:linear-gradient(90deg,var(--error),#eda19f);}
@@ -113,6 +137,12 @@ button.kpi{font-family:inherit; text-align:left; width:100%; cursor:pointer;}
 .t-cabeza{display:flex; align-items:flex-start; gap:10px;}
 .t-nombre{font-size:16.5px; font-weight:700; color:var(--navy); line-height:1.25; word-break:break-word;}
 .t-sub{font-size:11.5px; color:var(--gray); margin-top:2px;}
+/* Etiqueta de zona del sitio */
+.chip-zona{
+  display:inline-block; font-size:10.5px; font-weight:700; letter-spacing:.03em;
+  background:var(--marca-suave, #EEF2FB); color:var(--navy); border:1px solid #c9d4ec;
+  border-radius:6px; padding:1px 7px; margin-right:7px; vertical-align:1px;
+}
 .t-avatar{
   width:40px; height:40px; border-radius:11px; flex-shrink:0; display:grid; place-items:center;
   background:linear-gradient(135deg,var(--navy-2),var(--accent)); color:#fff; font-size:14.5px; font-weight:700; letter-spacing:.02em;
@@ -501,10 +531,13 @@ table.tabla .yo{font-size:10.5px; color:var(--accent); font-weight:600;}
 
    Modelo de datos
    ---------------
-   clientes: { id, nombre, contacto, notas }
-   sitios:   { id, clienteId, nombre, estado, tipo, modulos, mensualidad,
+   clientes: { id, nombre, contacto, notas, logo }
+   sitios:   { id, clienteId, nombre, zona, estado, tipo, modulos, mensualidad,
                incViaticos, viaticos, incOnboarding, onboarding,
-               fechaInicio, meses, pagos:[bool], notas }
+               fechaInicio, meses, pagos:[bool], notas,
+               pagosDetalle:[{oc, quien, cuando, facturado}],
+               contactos:[{nombre, puesto, correo, telefono, notas}],
+               encargado:{uid, nombre, correo} }
    usuarios: { id(uid), correo, nombre, rol, activo, creado, creadoPor, ultimoAcceso }
    bitacora: { cuando, quien, accion, que, nombre, detalle }
    ========================================================================= */
@@ -528,6 +561,10 @@ const HAY_NUBE = !!(CONFIG_NUBE.apiKey && CONFIG_NUBE.projectId);
 
 /* Tope de mensualidades por contrato (12 meses es lo normal, 24 el máximo). */
 const MAX_MESES = 24;
+
+/* Zonas sugeridas. Son solo sugerencias: el campo acepta cualquier texto, así
+   que se pueden agregar plazas nuevas sin tocar el código. */
+const ZONAS = ['CDMX','GDL','MTY','Mérida','León','San Luis','Querétaro','Puebla','Tijuana','Cancún'];
 
 /* =============================== ALMACÉN =============================== */
 const LLAVE = 'forguard_control_forpass_v1';
@@ -992,7 +1029,8 @@ function normalizarSitio(s){
     return {
       oc:     d && d.oc     ? String(d.oc)     : '',
       quien:  d && d.quien  ? String(d.quien)  : '',
-      cuando: d && d.cuando ? String(d.cuando) : ''
+      cuando: d && d.cuando ? String(d.cuando) : '',
+      facturado: !!(d && d.facturado)
     };
   });
   /* Quién nos manda la OC de este sitio. Puede haber más de una persona. */
@@ -1004,11 +1042,20 @@ function normalizarSitio(s){
     notas:    x && x.notas    ? String(x.notas)    : ''
   })).filter(x => x.nombre || x.puesto || x.correo || x.telefono || x.notas);
 
+  /* Quién de nuestro equipo tiene el sitio a su cargo. */
+  const e = s.encargado || {};
+  const encargado = {
+    uid:    e.uid    ? String(e.uid)    : '',
+    nombre: e.nombre ? String(e.nombre) : '',
+    correo: e.correo ? String(e.correo) : ''
+  };
+
   return {
-    pagosDetalle, contactos,
+    pagosDetalle, contactos, encargado,
     id: s.id || nuevoId(),
     clienteId: s.clienteId || '',
     nombre: s.nombre || 'Sitio',
+    zona: (s.zona || '').trim(),
     estado: ['activo','pausado','baja'].includes(s.estado) ? s.estado : 'activo',
     tipo: s.tipo === 'sw' ? 'sw' : 'hw',
     modulos: Math.max(0, parseInt(s.modulos,10) || 0),
@@ -1379,7 +1426,19 @@ function tarjetaSitio(s, i){
          + 'aria-pressed="' + (p ? 'true' : 'false') + '">' + (idx+1) + '</button>';
   }).join('');
 
+  /* Etiqueta del encargado, asomando por el borde de arriba. Todos la ven;
+     solo Owner y Admin la pueden cambiar, así que para los demás no es botón. */
+  const enc = s.encargado.nombre;
+  const etiquetaEnc = esAdmin()
+    ? '<button type="button" class="encargado' + (enc ? '' : ' vacio') + '" data-encargado="' + esc(s.id) + '" '
+      + 'title="' + (enc ? esc('A cargo de ' + enc + '. Clic para cambiar.') : 'Asignar un encargado') + '">'
+      + ICONO.persona + '<span>' + esc(enc || 'Sin asignar') + '</span></button>'
+    : '<div class="encargado' + (enc ? '' : ' vacio') + '" '
+      + 'title="' + (enc ? esc('A cargo de ' + enc) : 'Sin encargado asignado') + '">'
+      + ICONO.persona + '<span>' + esc(enc || 'Sin asignar') + '</span></div>';
+
   return '<div class="tarjeta t-' + c.tono + '" style="--d:' + (i*45) + 'ms">'
+       +   etiquetaEnc
        +   '<div class="t-cabeza">'
        +     '<div style="flex:1; min-width:0">'
        +       '<div class="t-nombre" style="display:flex; align-items:center; gap:9px">'
@@ -1397,7 +1456,9 @@ function tarjetaSitio(s, i){
        +           '</button>'
        +         '</span>'
        +       '</div>'
-       +       '<div class="t-sub">' + numero(s.modulos) + ' Forpass'
+       +       '<div class="t-sub">'
+       +         (s.zona ? '<span class="chip-zona">' + esc(s.zona) + '</span>' : '')
+       +         numero(s.modulos) + ' Forpass'
        +         (c.activo ? plural(s.modulos,' activo',' activos') : ' · ' + ETIQUETA_ESTADO[s.estado] + (c.vigente ? '' : ' · vigencia terminada'))
        +         ' · ' + ETIQUETA_TIPO[s.tipo] + '</div>'
        +     '</div>'
@@ -2029,8 +2090,14 @@ function modalSitio(clienteId, sitioId){
     +     '<div class="campo"><label>Cliente</label><select id="sCliente">' + opcClientes + '</select></div>'
     +   '</div>'
     +   '<div class="fila2">'
+    +     '<div class="campo"><label>Zona</label>'
+    +       '<input type="text" id="sZona" list="listaZonas" placeholder="Ej. MTY" value="' + esc(s ? s.zona : '') + '">'
+    +       '<datalist id="listaZonas">' + ZONAS.map(z=>'<option value="' + esc(z) + '">').join('') + '</datalist>'
+    +       '<div class="pista">Elige una de la lista o escribe otra.</div></div>'
     +     '<div class="campo"><label>Forpass instalados (módulos) *</label>'
     +       '<input type="number" id="sModulos" min="0" step="1" placeholder="Ej. 2" value="' + (s ? s.modulos : '') + '"></div>'
+    +   '</div>'
+    +   '<div class="fila2">'
     +     '<div class="campo"><label>Estado del sitio</label><select id="sEstado">'
     +       '<option value="activo"' + (!s || s.estado==='activo' ? ' selected':'') + '>Activo</option>'
     +       '<option value="pausado"' + (s && s.estado==='pausado' ? ' selected':'') + '>Pausado</option>'
@@ -2090,6 +2157,7 @@ function modalSitio(clienteId, sitioId){
     const meses = Math.max(1, Math.min(MAX_MESES, parseInt($('sMeses').value,10) || 12));
     return {
       nombre: $('sNombre').value.trim(),
+      zona: $('sZona').value.trim(),
       clienteId: $('sCliente').value,
       modulos: Math.max(0, parseInt($('sModulos').value,10) || 0),
       estado: $('sEstado').value,
@@ -2181,6 +2249,76 @@ function modalSitio(clienteId, sitioId){
     estado.vista = 'cliente'; estado.clienteId = limpio.clienteId;
     render();
     aviso(s ? 'Sitio actualizado.' : 'Sitio agregado.');
+  };
+}
+
+/* ------------------- Modal: encargado del sitio (de nuestro lado) ----------
+   Quién de nuestro equipo lleva ese sitio. Lo ve todo el mundo en la tarjeta,
+   pero solo Owner y Admin pueden asignarlo.
+   ------------------------------------------------------------------------- */
+async function modalEncargado(sitioId){
+  const s = sitioPorId(sitioId);
+  if(!s) return;
+  if(!exigirAdmin('asignar el encargado de un sitio')) return;
+
+  abrirModal('Encargado de ' + s.nombre,
+    '<div class="vacio-chico">Cargando el equipo…</div>',
+    '<button type="button" class="btn btn-suave" data-modal="cancelar">Cancelar</button>');
+
+  /* En modo nube se elige de las cuentas del equipo; en local se escribe a mano. */
+  let cuentas = null;
+  if(HAY_NUBE){
+    try{
+      if(!admin.usuarios) admin.usuarios = await listarNube('usuarios');
+      cuentas = admin.usuarios.filter(u => u.activo !== false);
+    }catch(e){
+      cuentas = null;   /* si no se pudo leer, se cae al campo de texto libre */
+    }
+  }
+
+  const actual = s.encargado || { uid:'', nombre:'', correo:'' };
+  let cuerpo = '<p class="pista" style="margin:0 0 14px">Quién de nuestro equipo tiene este sitio a su cargo. '
+             + 'Lo van a ver todos, pero solo un Owner o Admin lo puede cambiar.</p>';
+
+  if(cuentas && cuentas.length){
+    const opciones = cuentas
+      .slice().sort((a,b)=> nombreDe(a).localeCompare(nombreDe(b),'es'))
+      .map(u => '<option value="' + esc(u.id) + '"' + (u.id === actual.uid ? ' selected' : '') + '>'
+                + esc(nombreDe(u)) + ' — ' + esc(ROLES[normalizarRol(u.rol)].nombre) + '</option>').join('');
+    cuerpo += '<div class="campo"><label>Encargado</label><select id="eSel">'
+            + '<option value="">Sin asignar</option>' + opciones + '</select></div>';
+    /* Si el encargado guardado ya no tiene cuenta, no se pierde en silencio. */
+    if(actual.nombre && !cuentas.some(u => u.id === actual.uid)){
+      cuerpo += '<div class="aviso" style="margin-top:4px">' + ICONO.info
+              + '<div>Hoy dice <b>' + esc(actual.nombre) + '</b>, pero esa cuenta ya no está en el equipo. '
+              + 'Si guardas sin elegir a nadie, el sitio queda sin asignar.</div></div>';
+    }
+  }else{
+    cuerpo += '<div class="campo"><label>Nombre del encargado</label>'
+            + '<input type="text" id="eNombre" placeholder="Ej. Ana Torres" value="' + esc(actual.nombre) + '">'
+            + '<div class="pista">Déjalo vacío para dejar el sitio sin asignar.</div></div>';
+  }
+
+  $('modalCuerpo').innerHTML = cuerpo;
+  $('modalPie').innerHTML =
+      '<button type="button" class="btn btn-suave" data-modal="cancelar">Cancelar</button>'
+    + '<button type="button" class="btn btn-primario" data-modal="guardar">Guardar</button>';
+
+  cerrarModalActual = ()=>{
+    let nuevo = { uid:'', nombre:'', correo:'' };
+    if($('eSel')){
+      const u = (cuentas || []).find(x => x.id === $('eSel').value);
+      if(u) nuevo = { uid:u.id, nombre:nombreDe(u), correo:u.correo || '' };
+    }else if($('eNombre')){
+      nuevo = { uid:'', nombre:$('eNombre').value.trim(), correo:'' };
+    }
+
+    const antes = actual.nombre || 'sin asignar';
+    s.encargado = nuevo;
+    guardarSitio(s, 'cambió el encargado de', antes + ' → ' + (nuevo.nombre || 'sin asignar'));
+    cerrarModal(); render();
+    aviso(nuevo.nombre ? s.nombre + ' queda a cargo de ' + nuevo.nombre + '.'
+                       : s.nombre + ' queda sin encargado.');
   };
 }
 
@@ -2392,7 +2530,9 @@ function modalPlanDePagos(sitioId){
     }
 
     let estado;
-    if(pagado) estado = '<span class="rol c-analyst">Pagada</span>';
+    if(pagado) estado = '<span class="rol c-analyst">Pagada</span>'
+      + (det.facturado ? ' <span class="rol c-admin">Facturada</span>'
+                       : ' <span class="rol c-viewer">Sin facturar</span>');
     else if(vencida) estado = '<span class="rol c-owner">Vencida</span>';
     else estado = '<span class="rol c-viewer">Pendiente</span>';
 
@@ -2442,6 +2582,24 @@ function recordarCapturador(nombre){
   try{ localStorage.setItem(LLAVE_CAPTURADOR, nombre || ''); }catch(e){}
 }
 
+/* Deshace una captura: la mensualidad vuelve a pendiente y se borra su OC. */
+function deshacerPago(sitioId, idx){
+  const s = sitioPorId(sitioId);
+  if(!s) return;
+  const det = s.pagosDetalle[idx] || {};
+  confirmar('Deshacer esta captura',
+    'La mensualidad <b>' + (idx+1) + '</b> de <b>' + esc(s.nombre) + '</b> vuelve a quedar como no pagada'
+    + (det.oc ? ', y se borra su <b>OC ' + esc(det.oc) + '</b>' : '') + '.',
+    'Sí, deshacer', ()=>{
+      s.pagos[idx] = false;
+      s.pagosDetalle[idx] = { oc:'', quien:'', cuando:'', facturado:false };
+      guardarSitio(s, 'deshizo la captura de', 'mensualidad ' + (idx+1) + ' de ' + s.meses
+                   + (det.oc ? ' · OC ' + det.oc : ''));
+      cerrarModal(); render();
+      aviso('Captura deshecha.');
+    });
+}
+
 function modalCapturarPago(sitioId, idx){
   const s = sitioPorId(sitioId);
   if(!s || idx < 0 || idx >= s.meses) return;
@@ -2480,12 +2638,21 @@ function modalCapturarPago(sitioId, idx){
               ).join(' — ') + '.'
             : '')
     +   '</div>'
-    + '</div>';
+    + '</div>'
 
-  abrirModal('Capturar mensualidad ' + (idx+1), cuerpo,
-      '<button type="button" class="btn btn-suave" data-modal="cancelar">Cancelar</button>'
-    + '<button type="button" class="btn btn-verde" data-modal="guardar">' + ICONO.cheque + 'Capturar mensualidad</button>');
+    + '<label class="casilla"><input type="checkbox" id="pFacturado"' + (det.facturado ? ' checked' : '') + '> '
+    +   'Ya se facturó esta mensualidad</label>'
+    + '<div class="pista" style="margin:-6px 0 0">Si todavía no se factura, déjala sin marcar y márcala después '
+    +   'volviendo a abrir esta mensualidad desde el plan de pagos.</div>';
 
+  const yaPagada = !!s.pagos[idx];
+  abrirModal((yaPagada ? 'Mensualidad ' : 'Capturar mensualidad ') + (idx+1), cuerpo,
+      (yaPagada ? '<button type="button" class="btn btn-peligro izq" id="btnDeshacerPago">Deshacer captura</button>' : '')
+    + '<button type="button" class="btn btn-suave" data-modal="cancelar">Cancelar</button>'
+    + '<button type="button" class="btn btn-verde" data-modal="guardar">' + ICONO.cheque
+    + (yaPagada ? 'Guardar cambios' : 'Capturar mensualidad') + '</button>');
+
+  if(yaPagada) $('btnDeshacerPago').addEventListener('click', ()=> deshacerPago(sitioId, idx));
   setTimeout(()=>{ const oc = $('pOC'); if(oc) oc.focus(); }, 70);
 
   cerrarModalActual = ()=>{
@@ -2495,13 +2662,14 @@ function modalCapturarPago(sitioId, idx){
     if(!oc){ $('pOC').setAttribute('aria-invalid','true'); $('pOC').focus(); aviso('Falta el número de OC.', true); return; }
 
     s.pagos[idx] = true;
-    s.pagosDetalle[idx] = { oc, quien, cuando: new Date().toISOString() };
+    s.pagosDetalle[idx] = { oc, quien, cuando: new Date().toISOString(), facturado: $('pFacturado').checked };
     if(!conCuenta) recordarCapturador(quien);
 
     guardarSitio(s, 'marcó pagada', 'mensualidad ' + (idx+1) + ' de ' + s.meses + ' · OC ' + oc + ' · capturó ' + quien);
     cerrarModal();
     render();
-    aviso('Mensualidad ' + (idx+1) + ' de ' + s.nombre + ' capturada con OC ' + oc + '.');
+    aviso('Mensualidad ' + (idx+1) + ' de ' + s.nombre + (yaPagada ? ' actualizada' : ' capturada')
+          + ' con OC ' + oc + ($('pFacturado').checked ? ' · facturada' : ' · sin facturar') + '.');
   };
 }
 
@@ -2605,22 +2773,9 @@ $('vista').addEventListener('click', ev=>{
     if(!exigirPermiso()) return;
     const s = sitioPorId(pago.dataset.pago);
     const i = +pago.dataset.idx;
-    if(s.pagos[i]){
-      /* Ya estaba pagada: se pregunta antes de deshacer, porque se pierde la OC. */
-      const det = s.pagosDetalle[i] || {};
-      confirmar('Deshacer esta captura',
-        'La mensualidad <b>' + (i+1) + '</b> de <b>' + esc(s.nombre) + '</b> quedaría como no pagada'
-        + (det.oc ? ', y se borra su <b>OC ' + esc(det.oc) + '</b>' : '') + '.',
-        'Sí, deshacer', ()=>{
-          s.pagos[i] = false;
-          s.pagosDetalle[i] = { oc:'', quien:'', cuando:'' };
-          guardarSitio(s, 'deshizo la captura de', 'mensualidad ' + (i+1) + ' de ' + s.meses
-                       + (det.oc ? ' · OC ' + det.oc : ''));
-          render();
-        });
-    }else{
-      modalCapturarPago(s.id, i);
-    }
+    /* Pagada o no, se abre la misma ventana: sirve para capturar, para
+       corregir la OC, para marcar la factura y para deshacer. */
+    modalCapturarPago(s.id, i);
     return;
   }
 
@@ -2639,6 +2794,9 @@ $('vista').addEventListener('click', ev=>{
 
   const cont = t.closest('[data-contactos]');
   if(cont){ modalContactos(cont.dataset.contactos); return; }
+
+  const encB = t.closest('[data-encargado]');
+  if(encB){ modalEncargado(encB.dataset.encargado); return; }
 
   const tar = t.closest('[data-cliente]');
   if(tar){ entrarCliente(tar.dataset.cliente); return; }
@@ -2851,18 +3009,18 @@ const XLSX_ESTILOS = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
    escriben a mano, para que nada se descuadre al mover columnas. */
 function planoHoja(filasSitios){
   const nMeses = Math.max(12, ...filasSitios.map(f => f.sitio.meses));
-  const fijas = ['Cliente','Sitio','Módulos','Tipo','Mensualidad ($)','Fecha inicio','Vigencia (fin)','Suscripción'];
+  const fijas = ['Cliente','Sitio','Zona','Módulos','Tipo','Mensualidad ($)','Fecha inicio','Vigencia (fin)','Suscripción'];
   const meses = Array.from({length:nMeses}, (_,i)=>'Mes ' + (i+1));
   const finales = ['Pagados','Pendientes','Debió pagar (a hoy)','Estatus de pago',
                    'Onboarding ($)','Viáticos ($)','Primer pago ($)','Valor del contrato ($)',
-                   'Próximo pago','Días restantes','Estado del sitio','OC por mensualidad',
+                   'Próximo pago','Días restantes','Estado del sitio','Encargado','OC por mensualidad',
                    'Contacto para la OC','Notas'];
   const encabezados = fijas.concat(meses, finales);
-  const anchos = [22,14,9,22,15,12,13,12].concat(meses.map(()=>6), [9,11,17,15, 15,13,14,19,12,13,14,46,40,42]);
+  const anchos = [22,14,10,9,22,15,12,13,12].concat(meses.map(()=>6), [9,11,17,15, 15,13,14,19,12,13,14,20,46,40,42]);
 
   const iMes0 = fijas.length;                 /* primera columna de mes */
   const i = {
-    inicio:5, vigencia:6, mes0:iMes0, mesN:iMes0 + nMeses - 1,
+    inicio:6, vigencia:7, mes0:iMes0, mesN:iMes0 + nMeses - 1,
     pagados:iMes0 + nMeses, pendientes:iMes0 + nMeses + 1,
     debio:iMes0 + nMeses + 2, estatus:iMes0 + nMeses + 3,
     proximo:iMes0 + nMeses + 8
@@ -2898,7 +3056,7 @@ function construirHoja(filasSitios){
     const n = 5 + k;                       /* número de fila en Excel */
     const c = f.calc, s = f.sitio;
     const celdas = [
-      cT(f.cliente, 4), cT(s.nombre, 4), cN(s.modulos, 5), cT(ETIQUETA_TIPO[s.tipo], 4),
+      cT(f.cliente, 4), cT(s.nombre, 4), cT(s.zona, 5), cN(s.modulos, 5), cT(ETIQUETA_TIPO[s.tipo], 4),
       cN(s.mensualidad, 7), cF(s.fechaInicio, 6), cF(c.fin, 6),
       cX('IF(TODAY()<=' + L(i.vigencia) + n + ',"Activa","Terminó")', c.suscripcion, 5)
     ];
@@ -2918,6 +3076,7 @@ function construirHoja(filasSitios){
     /* Días restantes: fórmula viva contra la fecha de «Próximo pago». */
     celdas.push(c.proximo ? cX(L(i.proximo) + n + '-TODAY()', c.diasRest, 5) : cT('—', 5));
     celdas.push(cT(ETIQUETA_ESTADO[s.estado], 5));
+    celdas.push(cT(s.encargado.nombre, 4));
     /* Las OC de cada mensualidad pagada, en una sola celda para el vistazo
        rápido. El detalle completo va en la hoja «Pagos con OC». */
     celdas.push(cT(s.pagos.map((p, m) => {
@@ -2948,9 +3107,9 @@ function construirHoja(filasSitios){
 
 /* Segunda hoja: un renglón por mensualidad, con su OC y quién la capturó.
    Es la que sirve para filtrar y cuadrar pagos contra órdenes de compra. */
-const ENC_PAGOS = ['Cliente','Sitio','Mensualidad','Fecha de corte','Concepto','Monto ($)',
-                   'Estatus','Número de OC','Capturó','Fecha de captura'];
-const ANCHOS_PAGOS = [22,14,12,14,34,13,12,18,22,18];
+const ENC_PAGOS = ['Cliente','Sitio','Zona','Mensualidad','Fecha de corte','Concepto','Monto ($)',
+                   'Estatus','¿Facturada?','Número de OC','Capturó','Fecha de captura'];
+const ANCHOS_PAGOS = [22,14,10,12,14,34,13,12,13,18,22,18];
 
 function construirHojaPagos(filasSitios){
   let xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
@@ -2982,10 +3141,11 @@ function construirHojaPagos(filasSitios){
 
       fila++;
       xml += filaXml(fila, [
-        cT(f.cliente, 4), cT(s.nombre, 4), cN(m + 1, 5),
+        cT(f.cliente, 4), cT(s.nombre, 4), cT(s.zona, 5), cN(m + 1, 5),
         cF(sumarMeses(s.fechaInicio, m), 6),
         cT(concepto, 4), cN(c.montos[m], 7),
         cT(pagado ? 'Pagada' : (vencida ? 'Vencida' : 'Pendiente'), 5),
+        cT(pagado ? (d.facturado ? 'Sí' : 'No') : '', 5),
         cT(pagado ? (d.oc || '(sin OC)') : '', 4),
         cT(pagado ? (d.quien || '') : '', 4),
         d.cuando ? cF(String(d.cuando).slice(0, 10), 6) : cT('', 5)
@@ -2996,7 +3156,7 @@ function construirHojaPagos(filasSitios){
   const ultima = Math.max(3, fila);
   xml += '</sheetData>'
     + '<autoFilter ref="A2:' + letraCol(ENC_PAGOS.length) + ultima + '"/>'
-    + '<conditionalFormatting sqref="G3:G' + ultima + '">'
+    + '<conditionalFormatting sqref="H3:H' + ultima + '">'
     + '<cfRule type="cellIs" dxfId="0" priority="1" operator="equal"><formula>"Vencida"</formula></cfRule>'
     + '<cfRule type="cellIs" dxfId="1" priority="2" operator="equal"><formula>"Pagada"</formula></cfRule>'
     + '</conditionalFormatting>'
