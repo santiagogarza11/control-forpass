@@ -137,12 +137,35 @@ button.encargado:focus-visible{outline:2px solid var(--accent); outline-offset:2
 .t-cabeza{display:flex; align-items:flex-start; gap:10px;}
 .t-nombre{font-size:16.5px; font-weight:700; color:var(--navy); line-height:1.25; word-break:break-word;}
 .t-sub{font-size:11.5px; color:var(--gray); margin-top:2px;}
-/* Etiqueta de zona del sitio */
+/* Etiqueta de zona del sitio, con su color */
 .chip-zona{
   display:inline-block; font-size:10.5px; font-weight:700; letter-spacing:.03em;
   background:var(--marca-suave, #EEF2FB); color:var(--navy); border:1px solid #c9d4ec;
   border-radius:6px; padding:1px 7px; margin-right:7px; vertical-align:1px;
 }
+/* Los diez colores. Cada uno lleva su tono de texto y de borde para que se lea
+   bien: un fondo de color con texto oscuro del mismo tono nunca falla. */
+.z-azul    {background:#EAF1FC; color:#1B4FA8; border-color:#C6D8F5;}
+.z-verde   {background:#E8F5EE; color:#26714A; border-color:#C0E3D0;}
+.z-rojo    {background:#FCEDEC; color:#B3312C; border-color:#F0CBC9;}
+.z-ambar   {background:#FDF4E5; color:#8A5A0B; border-color:#F0DCB4;}
+.z-morado  {background:#F1ECFB; color:#5B3A9E; border-color:#DBCEF3;}
+.z-rosa    {background:#FCECF3; color:#A32B62; border-color:#F5CFE0;}
+.z-turquesa{background:#E6F6F6; color:#12656B; border-color:#C2E7E8;}
+.z-naranja {background:#FDEFE6; color:#A34A12; border-color:#F6D6BE;}
+.z-cafe    {background:#F4EFEA; color:#6B4A2F; border-color:#E3D6C8;}
+.z-gris    {background:#F1F3F8; color:#5C6273; border-color:#DFE3EE;}
+
+/* Selector de color en el formulario */
+.colores{display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;}
+.colores button{
+  width:28px; height:28px; border-radius:8px; cursor:pointer; padding:0;
+  border:2px solid transparent; box-shadow:inset 0 0 0 1px rgba(0,0,0,.06);
+  transition:transform .1s, border-color .12s;
+}
+.colores button:hover{transform:scale(1.08);}
+.colores button[aria-pressed="true"]{border-color:var(--navy); transform:scale(1.08);}
+.colores button:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
 .t-avatar{
   width:40px; height:40px; border-radius:11px; flex-shrink:0; display:grid; place-items:center;
   background:linear-gradient(135deg,var(--navy-2),var(--accent)); color:#fff; font-size:14.5px; font-weight:700; letter-spacing:.02em;
@@ -565,6 +588,21 @@ const MAX_MESES = 24;
 /* Zonas sugeridas. Son solo sugerencias: el campo acepta cualquier texto, así
    que se pueden agregar plazas nuevas sin tocar el código. */
 const ZONAS = ['CDMX','GDL','MTY','Mérida','León','San Luis','Querétaro','Puebla','Tijuana','Cancún'];
+
+/* Diez colores para las etiquetas de zona. La llave se guarda en el sitio. */
+const COLORES = [
+  { id:'azul',     nombre:'Azul',     muestra:'#EAF1FC' },
+  { id:'verde',    nombre:'Verde',    muestra:'#E8F5EE' },
+  { id:'rojo',     nombre:'Rojo',     muestra:'#FCEDEC' },
+  { id:'ambar',    nombre:'Ámbar',    muestra:'#FDF4E5' },
+  { id:'morado',   nombre:'Morado',   muestra:'#F1ECFB' },
+  { id:'rosa',     nombre:'Rosa',     muestra:'#FCECF3' },
+  { id:'turquesa', nombre:'Turquesa', muestra:'#E6F6F6' },
+  { id:'naranja',  nombre:'Naranja',  muestra:'#FDEFE6' },
+  { id:'cafe',     nombre:'Café',     muestra:'#F4EFEA' },
+  { id:'gris',     nombre:'Gris',     muestra:'#F1F3F8' }
+];
+const IDS_COLOR = COLORES.map(c => c.id);
 
 /* =============================== ALMACÉN =============================== */
 const LLAVE = 'forguard_control_forpass_v1';
@@ -1105,6 +1143,7 @@ function normalizarSitio(s){
     clienteId: s.clienteId || '',
     nombre: s.nombre || 'Sitio',
     zona: (s.zona || '').trim(),
+    color: IDS_COLOR.includes(s.color) ? s.color : 'azul',
     estado: ['activo','pausado','baja'].includes(s.estado) ? s.estado : 'activo',
     tipo: s.tipo === 'sw' ? 'sw' : 'hw',
     modulos: Math.max(0, parseInt(s.modulos,10) || 0),
@@ -1228,7 +1267,7 @@ function resumir(sitios){
 }
 
 /* =============================== VISTAS =============================== */
-const estado = { vista:'clientes', clienteId:null, busca:'', filtro:'todos', sitioFiltro:'' };
+const estado = { vista:'clientes', clienteId:null, busca:'', filtro:'todos', sitioFiltro:'', encargadoFiltro:'' };
 
 const ICONO = {
   mas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
@@ -1387,13 +1426,25 @@ function vistaCliente(){
   if(!c){ estado.vista = 'clientes'; return vistaClientes(); }
   const todos = sitiosDe(c.id);
 
-  /* El filtro decide qué sitios entran a los indicadores y a la lista.
-     Si el sitio elegido ya no existe, se regresa a "todos". */
+  /* Los filtros deciden qué sitios entran a los indicadores y a la lista.
+     Si lo elegido ya no existe, se regresa a "todos". */
   if(estado.sitioFiltro && !todos.some(s => s.id === estado.sitioFiltro)) estado.sitioFiltro = '';
-  const ss = estado.sitioFiltro ? todos.filter(s => s.id === estado.sitioFiltro) : todos;
+  const encargados = [...new Set(todos.map(s => s.encargado.nombre).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  if(estado.encargadoFiltro && estado.encargadoFiltro !== '__sin__' && !encargados.includes(estado.encargadoFiltro)){
+    estado.encargadoFiltro = '';
+  }
+
+  let ss = todos;
+  if(estado.encargadoFiltro){
+    ss = ss.filter(s => estado.encargadoFiltro === '__sin__'
+      ? !s.encargado.nombre
+      : s.encargado.nombre === estado.encargadoFiltro);
+  }
+  if(estado.sitioFiltro) ss = ss.filter(s => s.id === estado.sitioFiltro);
+
   const r = resumir(ss);
   const rTodos = resumir(todos);
-  const uno = !!estado.sitioFiltro;
+  const filtrando = !!(estado.sitioFiltro || estado.encargadoFiltro);
   let h = '';
 
   h += botonRegresar();
@@ -1411,20 +1462,39 @@ function vistaCliente(){
      +   '<button type="button" class="btn btn-primario" data-accion="nuevo-sitio">' + ICONO.mas + 'Agregar sitio</button>'
      + '</div></div>';
 
-  /* Filtro por sitio: ver el total de todos o de uno solo. */
-  if(todos.length > 1){
-    const opciones = todos.slice().sort((a,b)=> a.nombre.localeCompare(b.nombre,'es')).map(s =>
+  /* Filtros: siempre presentes en cuanto haya al menos un sitio, para que la
+     vista se comporte igual en todos los clientes. */
+  if(todos.length){
+    const opcSitios = todos.slice().sort((a,b)=> a.nombre.localeCompare(b.nombre,'es')).map(s =>
       '<option value="' + esc(s.id) + '"' + (s.id === estado.sitioFiltro ? ' selected' : '') + '>'
-      + esc(s.nombre) + ' — ' + dinero(s.mensualidad) + '/mes</option>').join('');
+      + esc(s.nombre) + (s.zona ? ' · ' + esc(s.zona) : '') + ' — ' + dinero(s.mensualidad) + '/mes</option>').join('');
+
+    const sinAsignar = todos.filter(s => !s.encargado.nombre).length;
+    const opcEncargados = encargados.map(n =>
+      '<option value="' + esc(n) + '"' + (n === estado.encargadoFiltro ? ' selected' : '') + '>'
+      + esc(n) + ' (' + todos.filter(s => s.encargado.nombre === n).length + ')</option>').join('')
+      + (sinAsignar
+          ? '<option value="__sin__"' + (estado.encargadoFiltro === '__sin__' ? ' selected' : '') + '>'
+            + 'Sin asignar (' + sinAsignar + ')</option>'
+          : '');
+
     h += '<div class="barra-busca">'
-       +   '<label for="filtroSitio" style="font-size:12.5px; color:var(--gray); align-self:center; font-weight:600">Ver totales de:</label>'
-       +   '<select id="filtroSitio" style="flex:1; min-width:210px">'
-       +     '<option value="">Todos los sitios (' + todos.length + ')</option>' + opciones
+       +   '<label for="filtroSitio" style="font-size:12.5px; color:var(--gray); align-self:center; font-weight:600">Ver:</label>'
+       +   '<select id="filtroSitio" style="flex:1; min-width:200px">'
+       +     '<option value="">Todos los sitios (' + todos.length + ')</option>' + opcSitios
        +   '</select>'
+       +   '<label for="filtroEncargado" style="font-size:12.5px; color:var(--gray); align-self:center; font-weight:600">A cargo de:</label>'
+       +   '<select id="filtroEncargado" style="flex:1; min-width:180px">'
+       +     '<option value="">Cualquiera</option>' + opcEncargados
+       +   '</select>'
+       +   (filtrando ? '<button type="button" class="btn btn-suave btn-mini" data-accion="limpiar-filtros">Quitar filtros</button>' : '')
        + '</div>';
   }
 
-  const pieMrr = uno ? 'Solo este sitio · ' + dinero(rTodos.mrr) + ' entre todos' : 'Sitios activos (sin IVA)';
+  const pieMrr = filtrando
+    ? (ss.length === 1 ? 'Solo este sitio' : 'Solo los ' + ss.length + ' filtrados')
+      + ' · ' + dinero(rTodos.mrr) + ' entre todos'
+    : 'Sitios activos (sin IVA)';
 
   h += '<div class="kpis">'
      + tarjetaKpi('Forpass activos', numero(r.forpass), r.sitiosActivos + ' ' + plural(r.sitiosActivos,'sitio activo','sitios activos'), 'k-ok')
@@ -1507,7 +1577,7 @@ function tarjetaSitio(s, i){
        +         '</span>'
        +       '</div>'
        +       '<div class="t-sub">'
-       +         (s.zona ? '<span class="chip-zona">' + esc(s.zona) + '</span>' : '')
+       +         (s.zona ? '<span class="chip-zona z-' + esc(s.color) + '">' + esc(s.zona) + '</span>' : '')
        +         numero(s.modulos) + ' Forpass'
        +         (c.activo ? plural(s.modulos,' activo',' activos') : ' · ' + ETIQUETA_ESTADO[s.estado] + (c.vigente ? '' : ' · vigencia terminada'))
        +         ' · ' + ETIQUETA_TIPO[s.tipo] + '</div>'
@@ -1580,6 +1650,8 @@ function render(){
   }
   const fs = $('filtroSitio');
   if(fs) fs.addEventListener('change', ()=>{ estado.sitioFiltro = fs.value; render(); });
+  const fe = $('filtroEncargado');
+  if(fe) fe.addEventListener('change', ()=>{ estado.encargadoFiltro = fe.value; render(); });
   if(estado.vista === 'admin') montarAdmin();
 }
 
@@ -2143,7 +2215,14 @@ function modalSitio(clienteId, sitioId){
     +     '<div class="campo"><label>Zona</label>'
     +       '<input type="text" id="sZona" list="listaZonas" placeholder="Ej. MTY" value="' + esc(s ? s.zona : '') + '">'
     +       '<datalist id="listaZonas">' + ZONAS.map(z=>'<option value="' + esc(z) + '">').join('') + '</datalist>'
-    +       '<div class="pista">Elige una de la lista o escribe otra.</div></div>'
+    +       '<div class="pista">Elige una de la lista o escribe otra.</div>'
+    +       '<input type="hidden" id="sColor" value="' + esc(s ? s.color : 'azul') + '">'
+    +       '<div class="colores" id="paletaColor" role="group" aria-label="Color de la etiqueta">'
+    +         COLORES.map(cc =>
+                '<button type="button" data-color="' + cc.id + '" style="background:' + cc.muestra + '" '
+                + 'title="' + esc(cc.nombre) + '" aria-label="' + esc(cc.nombre) + '" '
+                + 'aria-pressed="' + ((s ? s.color : 'azul') === cc.id ? 'true' : 'false') + '"></button>').join('')
+    +       '</div></div>'
     +     '<div class="campo"><label>Forpass instalados (módulos) *</label>'
     +       '<input type="number" id="sModulos" min="0" step="1" placeholder="Ej. 2" value="' + (s ? s.modulos : '') + '"></div>'
     +   '</div>'
@@ -2208,6 +2287,7 @@ function modalSitio(clienteId, sitioId){
     return {
       nombre: $('sNombre').value.trim(),
       zona: $('sZona').value.trim(),
+      color: $('sColor').value,
       clienteId: $('sCliente').value,
       modulos: Math.max(0, parseInt($('sModulos').value,10) || 0),
       estado: $('sEstado').value,
@@ -2272,6 +2352,30 @@ function modalSitio(clienteId, sitioId){
 
   ['sNombre','sCliente','sModulos','sEstado','sTipo','sMensualidad','sIncOnboarding','sOnboarding','sIncViaticos','sViaticos','sInicio','sNotas']
     .forEach(id => $(id).addEventListener('input', pintarResumen));
+  /* Paleta de color de la etiqueta. Si el usuario no ha tocado el color y
+     escribe una zona que ya existe en otro sitio, se hereda ese color para que
+     la misma plaza no acabe con tres colores distintos. */
+  let colorTocado = !!s;
+  function pintarPaleta(){
+    $('paletaColor').querySelectorAll('[data-color]').forEach(b=>{
+      b.setAttribute('aria-pressed', b.dataset.color === $('sColor').value ? 'true' : 'false');
+    });
+  }
+  $('paletaColor').addEventListener('click', ev=>{
+    const b = ev.target.closest('[data-color]');
+    if(!b) return;
+    $('sColor').value = b.dataset.color;
+    colorTocado = true;
+    pintarPaleta();
+  });
+  $('sZona').addEventListener('input', ()=>{
+    if(colorTocado) return;
+    const z = $('sZona').value.trim().toLowerCase();
+    if(!z) return;
+    const igual = datos.sitios.find(x => x.zona.trim().toLowerCase() === z && x.id !== (s ? s.id : ''));
+    if(igual){ $('sColor').value = igual.color; pintarPaleta(); }
+  });
+
   $('sMeses').addEventListener('input', refrescar);
   $('sInicio').addEventListener('change', refrescar);
   ['sMensualidad','sOnboarding','sViaticos'].forEach(id=>{
@@ -2291,7 +2395,13 @@ function modalSitio(clienteId, sitioId){
     const f = leerForm();
     if(!f.nombre){ $('sNombre').setAttribute('aria-invalid','true'); $('sNombre').focus(); aviso('El sitio necesita un nombre.', true); return; }
     if(!f.clienteId){ aviso('Selecciona un cliente.', true); return; }
-    const limpio = normalizarSitio(Object.assign({}, f, { pagos:pagosTmp, id: s ? s.id : nuevoId() }));
+    /* El formulario no trae todo lo del sitio: las OC de cada pago, el contacto
+       y el encargado se administran por separado. Hay que arrastrarlos aquí o
+       normalizarSitio los deja en blanco y se borran al editar. */
+    const conservado = s
+      ? { pagosDetalle: s.pagosDetalle, contactos: s.contactos, encargado: s.encargado }
+      : {};
+    const limpio = normalizarSitio(Object.assign({}, conservado, f, { pagos:pagosTmp, id: s ? s.id : nuevoId() }));
     if(s){ Object.assign(s, limpio); }
     else{ datos.sitios.push(limpio); }
     guardarSitio(s || limpio, s ? 'editó' : 'creó');
@@ -2775,6 +2885,7 @@ $('vista').addEventListener('click', ev=>{
     else if(a === 'excel-cliente') descargarExcel(estado.clienteId);
     else if(a === 'respaldo'){ if(exigirAdmin('descargar el respaldo completo')) descargarRespaldo(); }
     else if(a === 'restaurar'){ if(exigirAdmin('restaurar un respaldo')) $('archivoRestaurar').click(); }
+    else if(a === 'limpiar-filtros'){ estado.sitioFiltro = ''; estado.encargadoFiltro = ''; render(); }
     else if(a === 'ver-por-vencer') modalPorVencer(null);
     else if(a === 'ver-por-vencer-cliente') modalPorVencer(estado.clienteId);
     else if(a === 'nueva-cuenta') modalCuenta();
@@ -2866,7 +2977,7 @@ $('vista').addEventListener('keydown', ev=>{
 
 function entrarCliente(id){
   estado.vista = 'cliente'; estado.clienteId = id;
-  estado.sitioFiltro = '';            /* cada cliente arranca viendo todos sus sitios */
+  estado.sitioFiltro = ''; estado.encargadoFiltro = '';   /* cada cliente arranca viendo todos sus sitios */
   render();
   window.scrollTo({ top:0, behavior:'smooth' });
 }
