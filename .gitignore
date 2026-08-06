@@ -1,2 +1,6 @@
 .claude/
 .DS_Store
+
+# El repo privado de respaldos vive dentro de esta carpeta.
+# Nunca debe entrar al repo público: adentro van clientes, precios y pagos.
+ControlForpassBackups/

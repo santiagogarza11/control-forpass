@@ -74,6 +74,16 @@ service cloud.firestore {
       allow delete: if esOwner() || (esAdmin() && resource.data.rol != 'owner');
     }
 
+    /* --- Marcas del sistema ---
+       Aquí el respaldo automático deja la fecha de la última copia, para que el
+       tablero pueda avisar si se quedó viejo. Cualquiera con acceso la lee;
+       nadie la escribe desde la página. El robot del respaldo sí puede, porque
+       entra con cuenta de servicio y esas se saltan estas reglas. --- */
+    match /sistema/{doc} {
+      allow read:  if conAcceso();
+      allow write: if false;
+    }
+
     /* Todo lo que no esté listado arriba queda cerrado. */
     match /{documento=**} {
       allow read, write: if false;

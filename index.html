@@ -965,6 +965,55 @@ async function bajarDeLaNube(){
   guardarLocal();
   return 'ok';
 }
+/* ===================== VIGILANCIA DEL RESPALDO =====================
+   El respaldo automático deja en sistema/respaldo la fecha de la última copia.
+   Aquí se lee para poder avisar si se quedó viejo: si un día deja de correr,
+   que se vea en el tablero y no solo en un correo que nadie abre.
+   ================================================================== */
+const DIAS_RESPALDO_VIEJO = 2;
+let respaldoInfo = null;      /* {ultimo, registros, clientes, sitios} o null */
+
+async function revisarRespaldo(){
+  if(!HAY_NUBE || !haySesion()) return;
+  try{
+    const d = await pedirNube('/sistema/respaldo', { method:'GET' }, true);
+    respaldoInfo = d && d.fields ? deCampos(d.fields) : null;
+  }catch(e){
+    /* Si no se puede leer, no se inventa nada: se queda sin dato y no avisa. */
+    respaldoInfo = null;
+  }
+}
+
+/* Cuántos días tiene el último respaldo. null si no se sabe. */
+function diasDesdeRespaldo(){
+  if(!respaldoInfo || !respaldoInfo.ultimo) return null;
+  const t = new Date(respaldoInfo.ultimo);
+  if(isNaN(t)) return null;
+  return Math.floor((Date.now() - t.getTime()) / 86400000);
+}
+
+/* Aviso para Owner y Admin: son los que pueden hacer algo al respecto. */
+function avisoRespaldo(){
+  if(!HAY_NUBE || !esAdmin()) return '';
+  const dias = diasDesdeRespaldo();
+
+  if(dias === null){
+    /* Sin marca todavía: puede ser que el respaldo aún no corra con la versión
+       nueva. No se alarma, solo se informa. */
+    return respaldoInfo === null && sincronizado
+      ? '<div class="aviso" style="border-left-color:var(--gray)">' + ICONO.info
+        + '<div>Todavía no hay registro del respaldo automático. Aparecerá aquí después de la próxima copia.</div></div>'
+      : '';
+  }
+  if(dias <= DIAS_RESPALDO_VIEJO) return '';
+
+  return '<div class="aviso" style="border-left-color:var(--error)">' + ICONO.info
+       + '<div><b>El respaldo automático tiene ' + dias + ' ' + plural(dias,'día','días') + ' sin correr.</b> '
+       + 'La última copia es del ' + esc(fechaHora(respaldoInfo.ultimo)) + '. '
+       + 'Revisa la pestaña <b>Actions</b> del repo de respaldos, o baja un '
+       + '<b>Respaldo JSON</b> ahora mismo por si acaso.</div></div>';
+}
+
 /* Sube todo lo que hay local (para la primera vez o al restaurar un respaldo). */
 function subirTodo(){
   datos.clientes.forEach(c => encolar({ tipo:'poner', coleccion:'clientes', id:c.id, obj:c }));
@@ -1256,6 +1305,7 @@ function vistaClientes(){
      + tarjetaKpi('Vigencias por vencer', numero(r.porVencer), 'Contratos que terminan en 45 días', r.porVencer ? 'k-alerta' : '', 'ver-por-vencer')
      + '</div>';
 
+  h += avisoRespaldo();
   h += avisoLocal();
 
   if(!datos.clientes.length){
@@ -3414,6 +3464,8 @@ async function arrancarNube(){
   try{
     const r = await bajarDeLaNube();
     sincronizado = true;
+    /* Sin await encadenado al render: si tarda, no retrasa el tablero. */
+    revisarRespaldo().then(()=>{ if(estado.vista === 'clientes') render(); });
     /* Primera conexión: el servidor está vacío y aquí ya había capturas. Se suben. */
     if(r === 'vacia'){
       if(puedeEditar()){
