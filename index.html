@@ -1724,7 +1724,10 @@ function vistaAdmin(){
 async function montarAdmin(forzar){
   if(!esAdmin()) return;
   if(admin.cargando) return;
-  if(admin.usuarios && !forzar){ pintarUsuarios(); pintarBitacora(); return; }
+  /* Se exigen LAS DOS cosas cargadas, no solo las cuentas: el asignador de
+     encargado también llena admin.usuarios, y con solo esa condición el panel
+     se salteaba la carga del historial y se veía vacío como si no hubiera nada. */
+  if(admin.usuarios && admin.bitacora && !forzar){ pintarUsuarios(); pintarBitacora(); return; }
   admin.cargando = true; admin.error = '';
   $('tablaUsuarios').innerHTML = '<div class="vacio-chico">Cargando cuentas…</div>';
   $('listaBitacora').innerHTML = '<div class="vacio-chico">Cargando historial…</div>';
