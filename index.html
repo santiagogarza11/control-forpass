@@ -412,6 +412,11 @@ button.encargado:focus-visible{outline:2px solid var(--accent); outline-offset:2
 }
 .btn-cabeza:hover{border-color:var(--accent); background:#f6f9ff;}
 .btn-cabeza svg{width:14px; height:14px;}
+/* Puntito ámbar en "Mi cuenta" cuando la contraseña sigue siendo la que dio el
+   administrador. Es un recordatorio, no un bloqueo: se ve pero no estorba. */
+.punto-alerta{width:7px; height:7px; border-radius:50%; background:var(--alerta); flex-shrink:0;
+  box-shadow:0 0 0 3px var(--alerta-suave);}
+.punto-alerta[hidden]{display:none;}
 .correo-sesion{font-size:12.5px; font-weight:600; color:var(--tinta, var(--ink)); max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 @media (max-width:900px){ .correo-sesion{display:none;} }
 
@@ -515,6 +520,14 @@ table.tabla select.sel-rol{font-weight:600;}
 .bloque-cabeza h3{font-size:15.5px; font-weight:700; color:var(--navy);}
 .bloque-cabeza p{font-size:12px; color:var(--gray); margin-top:2px;}
 .bloque-cabeza .der{margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;}
+/* Renglones de dato dentro de un bloque claro. La regla de .credencial .c-fila
+   es para la tarjeta oscura de "cuenta creada" y no aplica aquí. */
+.bloque .c-fila{display:flex; justify-content:space-between; gap:12px; font-size:13px; padding:7px 0; align-items:center; border-bottom:1px solid var(--line);}
+.bloque .c-fila:last-child{border-bottom:none;}
+.bloque .c-fila span:first-child{color:var(--gray);}
+/* Botón que se lee como un enlace, para acciones secundarias dentro de un texto. */
+.enlace{background:none; border:none; font-family:inherit; font-size:inherit; color:var(--accent); font-weight:600; cursor:pointer; padding:0;}
+.enlace:hover{text-decoration:underline;}
 
 .rodillo{overflow-x:auto; -webkit-overflow-scrolling:touch;}
 table.tabla{width:100%; border-collapse:collapse; min-width:620px;}
@@ -597,6 +610,11 @@ table.tabla .yo{font-size:10.5px; color:var(--accent); font-weight:600;}
     <button type="button" class="btn-cabeza" id="btnAdmin" style="display:none" title="Panel de administración">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 4v6c0 4.2-2.9 7.9-7 10-4.1-2.1-7-5.8-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
       Admin
+    </button>
+    <button type="button" class="btn-cabeza" id="btnPerfil" style="display:none" title="Mi cuenta">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M4.6 20a7.6 7.6 0 0 1 14.8 0"/></svg>
+      Mi cuenta
+      <span class="punto-alerta" id="puntoClave" hidden></span>
     </button>
     <button type="button" class="btn-cabeza" id="btnSalir" style="display:none" title="Cerrar sesión">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -1009,6 +1027,8 @@ async function pedirAuth(metodo, cuerpo){
 }
 function traducirAuth(codigo){
   const c = String(codigo || '');
+  if(/CREDENTIAL_TOO_OLD_LOGIN_AGAIN|TOKEN_EXPIRED/.test(c)) return 'Por seguridad, vuelve a escribir tu contraseña actual.';
+  if(/MISSING_PASSWORD/.test(c)) return 'Falta la contraseña.';
   if(/INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND/.test(c)) return 'Correo o contraseña incorrectos.';
   if(/USER_DISABLED/.test(c)) return 'Esta cuenta está deshabilitada. Pide a un administrador que la reactive.';
   if(/TOO_MANY_ATTEMPTS/.test(c)) return 'Demasiados intentos fallidos. Espera unos minutos y vuelve a probar.';
@@ -1049,6 +1069,39 @@ async function tokenVigente(){
 /* Borra sesión y datos, SIN mostrar el login. Está separado porque la persiana
    de cierre necesita borrar de inmediato pero destapar el login más tarde,
    cuando ya está cubierta la pantalla. */
+/* ====================== ¿SIGUE CON LA CONTRASEÑA INICIAL? ======================
+   Firebase guarda cuándo se creó la cuenta y cuándo se cambió la contraseña por
+   última vez. Si las dos fechas casi coinciden, nunca la cambió: sigue con la
+   que le dio el administrador.
+   Se hace así, y no con una bandera en Firestore, porque no requiere tocar las
+   reglas de seguridad —que se pegan a mano en la consola— ni guardar un dato más
+   que se pueda desincronizar de la realidad. */
+let claveEsInicial = false;
+let claveRevisada = false;
+
+async function revisarClaveInicial(){
+  claveEsInicial = false;
+  claveRevisada = false;
+  if(!HAY_NUBE || !haySesion()) return;
+  try{
+    const d = await pedirAuth('lookup', { idToken: await tokenVigente() });
+    const u = d && d.users && d.users[0];
+    if(!u) return;
+    const creada = Number(u.createdAt || 0);
+    const cambiada = Number(u.passwordUpdatedAt || 0);
+    /* Un minuto de margen: al crear la cuenta las dos marcas caen casi juntas. */
+    if(creada && cambiada) claveEsInicial = Math.abs(cambiada - creada) < 60000;
+    claveRevisada = true;
+  }catch(e){
+    /* Si no se puede consultar, no se inventa: no se avisa nada. */
+  }
+  pintarPuntoClave();
+}
+function pintarPuntoClave(){
+  const p = $('puntoClave');
+  if(p) p.hidden = !(claveRevisada && claveEsInicial);
+}
+
 function limpiarSesionYDatos(){
   Object.assign(sesion, { correo:null, uid:null, idToken:null, refreshToken:null, expira:0, rol:null, nombre:'' });
   try{ localStorage.removeItem(LLAVE_SESION); }catch(e){}
@@ -1587,6 +1640,7 @@ function vistaClientes(){
      + tarjetaKpi('Vigencias por vencer', numero(r.porVencer), 'Contratos que terminan en 45 días', r.porVencer ? 'k-alerta' : '', 'ver-por-vencer')
      + '</div>';
 
+  h += avisoClaveInicial();
   h += avisoRespaldo();
   h += avisoLocal();
 
@@ -1868,6 +1922,19 @@ function vistaVacia(icono, titulo, texto, accion, textoBoton){
        + '</div>';
 }
 
+/* Recomendación —no bloqueo— de cambiar la contraseña que dio el administrador
+   por una propia. Se muestra mientras siga siendo la inicial y se va sola en
+   cuanto la cambien, porque el dato sale de Firebase y no de una bandera. */
+function avisoClaveInicial(){
+  if(!HAY_NUBE || !claveRevisada || !claveEsInicial) return '';
+  return '<div class="aviso" style="border-left-color:var(--alerta)">' + ICONO.info
+       + '<div><b>Sigues usando la contraseña que te dieron.</b> '
+       + 'Quien te creó la cuenta la conoce. Cámbiala por una tuya desde '
+       + '<b>Mi cuenta</b> — toma menos de un minuto.'
+       + ' <button type="button" class="btn btn-suave btn-mini" data-accion="mi-cuenta" style="margin-left:6px">Cambiarla ahora</button>'
+       + '</div></div>';
+}
+
 function avisoLocal(){
   if(HAY_NUBE){
     if(sesion.rol === 'viewer'){
@@ -1910,7 +1977,9 @@ function pintarCabecera(){
   nom.title = dentro ? sesion.correo : '';          /* el correo queda al pasar el mouse */
   $('rolSesion').innerHTML = (dentro && sesion.rol) ? etiquetaRol(sesion.rol) : '';
   $('btnAdmin').style.display = (dentro && esAdmin()) ? '' : 'none';
+  $('btnPerfil').style.display = dentro ? '' : 'none';
   $('btnSalir').style.display = dentro ? '' : 'none';
+  pintarPuntoClave();
 }
 
 /* Corta la acción si la cuenta no tiene permiso de modificar. */
@@ -2986,6 +3055,111 @@ function modalCobranza(clienteId, tipo){
   cerrarModalActual = null;
 }
 
+/* ================================ MI CUENTA ================================ */
+/* Qué puede hacer cada rol, en frases concretas. ROLES[].desc dice la idea en una
+   línea; esto la desglosa en acciones para que nadie tenga que adivinar. */
+function loQuePuedeHacer(rol){
+  const r = normalizarRol(rol);
+  const lista = ['Ver todos los clientes, sitios y pagos', 'Descargar el Excel'];
+  if(r === 'analyst' || r === 'admin' || r === 'owner') lista.push('Agregar y modificar clientes, sitios y mensualidades');
+  if(r === 'admin' || r === 'owner') lista.push('Respaldar y restaurar la base completa', 'Crear cuentas y cambiar permisos del equipo');
+  if(r === 'owner') lista.push('Nombrar a otro Owner');
+  return lista;
+}
+
+function modalPerfil(){
+  if(!HAY_NUBE || !haySesion()){ aviso('Esta pantalla solo aplica cuando entras con una cuenta.', true); return; }
+  const rol = normalizarRol(sesion.rol);
+
+  const cuerpo =
+      '<div class="bloque">'
+    +   '<div class="c-fila"><span>Nombre</span><b>' + esc(nombreDe(sesion)) + '</b></div>'
+    +   '<div class="c-fila"><span>Correo</span><b>' + esc(sesion.correo || '—') + '</b></div>'
+    +   '<div class="c-fila"><span>Permiso</span>' + etiquetaRol(rol) + '</div>'
+    + '</div>'
+    + '<p class="pista" style="margin:10px 0 4px">' + esc(ROLES[rol].desc) + '</p>'
+    + '<ul style="margin:8px 0 0 18px; font-size:12.5px; color:var(--gray); line-height:1.75">'
+    +   loQuePuedeHacer(rol).map(x => '<li>' + esc(x) + '</li>').join('')
+    + '</ul>'
+
+    + '<h4 style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--navy); font-weight:700; margin:22px 0 10px">'
+    +   'Cambiar mi contraseña</h4>'
+    + (claveRevisada && claveEsInicial
+        ? '<p class="pista" style="color:#9a6a15; margin-bottom:12px"><b>Sigues usando la contraseña que te dieron.</b> '
+          + 'Quien te creó la cuenta la conoce; conviene poner una tuya.</p>'
+        : '')
+    + '<div class="acceso-error" id="pfError" role="alert"></div>'
+    + '<div class="campo"><label for="pfActual">Tu contraseña actual</label>'
+    +   '<input type="password" id="pfActual" autocomplete="current-password" placeholder="••••••••"></div>'
+    + '<div class="campo"><label for="pfNueva">Nueva contraseña</label>'
+    +   '<input type="password" id="pfNueva" autocomplete="new-password" placeholder="Al menos 6 caracteres"></div>'
+    + '<div class="campo"><label for="pfRepite">Repite la nueva</label>'
+    +   '<input type="password" id="pfRepite" autocomplete="new-password" placeholder="La misma otra vez"></div>'
+    + '<p class="pista" style="margin-top:10px">Se te pide la actual por seguridad: así nadie que encuentre '
+    +   'tu sesión abierta puede cambiártela. Si no la recuerdas, '
+    +   '<button type="button" class="enlace" id="pfPorCorreo">pide un correo para cambiarla</button>.</p>';
+
+  abrirModal('Mi cuenta', cuerpo,
+      '<button type="button" class="btn btn-suave" data-modal="cancelar">Cerrar</button>'
+    + '<button type="button" class="btn btn-primario" data-modal="guardar">Cambiar contraseña</button>');
+
+  $('pfPorCorreo').addEventListener('click', async ()=>{
+    try{
+      await pedirAuth('sendOobCode', { requestType:'PASSWORD_RESET', email: sesion.correo });
+      cerrarModal();
+      aviso('Te mandamos un correo a ' + sesion.correo + ' para poner una contraseña nueva.');
+    }catch(e){ aviso(e.message, true); }
+  });
+
+  cerrarModalActual = async ()=>{
+    /* Se leen los valores ANTES de cualquier cierre: cerrarModal() reemplaza
+       #modalCuerpo por un clon limpio y después los campos devuelven null. */
+    const actual = $('pfActual').value;
+    const nueva  = $('pfNueva').value;
+    const repite = $('pfRepite').value;
+
+    const marcarError = (m)=>{ const e = $('pfError'); e.textContent = m; e.classList.add('visible'); };
+    $('pfError').classList.remove('visible');
+    if(!actual) return marcarError('Escribe tu contraseña actual.');
+    if(nueva.length < 6) return marcarError('La nueva debe tener al menos 6 caracteres.');
+    if(nueva !== repite) return marcarError('Las dos nuevas no coinciden.');
+    if(nueva === actual) return marcarError('La nueva tiene que ser distinta de la que ya usas.');
+
+    const btn = $('modalPie').querySelector('[data-modal="guardar"]');
+    btn.disabled = true; btn.textContent = 'Cambiando…';
+    try{
+      /* Primero se vuelve a entrar con la contraseña actual. Sirve para dos cosas:
+         comprueba que quien está en el teclado es el dueño de la cuenta, y entrega
+         un token recién hecho, que es lo que Firebase exige para cambiarla (con un
+         token viejo responde CREDENTIAL_TOO_OLD_LOGIN_AGAIN). */
+      const fresco = await pedirAuth('signInWithPassword',
+        { email: sesion.correo, password: actual, returnSecureToken: true });
+      const d = await pedirAuth('update',
+        { idToken: fresco.idToken, password: nueva, returnSecureToken: true });
+
+      /* Cambiar la contraseña invalida los tokens anteriores. Si no se guardan los
+         nuevos, la siguiente petición al servidor falla y sacaría al usuario justo
+         después de haber hecho todo bien. */
+      if(d && d.idToken){
+        sesion.idToken = d.idToken;
+        sesion.refreshToken = d.refreshToken || sesion.refreshToken;
+        sesion.expira = Date.now() + (Number(d.expiresIn || 3600) * 1000);
+        guardarSesion();
+      }
+
+      claveEsInicial = false; claveRevisada = true;
+      pintarPuntoClave();
+      anotar('cambió', 'su contraseña', sesion.correo || '');
+      cerrarModal();
+      render();
+      aviso('Contraseña cambiada. La próxima vez entra con la nueva.');
+    }catch(e){
+      btn.disabled = false; btn.textContent = 'Cambiar contraseña';
+      marcarError(e.message);
+    }
+  };
+}
+
 /* ----------------------- Modal: plan de pagos -----------------------------
    El desglose mes por mes: cuánto toca cada mensualidad, si ya se pagó, con
    qué OC y quién la capturó. Los extras van en el mes 1 y se ven ahí mismo,
@@ -3208,6 +3382,7 @@ $('vista').addEventListener('click', ev=>{
     else if(a === 'limpiar-filtros'){ estado.sitioFiltro = ''; estado.encargadoFiltro = ''; render(); }
     else if(a === 'ver-por-vencer') modalPorVencer(null);
     else if(a === 'ver-por-vencer-cliente') modalPorVencer(estado.clienteId);
+    else if(a === 'mi-cuenta') modalPerfil();
     else if(a === 'ver-atrasados') modalCobranza(null, 'atrasados');
     else if(a === 'ver-por-pagar') modalCobranza(null, 'porPagar');
     else if(a === 'ver-atrasados-cliente') modalCobranza(estado.clienteId, 'atrasados');
@@ -4035,6 +4210,8 @@ $('btnSalir').addEventListener('click', ()=>{
   salirConPersiana();
 });
 
+$('btnPerfil').addEventListener('click', ()=> modalPerfil());
+
 $('btnAdmin').addEventListener('click', ()=>{
   if(!esAdmin()) return;
   estado.vista = 'admin'; estado.clienteId = null;
@@ -4117,8 +4294,9 @@ async function arrancarNube(){
   try{
     const r = await bajarDeLaNube();
     sincronizado = true;
-    /* Sin await encadenado al render: si tarda, no retrasa el tablero. */
+    /* Sin await encadenado al render: si tardan, no retrasan el tablero. */
     revisarRespaldo().then(()=>{ if(estado.vista === 'clientes') render(); });
+    revisarClaveInicial().then(()=>{ if(estado.vista === 'clientes') render(); });
     /* Primera conexión: el servidor está vacío y aquí ya había capturas. Se suben. */
     if(r === 'vacia'){
       if(puedeEditar()){
