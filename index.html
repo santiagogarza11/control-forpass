@@ -3617,11 +3617,13 @@ function errorAcceso(txt){
 }
 
 /* ------------------------- Pantalla de carga -------------------------- */
-/* El llenado del logo es un ciclo infinito, así que la duración de la carga ya
-   no importa: se sigue llenando hasta que los datos llegan. Este mínimo existe
-   solo para que se alcance a ver algo — si los datos llegan en 200 ms, un
-   parpadeo se ve peor que no poner nada. Pasado el mínimo no agrega espera. */
-const CARGA_MINIMA_MS = 900;
+/* ESTE es el número que manda cuánto tiempo se ve la pantalla de carga, no el
+   dur="3.7s" del llenado. El llenado es un ciclo infinito: se sigue llenando
+   hasta que los datos llegan, y si llegan antes de este mínimo, se espera.
+   Con 900 ms el logo apenas alcanzaba a llenarse como al 20% y de ahí saltaba
+   al 100%: se sentía cortado. Con 1.6 s llega cerca del 80% y el remate se ve
+   natural. Pasado el mínimo no agrega ni un milisegundo de espera. */
+const CARGA_MINIMA_MS = 1600;
 const ANCHO_LOGO_SVG = 335.42;   /* el viewBox del logo; el clip llena hasta aquí */
 
 const menosMovimiento = () =>
