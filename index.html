@@ -1116,6 +1116,7 @@ function pintarPuntoClave(){
 }
 
 function limpiarSesionYDatos(){
+  detenerVigilancia();
   Object.assign(sesion, { correo:null, uid:null, idToken:null, refreshToken:null, expira:0, rol:null, nombre:'' });
   try{ localStorage.removeItem(LLAVE_SESION); }catch(e){}
   datos = { v:1, clientes:[], sitios:[] };
@@ -1143,6 +1144,83 @@ async function cargarPerfil(){
     method:'PATCH', body: JSON.stringify({ fields:{ ultimoAcceso:{ stringValue:new Date().toISOString() } } })
   }).catch(()=>{});
 }
+
+/* ====================== VIGILANCIA DE LA CUENTA ======================
+   Bloquear a alguien escribe activo:false en Firestore. El servidor lo rechaza
+   al instante, pero la app del bloqueado ya tiene todo en memoria y solo revisaba
+   su perfil al arrancar: seguía viendo un tablero que ya no le toca hasta que
+   recargaba. Desde el cliente no se puede deshabilitar la cuenta de Auth (eso
+   necesita el Admin SDK), así que la bandera de Firestore es la única señal.
+
+   Tres disparadores, del más barato al más frecuente:
+     · cuando el servidor rechaza algo con 403 (gratis, y es la señal más directa)
+     · cuando la pestaña vuelve al frente (gratis, y es cuando alguien retoma)
+     · cada VIGILAR_CUENTA_MS mientras la pestaña esté visible (una lectura)
+
+   Un usuario siempre puede leer su propio documento, incluso bloqueado: la regla
+   lo permite por uid sin exigir activo. Por eso esta revisión funciona.
+
+   REGLA QUE NO SE ROMPE: un fallo de red NO saca a nadie. Solo un activo:false
+   o un 403 del servidor. */
+/* Dos minutos. Es el peor caso: los otros dos disparadores —el 403 y el volver a
+   la pestaña— actúan al instante, así que este solo cubre a quien dejó la
+   pantalla abierta sin tocarla. Cuesta ~240 lecturas al día por persona; subirlo
+   lo abarata y bajarlo aprieta el tope gratuito de Firestore. */
+const VIGILAR_CUENTA_MS = 120000;
+let relojVigilancia = null;
+let vigilando = false;
+
+async function revisarCuenta(){
+  if(!HAY_NUBE || !haySesion() || vigilando) return;
+  vigilando = true;
+  try{
+    const d = await pedirNube('/usuarios/' + encodeURIComponent(sesion.uid), { method:'GET' }, true);
+    if(!d || !d.fields) throw new Error('SIN_PERMISO');
+    const p = deCampos(d.fields);
+    if(p.activo === false) throw new Error('BLOQUEADO');
+
+    /* El permiso también cambia sin bloquear. Si alguien pasó de Admin a Viewer y
+       no se entera, la interfaz le sigue ofreciendo botones que el servidor ya
+       rechaza. Eso no amerita sacarlo: se actualiza y se redibuja. */
+    const rolNuevo = normalizarRol(p.rol);
+    const nombreNuevo = p.nombre || '';
+    if(rolNuevo !== sesion.rol || nombreNuevo !== sesion.nombre){
+      const rolAntes = sesion.rol;
+      sesion.rol = rolNuevo;
+      sesion.nombre = nombreNuevo;
+      guardarSesion();
+      /* Si lo bajaron de Admin estando en el panel de cuentas, no puede quedarse ahí. */
+      if(estado.vista === 'admin' && !esAdmin()){ estado.vista = 'clientes'; estado.clienteId = null; }
+      render();
+      if(rolNuevo !== rolAntes) aviso('Un administrador cambió tu permiso a ' + ROLES[rolNuevo].nombre + '.');
+    }
+  }catch(e){
+    const m = String((e && e.message) || '');
+    if(/SIN_PERMISO|BLOQUEADO/.test(m)){
+      detenerVigilancia();
+      vigilando = false;
+      manejarFalloDeArranque(e);   /* ya sabe sacar con el mensaje correcto */
+      return;
+    }
+    /* Cualquier otra cosa —sin internet, servidor con hipo— se aguanta. */
+  }finally{
+    vigilando = false;
+  }
+}
+
+function arrancarVigilancia(){
+  detenerVigilancia();
+  if(!HAY_NUBE) return;
+  /* Solo con la pestaña visible: en segundo plano los temporizadores van frenados
+     y no tiene sentido gastar lecturas de alguien que no está mirando. Al volver
+     al frente se revisa de inmediato por el visibilitychange. */
+  relojVigilancia = setInterval(()=>{ if(!document.hidden) revisarCuenta(); }, VIGILAR_CUENTA_MS);
+}
+function detenerVigilancia(){
+  if(relojVigilancia){ clearInterval(relojVigilancia); relojVigilancia = null; }
+}
+
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) revisarCuenta(); });
 
 /* ========================= FIRESTORE POR REST =========================
    Se habla con Firestore con fetch normal, sin librerías, para que la
@@ -1184,7 +1262,15 @@ async function pedirNube(ruta, opciones, permitirVacio, esReintento){
     return pedirNube(ruta, opciones, permitirVacio, true);
   }
   if(r.status === 404 && permitirVacio) return null;
-  if(r.status === 403) throw new Error('SIN_PERMISO');
+  if(r.status === 403){
+    /* El servidor rechazó: lo más probable es que le acaben de quitar el acceso.
+       Se confirma contra su perfil en segundo plano para sacarlo de inmediato en
+       vez de esperar la revisión periódica. Sin await: quien llamó necesita su
+       error ya. El guardo de "vigilando" evita que esto se muerda la cola cuando
+       el 403 viene de la revisión misma. */
+    if(!vigilando && haySesion()) revisarCuenta();
+    throw new Error('SIN_PERMISO');
+  }
   if(!r.ok){
     const t2 = await r.text().catch(()=>'');
     throw new Error('HTTP ' + r.status + ' ' + t2.slice(0,200));
@@ -4158,6 +4244,7 @@ $('formAcceso').addEventListener('submit', async ev=>{
 
 /* Limpia la sesión sin redibujar ni mover al usuario de pantalla. */
 function salirSilencioso(){
+  detenerVigilancia();
   Object.assign(sesion, { correo:null, uid:null, idToken:null, refreshToken:null, expira:0, rol:null, nombre:'' });
   try{ localStorage.removeItem(LLAVE_SESION); }catch(e){}
 }
@@ -4331,6 +4418,7 @@ async function arrancarNube(){
     /* Sin await encadenado al render: si tardan, no retrasan el tablero. */
     revisarRespaldo().then(()=>{ if(estado.vista === 'clientes') render(); });
     revisarClaveInicial().then(()=>{ if(estado.vista === 'clientes') render(); });
+    arrancarVigilancia();
     /* Primera conexión: el servidor está vacío y aquí ya había capturas. Se suben. */
     if(r === 'vacia'){
       if(puedeEditar()){
