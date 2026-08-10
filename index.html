@@ -80,6 +80,14 @@ header.app .sub{font-size:12px; color:var(--gray); margin-left:auto;}
 .btn-peligro{background:#fff; color:var(--error); border-color:#f0d5d4;}
 .btn-peligro:hover{background:var(--error-suave); border-color:var(--error);}
 .btn-mini{font-size:12px; padding:7px 11px; border-radius:8px;}
+
+/* Borrar dentro de una reja de tarjetas va callado: en rojo pesaba igual que
+   editar y estaba a un clic de distancia en cada tarjeta. Se enciende al pasar
+   el cursor o al llegar con el teclado, así que sigue siendo fácil de encontrar
+   pero deja de competir con la acción de todos los días.
+   La confirmación de borrado no cambió: sigue pidiéndose. */
+.grid .btn-peligro{color:var(--gray); border-color:var(--line);}
+.grid .btn-peligro:hover, .grid .btn-peligro:focus-visible{color:var(--error); border-color:var(--error); background:var(--error-suave);}
 .btn-verde{background:var(--ok); color:#fff;}
 .btn-verde:hover{background:#35935c;}
 .btn:disabled{opacity:.5; cursor:not-allowed;}
@@ -1479,13 +1487,21 @@ function sitioPorId(id){ return datos.sitios.find(s => s.id === id); }
 
 /* Suma de un conjunto de sitios, para los indicadores de arriba. */
 function resumir(sitios){
-  const r = { sitios:sitios.length, sitiosActivos:0, forpass:0, mrr:0, atrasados:0, porPagar:0, porVencer:0, mensualidadesAtrasadas:0, adeudo:0 };
+  const r = { sitios:sitios.length, sitiosActivos:0, forpass:0, mrr:0, atrasados:0, porPagar:0, porVencer:0, mensualidadesAtrasadas:0, adeudo:0,
+              pausados:0, bajas:0, cubiertos:0 };
   sitios.forEach(s=>{
     const c = calcular(s);
     if(c.activo){ r.sitiosActivos++; r.forpass += s.modulos; r.mrr += s.mensualidad; }
     if(c.tono === 'error'){ r.atrasados++; r.mensualidadesAtrasadas += c.atrasadas; r.adeudo += c.adeudo; }
     else if(c.estatus === 'Por pagar') r.porPagar++;
     if(c.activo && c.diasVigencia >= 0 && c.diasVigencia <= 45) r.porVencer++;
+    /* Estos tres hacen falta para que la tarjeta los distinga. Sin ellos, un
+       sitio pausado y un contrato que ya se pagó completo se veían idénticos:
+       los dos como "0 Forpass activos · $0 · 0 de 1", que son situaciones
+       opuestas. */
+    if(s.estado === 'pausado') r.pausados++;
+    else if(s.estado === 'baja') r.bajas++;
+    else if(c.estatus === 'Contrato cubierto') r.cubiertos++;
   });
   return r;
 }
@@ -1563,8 +1579,11 @@ function vistaClientes(){
   h += '<div class="kpis">'
      + tarjetaKpi('Forpass activos', numero(r.forpass), r.sitiosActivos + ' ' + plural(r.sitiosActivos,'sitio activo','sitios activos'), 'k-ok')
      + tarjetaKpi('Mensualidad total', dinero(r.mrr), 'Suma de sitios activos (sin IVA)')
-     + tarjetaKpi('Sitios atrasados', numero(r.atrasados), r.mensualidadesAtrasadas + ' ' + plural(r.mensualidadesAtrasadas,'mensualidad vencida','mensualidades vencidas') + ' · ' + dinero(r.adeudo), r.atrasados ? 'k-error' : '')
-     + tarjetaKpi('Por pagar (7 días)', numero(r.porPagar), 'Mensualidad próxima a vencer', r.porPagar ? 'k-alerta' : '')
+     /* Los tres de cobranza se pueden abrir; los dos primeros no, porque son
+        sumas sin detalle que valga una ventana. Se ofrecen solo cuando hay algo
+        que ver: un "Ver cuáles" con cero adentro también decepciona. */
+     + tarjetaKpi('Sitios atrasados', numero(r.atrasados), r.mensualidadesAtrasadas + ' ' + plural(r.mensualidadesAtrasadas,'mensualidad vencida','mensualidades vencidas') + ' · ' + dinero(r.adeudo), r.atrasados ? 'k-error' : '', r.atrasados ? 'ver-atrasados' : '')
+     + tarjetaKpi('Por pagar (7 días)', numero(r.porPagar), 'Mensualidad próxima a vencer', r.porPagar ? 'k-alerta' : '', r.porPagar ? 'ver-por-pagar' : '')
      + tarjetaKpi('Vigencias por vencer', numero(r.porVencer), 'Contratos que terminan en 45 días', r.porVencer ? 'k-alerta' : '', 'ver-por-vencer')
      + '</div>';
 
@@ -1617,6 +1636,11 @@ function vistaClientes(){
     if(rr.atrasados) chips += '<span class="insignia i-error">' + rr.atrasados + ' ' + plural(rr.atrasados,'sitio atrasado','sitios atrasados') + '</span>';
     else if(rr.porPagar) chips += '<span class="insignia i-alerta">' + rr.porPagar + ' por pagar</span>';
     if(rr.porVencer) chips += '<span class="insignia i-info">' + rr.porVencer + ' por vencer</span>';
+    /* Sin estas tres, un cliente con todo pausado y otro que ya terminó de pagar
+       se veían igual: ambos "0 Forpass activos · $0". Son cosas opuestas. */
+    if(rr.cubiertos) chips += '<span class="insignia i-info">' + rr.cubiertos + ' ' + plural(rr.cubiertos,'contrato cubierto','contratos cubiertos') + '</span>';
+    if(rr.pausados) chips += '<span class="insignia i-neutro">' + rr.pausados + ' ' + plural(rr.pausados,'pausado','pausados') + '</span>';
+    if(rr.bajas) chips += '<span class="insignia i-neutro">' + rr.bajas + ' de baja</span>';
 
     return '<div class="tarjeta tarjeta-clic t-' + tono + '" data-cliente="' + esc(c.id) + '" style="--d:' + (i*45) + 'ms" tabindex="0" role="button">'
          +   '<div class="t-cabeza">'
@@ -1723,7 +1747,7 @@ function vistaCliente(){
   h += '<div class="kpis">'
      + tarjetaKpi('Forpass activos', numero(r.forpass), r.sitiosActivos + ' ' + plural(r.sitiosActivos,'sitio activo','sitios activos'), 'k-ok')
      + tarjetaKpi('Mensualidad total', dinero(r.mrr), pieMrr)
-     + tarjetaKpi('Mensualidades vencidas', numero(r.mensualidadesAtrasadas), r.adeudo ? dinero(r.adeudo) + ' por cobrar' : 'Nada pendiente', r.mensualidadesAtrasadas ? 'k-error' : '')
+     + tarjetaKpi('Mensualidades vencidas', numero(r.mensualidadesAtrasadas), r.adeudo ? dinero(r.adeudo) + ' por cobrar' : 'Nada pendiente', r.mensualidadesAtrasadas ? 'k-error' : '', r.mensualidadesAtrasadas ? 'ver-atrasados-cliente' : '')
      + tarjetaKpi('Vigencias por vencer', numero(r.porVencer), 'Terminan en 45 días', r.porVencer ? 'k-alerta' : '', 'ver-por-vencer-cliente')
      + '</div>';
 
@@ -2893,6 +2917,75 @@ function modalPorVencer(clienteId){
   cerrarModalActual = null;
 }
 
+/* Detalle de los indicadores de cobranza. tipo: 'atrasados' o 'porPagar'.
+   Antes solo "Vigencias por vencer" se podía abrir; los demás se veían igualitos
+   pero no respondían al clic, que es enseñar que se puede y luego no cumplir.
+   Los dos totales de arriba (Forpass activos y Mensualidad total) se quedan sin
+   abrir a propósito: son sumas, no tienen un detalle que valga una ventana. */
+function modalCobranza(clienteId, tipo){
+  const atraso = tipo === 'atrasados';
+  const lista = clienteId ? sitiosDe(clienteId) : datos.sitios;
+
+  const filas = lista
+    .map(s => ({ s, c: calcular(s), cli: clientePorId(s.clienteId) }))
+    .filter(x => atraso ? x.c.tono === 'error' : x.c.estatus === 'Por pagar')
+    /* Atrasados: el que más debe primero. Por pagar: el que vence antes. */
+    .sort((a,b) => atraso ? (b.c.adeudo - a.c.adeudo) : (a.c.diasRest - b.c.diasRest));
+
+  /* El importe del siguiente pago sale de montos[], nunca de multiplicar la
+     mensualidad: el mes 1 lleva onboarding y viáticos. Y el índice se busca en
+     s.pagos en vez de usar el conteo de pagados, por si alguien marcó los meses
+     fuera de orden. */
+  const montoSiguiente = (x) => {
+    const i = x.s.pagos.findIndex(p => !p);
+    return i >= 0 && x.c.montos[i] != null ? x.c.montos[i] : 0;
+  };
+
+  const total = filas.reduce((t,x)=> t + (atraso ? x.c.adeudo : montoSiguiente(x)), 0);
+
+  let cuerpo;
+  if(!filas.length){
+    cuerpo = '<div class="vacio-chico">' + (atraso
+      ? 'Ningún sitio tiene mensualidades vencidas. Todo al corriente.'
+      : 'Ningún sitio tiene una mensualidad que caiga en los próximos 7 días.') + '</div>';
+  }else{
+    cuerpo = '<div class="rodillo"><table class="tabla" style="min-width:600px"><thead><tr>'
+      + '<th>Cliente</th><th>Sitio</th><th>Zona</th>'
+      + (atraso
+          ? '<th style="text-align:center">Vencidas</th><th>Más vieja</th><th style="text-align:right">Adeudo</th>'
+          : '<th>Se paga el</th><th style="text-align:right">Faltan</th><th style="text-align:right">Importe</th>')
+      + '</tr></thead><tbody>'
+      + filas.map(x=>{
+          const d = x.c.diasRest;
+          const cola = atraso
+            ? '<td style="text-align:center"><span class="rol c-owner">' + x.c.atrasadas + '</span></td>'
+              + '<td>' + (x.c.proximo ? fmtFecha(x.c.proximo) : '—') + '</td>'
+              + '<td style="text-align:right; font-weight:700">' + dinero(x.c.adeudo) + '</td>'
+            : '<td>' + (x.c.proximo ? fmtFecha(x.c.proximo) : '—') + '</td>'
+              + '<td style="text-align:right"><span class="rol ' + (d <= 2 ? 'c-owner' : 'c-admin') + '">'
+                + (d < 0 ? 'hoy' : d + ' ' + plural(d,'día','días')) + '</span></td>'
+              + '<td style="text-align:right; font-weight:700">' + dinero(montoSiguiente(x)) + '</td>';
+          return '<tr>'
+            + '<td>' + esc(x.cli ? x.cli.nombre : '—') + '</td>'
+            + '<td><b>' + esc(x.s.nombre) + '</b></td>'
+            + '<td>' + (x.s.zona ? esc(x.s.zona) : '—') + '</td>'
+            + cola + '</tr>';
+        }).join('')
+      + '</tbody></table></div>'
+      + '<p class="pista" style="margin-top:10px">' + (atraso
+          ? '<b>' + dinero(total) + '</b> vencido en ' + filas.length + ' ' + plural(filas.length,'sitio','sitios')
+            + '. Los tres puntos del sitio abren su plan de pagos para registrar la OC.'
+          : '<b>' + dinero(total) + '</b> por cobrar en ' + filas.length + ' ' + plural(filas.length,'sitio','sitios')
+            + ' esta semana. Conviene pedir la OC desde ahora.') + '</p>';
+  }
+
+  const cli = clienteId ? clientePorId(clienteId) : null;
+  abrirModal((atraso ? 'Sitios atrasados' : 'Por pagar esta semana') + (cli ? ' · ' + cli.nombre : ''), cuerpo,
+    '<button type="button" class="btn btn-suave" data-modal="cancelar">Cerrar</button>');
+  $('modal').classList.add('ancho');
+  cerrarModalActual = null;
+}
+
 /* ----------------------- Modal: plan de pagos -----------------------------
    El desglose mes por mes: cuánto toca cada mensualidad, si ya se pagó, con
    qué OC y quién la capturó. Los extras van en el mes 1 y se ven ahí mismo,
@@ -3115,6 +3208,9 @@ $('vista').addEventListener('click', ev=>{
     else if(a === 'limpiar-filtros'){ estado.sitioFiltro = ''; estado.encargadoFiltro = ''; render(); }
     else if(a === 'ver-por-vencer') modalPorVencer(null);
     else if(a === 'ver-por-vencer-cliente') modalPorVencer(estado.clienteId);
+    else if(a === 'ver-atrasados') modalCobranza(null, 'atrasados');
+    else if(a === 'ver-por-pagar') modalCobranza(null, 'porPagar');
+    else if(a === 'ver-atrasados-cliente') modalCobranza(estado.clienteId, 'atrasados');
     else if(a === 'nueva-cuenta') modalCuenta();
     else if(a === 'refrescar-admin') montarAdmin(true);
     return;
