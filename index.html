@@ -47,7 +47,7 @@ body{font-family:'Manrope',system-ui,-apple-system,sans-serif; background:var(--
 /* ---------- Encabezado ---------- */
 header.app{background:#fff; border-bottom:1px solid var(--line); padding:14px 24px; display:flex; align-items:center; gap:16px; position:sticky; top:0; z-index:50;}
 header.app::before{content:""; position:absolute; inset:0 0 auto 0; height:3px; background:linear-gradient(90deg,var(--navy),var(--accent));}
-header.app img{height:22px;}
+header.app .logo-header{height:22px; width:auto; display:block;}
 header.app .bar{width:4px; height:26px; border-radius:2px; background:linear-gradient(180deg,var(--navy),var(--accent));}
 header.app h1{font-size:15px; font-weight:600; color:var(--navy);}
 header.app .sub{font-size:12px; color:var(--gray); margin-left:auto;}
@@ -547,8 +547,30 @@ table.tabla .yo{font-size:10.5px; color:var(--accent); font-weight:600;}
 </head>
 <body>
 
+<!-- Obra del logo Forguard, una sola vez en todo el archivo. La usan el
+     encabezado y la pantalla de carga por medio de <use>, así no hay copias que
+     se puedan desincronizar. Va oculta con width/height 0 en vez de
+     display:none, porque con display:none algunos navegadores no resuelven las
+     referencias de <use>. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <g id="fgArte">
+<g><path d="M60.71,2.53L18.42,31.04l-14.69,9.9c-.83.56-1.33,1.49-1.33,2.49v32.08c0,4.3,2.21,6.54,4.11,7.67l10.84,7.42c.33.22.69.37,1.06.45.21.05.42.08.64.08.6,0,1.21-.18,1.72-.54l24.95-17.44c.13-.09.21-.24.21-.4v-6.16c0-.39-.44-.62-.76-.39l-26.14,18.28-.62-.42-8.59-5.88c-.06-.04-.13-.09-.2-.12-.63-.36-1.21-.92-1.21-2.52v-30.48l2.58-1.74,2.41-1.63,5-3.37L61.24,9.43c.13-.09.21-.24.21-.4V2.93c0-.38-.43-.61-.75-.4Z"/></g>
+        <g><path d="M19.18,56l42.07-28.53c.13-.09.21-.24.21-.4v-6.1c0-.39-.43-.62-.76-.4l-42.07,28.53c-.13.09-.21.24-.21.4v6.1c0,.39.43.62.76.4Z"/></g>
+        <g><path d="M56.68,39.93l-27.16,19.4h0l-10.86,7.76c-.15.11-.24.28-.24.47v5.96c0,.47.53.75.92.47l10.74-7.67h0s25.18-17.98,25.18-17.98c.07-.05.17,0,.17.09v27.09c0,1.04-.51,2.02-1.32,2.59l-26.6,18.43c-.33.23-.33.71,0,.94l4.1,2.8c.2.13.46.13.65,0l25.28-17.24c.62-.44,1.17-.95,1.66-1.51,1.42-1.66,2.24-3.78,2.24-6.01v-37.41c0-.67-.76-1.06-1.3-.67l-3.45,2.49Z"/></g>
+        <g><path d="M111.21,48.96h-16.82v15.73h-11.25V22.34h29.89v9.68h-18.63v7.26h16.82v9.68Z"/><path d="M115.32,51.86v-7.02c0-1.74.25-3.36.75-4.87.5-1.51,1.31-2.94,2.42-4.29s2.73-2.42,4.87-3.21c2.14-.79,4.68-1.18,7.62-1.18s5.48.39,7.62,1.18c2.14.79,3.77,1.86,4.9,3.21,1.13,1.35,1.94,2.77,2.42,4.27.48,1.49.73,3.13.73,4.9v7.02c0,1.77-.24,3.41-.73,4.9-.48,1.49-1.29,2.91-2.42,4.27-1.13,1.35-2.76,2.42-4.9,3.21-2.14.79-4.68,1.18-7.62,1.18s-5.49-.39-7.62-1.18c-2.14-.79-3.76-1.86-4.87-3.21s-1.92-2.78-2.42-4.29c-.5-1.51-.75-3.14-.75-4.87ZM136.01,51.98v-7.26c0-3.19-1.67-4.78-5.02-4.78s-5.02,1.59-5.02,4.78v7.26c0,3.19,1.67,4.78,5.02,4.78s5.02-1.59,5.02-4.78Z"/><path d="M161.42,64.69h-10.65v-32.67h9.44l.66,4.72c2.02-3.47,5.83-5.2,11.44-5.2v9.98h-2c-3.11,0-5.37.59-6.78,1.78-1.41,1.19-2.12,3.06-2.12,5.59v15.79Z"/><path d="M189.49,76.18c-5.08,0-8.82-1.01-11.22-3.03-2.4-2.02-3.6-4.66-3.6-7.92v-.18h9.98v.18c0,1.86,1.58,2.78,4.72,2.78s4.78-1.37,4.78-4.11v-5.63c-2.02,2.62-4.9,3.93-8.65,3.93-3.55,0-6.4-1.13-8.56-3.39-2.16-2.26-3.24-5.45-3.24-9.56v-5.02c0-4.11,1.08-7.3,3.24-9.56,2.16-2.26,5.01-3.39,8.56-3.39,1.94,0,3.74.39,5.41,1.18,1.68.79,2.98,1.95,3.9,3.48l.55-3.93h9.44v30.86c0,4.19-1.26,7.46-3.78,9.8-2.52,2.34-6.36,3.51-11.53,3.51ZM189.01,53.07c3.43,0,5.14-1.92,5.14-5.75v-1.21c0-3.83-1.72-5.75-5.14-5.75-1.69,0-2.89.49-3.6,1.48-.71.99-1.06,2.41-1.06,4.27v1.21c0,1.86.35,3.28,1.06,4.27.71.99,1.91,1.48,3.6,1.48Z"/><path d="M230.75,64.69l-.6-4.11c-.89,1.58-2.16,2.78-3.81,3.6-1.65.83-3.43,1.24-5.32,1.24-3.43,0-6.19-1.01-8.29-3.02-2.1-2.02-3.15-4.88-3.15-8.59v-21.78h10.65v19.06c0,1.66.31,2.89.94,3.69.62.81,1.74,1.21,3.36,1.21,1.89,0,3.21-.56,3.93-1.69s1.09-2.84,1.09-5.14v-17.12h10.65v32.67h-9.44Z"/><path d="M263.91,64.69l-.48-3.27c-1.61,2.66-4.56,3.99-8.83,3.99-3.79,0-6.56-.89-8.32-2.66-1.75-1.77-2.63-4.19-2.63-7.26,0-6.65,3.89-9.98,11.68-9.98h7.38v-1.94c0-2.74-1.33-4.11-3.99-4.11s-4.05.93-4.05,2.78v.48h-9.98v-.48c0-3.23,1.19-5.86,3.57-7.9,2.38-2.04,5.97-3.06,10.77-3.06,9.56,0,14.34,4.24,14.34,12.71v20.69h-9.44ZM257.62,57.37c1.53,0,2.76-.4,3.69-1.21.93-.81,1.39-1.91,1.39-3.33v-.3h-5.69c-1.77,0-2.66.85-2.66,2.54,0,1.53,1.09,2.3,3.27,2.3Z"/><path d="M288.78,64.69h-10.65v-32.67h9.44l.66,4.72c2.02-3.47,5.83-5.2,11.44-5.2v9.98h-2c-3.11,0-5.37.59-6.78,1.78-1.41,1.19-2.12,3.06-2.12,5.59v15.79Z"/><path d="M322.66,64.69l-.61-4.17c-.89,1.57-2.17,2.78-3.84,3.63-1.68.84-3.48,1.27-5.41,1.27-3.55,0-6.4-1.13-8.56-3.39-2.16-2.26-3.24-5.45-3.24-9.56v-8.23c0-4.11,1.08-7.3,3.24-9.56,2.16-2.26,5.01-3.39,8.56-3.39,3.79,0,6.68,1.25,8.65,3.75v-14.52h10.65v44.16h-9.44ZM316.3,55.98c1.94,0,3.28-.56,4.02-1.69.75-1.13,1.12-2.84,1.12-5.14v-1.63c0-2.3-.37-4.01-1.12-5.14-.75-1.13-2.09-1.69-4.02-1.69-1.77,0-2.99.51-3.66,1.54-.66,1.03-1,2.59-1,4.69v2.84c0,2.1.33,3.66,1,4.69.66,1.03,1.88,1.54,3.66,1.54Z"/></g>
+    </g>
+  </defs>
+</svg>
+
 <header class="app">
-  <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAmMAAADDCAYAAADOSxa6AAAVIklEQVR4nO3dXYikV53H8W+WtDetGxBbGgJJzSZIljATZZcQ0wENjhF0IIIJMj1BEcyFmomwuViMYCfCGrwYUCcagguCkGkkgg4kgrEXDc6MIbis9hAIS9h0FsI2O0EI2ld94V6cqu2aTnd1ddU5z/889Xw/MEzPTPd5ztTz9nvO23PNTbc9gCRJkmL8TXQFJEmSuswwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFMgwJkmSFOja6ApIkqTOWgC+W6DcrwJXCpRbhGFMkiRFmQdOFij3UVoUxuymlCRJCmQYkyRJCmQY298y8NcO/epl+dQkSdKhGMYkSZICGcYkSZICGcYkSZICGcYkSZICGcYkSZICGcYkSZICGcYkSZICGcYkSZICGcYkSZICGcYkSZICGcYkSZICGcYkSZICGcYkSZICGcYkSZICGcYkSZICGcYkSZICXRtdAalvAZgf8e8bDdVDh9fb9ecrwFZAPdRO86Tzfz9vAtsN1UXj6+368xbp3NcEDGNqUg+4FfgH4Jb+18cOWcY68ArwKvDv/a83stWwfeaA6/u/bgTeC9w59O/fBy5m2lYPONEv/+QY378G/Bb4GXA5Ux3UTgvAB0jH6AkmO/cBVoG3gJdIx9SrdDOoNXneHwU+wvjn/TrwIvAT4GW6uX8O7Zqbbnsgug61WgaeKVT2CvBaobIndZ78rRnzwEeBU4x3Ek9jDfgO6eQv/XS2BHwlU1mHvWjOAbcDHwM+w8E3tFPAucmqBqQA9k/A/cDiFOVsAk8xfjB7iKtvLtMY5zNeAL6baXvDvkqe4zHnMTdsuUCZAz3gc8CXmO7YOcga8CPgWcre+Lt03i8BnwVOT1HGwODa/AJ7758e8HqG7ex2hBY9qNsyFuPHtOggmcAS8BhwvMFtHh/a3jrwZco9ld1IvnD5FuNdlHukG9vjmbY7zva+Rb7/5yKp7o+Tgtl9jP5/P8hkLSd7ee6AbUF6cCjxwPAoecJYzmNuWO4wNg/cC/wz+fbfQQbn/jOkB91S11fP+8kM9s84531nOYBfucyRLuz/A1yg2SC227F+Hf6b1MIyF1iXg7zvgH/vkZ5wX6eZC/Ic8L3+9kq1Zi6S9s859h8n2NSNXHnMAd8A/kIKRVH773HSsftHUvdarWo77xeGttfEeT9qjGAnGcaUwxLwe9JFuGR3xGEtAmdJoexTwXXZz937/H0ToWi3BdJ+zNE1MY6TpO763ftm1EQO1eco6RxrqvVmHMdILeS1Poztd05HnffrDW7vJPC/pPuG+gxjmsbgwnGBulsyFkldVeeo78K8V3hdAH5Bc6EI0g11neb342DfPDT0dz41t8Pg/F+nroewYWdJDxi94HqMI+K8XyIFo4j9dwED2f8zjGlSEReOaZ0kPcHXdrPvDX09eEptspt3ifgb6ll2Lsy3BtZD45mjPef/MVJLU203/t7Q1xHn/TIpEEW6QBoT13mGMU0i4sKRyyKp7jUFsvf0fx98rk2GogXiL8gDF0j1uS66IhppEMTadv7/FM/7gaOUWy3gsGrq3g5jGNNhzZGmKtfaLTGO2gLZUdLn2vQFebAva7JOmomnerUxiIHn/cA8aZkJVcQwpsM6Q93jw8a1yHTr8OR0M+lzbTrg1rgvF6mvTtrxEO0MYgOD876GsaNR5/3PA7apA7jOmA5jiXaMERnXcdLN5cngekQ008/avlR5C6SxfW13nLSIcfTDWMR5v0y7w/TMsmVM45onjbmYNWdpx0yr3H4QXQG1Tok3FEQ5Qx2tY007E10B7c0wpnH9kNlt2j5Pty7MPewK1OEs0dw6VE1YJLWOdckSs3sNbz3DmMbRY7YuxLsdA+6JrkSDvhVdAbXOY9EVKKBrrWO2hlfMMKZxdGEdmK4ElAVmO1grv3lmc5zRIt15CFvC1vCqOYA/Rg2LWm4x3guM5+nGOjDHSBesWX+J7cejK6DW+Wh0BQr6BPB8dCUa8KHoCmg0w1iM56IrAKySZtYc5AulK1KRrzD7YeyO6AqodT5RsOxN4CnSO0oBLpEeVq8DTpDe3VpynNP9wMMFy6/FvdEV0GiGMR3k6w1sYxP4NfAq6aJ8uf/3R4H3AndS/qIMqfvuQVKr4azq2qBlTa/EEiibwH3Ay8D2rn/b6P8+WA/sa5RrnV8kjYndGP1trTbHbHYzzxTDmEZZoHwAOg08zTsvyLATyp4kXVDup/wrPP5uaLuzpon9CWlF8ReBl0if5Z/7f389cCPNtHioXpukYQHjDJPYBr4J/Ix0XJVwJ7Mdxm5peHvrwCtDf17AMHggw5hG+UDBsteATzN+K9Q26Un5PGmZjVKD0D/C7Iax2xvYxgrwBHuH6w1SN/A50ljEkvtReZR4ddA9jBfEhl0mDa0ocbycIH4B2JKONrCNQUvnH9j/mn6U1PPgYtN7MIxplI8VLPvTTNYduAV8nnItK/cSvyL/OAZdu5eAP434vktDX5d+AfcJxh8MvUUas/gM8K/YSlar+QJlvjrhzz2I4X2S8/5E0RqllrDjHBywL5PG5/0EuFC4Tq1jGNMonylU7immG5e1TXoKK3FC19ycfpbUmvRfTPb5lRy8f4rJZqU9T7l9qfqss3er6Ti2KNM6dpLxJjNFmfa8L2kN+CSH26cXgffT/AvSq2YY0ygl1qVZJ0+XwEXShaBEeJqnnoveJvBF4AUmv4kNvG/66uzr/BQ/e5F0XLgOUn0GASiXSwd/y0hvZalF/XKe93dPX519LTNZ/a4AHwZez1ud9jKMqWkvZizrR5QJYwvUEcbOkmaS1VCXUVaYvo734oW5Rleoq9XoJWZ/zFHu875U69Mahx/7N2yDcuMAW8cV+LWfEgN3IV1Mc3k7Y1m1WSGNr6g9iEFaJ2paG6SLu9RlbTrvv5OhjCcylDETDGPaT4mBuwBvZCzrlYO/pZVWSNP5cyv15odpno6H/ShTOVIblTrvS3khQxmTTuaYOYYxNe3NSssadmehcsexSbmnxRJjsnK2Zs3qkiLSQUqe9yVMMxFj2DZ5xyS2lmFMbZbjYlCbR2jX/ytXqxjsLA4rdU3bzvucvRLTTuqYCQ7gl+qxCTwbXQkpgx5Xv2NymAO2r9bG8z7n+5VHrZfWGYYxqR7P0q6nY8j7VLuRsSw1awH4LGlWbM1r9dWojed9TraMYRiTavLL6ApMwKfa7pojvWLrMQxg02jjea/MDGNSPV6OroA0pqOk2XSuoD49z3s5gF+qSM7B8E3J+d67UmvbKZ854Hv4Kpuc2njeKzNbxiTVotTadspjDvgFdklK2dkyJkk6iEFMKsiWsRgniF89vg2v2+iSti58mPMlxJGL7Wo0g5hUkGEsxis4jV/NK/FS3kVS92KOcH9HhjKU3zIGMakouyklTeveDGXMA6czlKO85oAz0ZWQZp1hTNK0ctys2/Revgg5Z60exv04a1JlvSe6AjUwjEma1iKwNMXP97BVrFa2imkvN2cs62jGslrLMCZ1R8nXjvyUydYJmwd+mLkusyjifY49bBXT3m7JWJZjRTGMqd1KrUv1dqFyo5V8ddEiaSHQw7SQfQp4jdkeHH5rhjKi1l+L6hpV/XLOov77jGW1lrMp1bTryTeTtNSK7dHLjpRS+oW8i8AF4CzpfXu7Zw3Pk/bZrcApYlp7mnZdhjI+mKGMSeSYmLGfTeApUhi/DPx5zJ/7HPB4qUppbLlmUc8z2w9jYzOMaT+l1iG7EbiYqawcrQ5dstHQdk5z9RiwdeBYQ9uuTY6xNZ/NUMYkSt0kV4EHmewa81rmumhyXwCenLKMj2aox0ywm1L7KfW+tJxdH0cyltUVawHb7GoQg9SKM003Y9SSH6W6RjeBzzP5w55dp/X4eoYyvpWhjJlgGFPT7iatXZTDg5nK2e3NQuXW4Hx0BTpomu6+qCU/Sg0BeATYnuLnc45V6or1QuUuMt1MyE/R7Qe1qxjGNEqJVpRF4GsZylmm3Ik8zc2idi9GV6CDznD4lqY54HvM3pIfl6f42Xmc3TmJkmNgXyDNuj2sh4Dn8lal3QxjGuW3hcp9nMlO4IEF4Jk8VXmHtr4jclyXKfek3GaluuUhBYjXSC0B45gnvQsyMoiVWojzb6f42Z/nqkTHvFWw7EXgdcY/tueAc6RJPhpiGNMo/1aw7N8x2UKhPcqOe+rC09q3oytQoVITVgYWScfWOVKr7lF2Hkjm+l8vAd+gjuU+pglNo/xgwp97iPjPpK1eamAbzwG/IoWyHjstwYNj+yjp2P493ZhFfWjOptQofyhY9mAZhFXgUQ6e6TdYHLT0iVx6+YcaPEvqOrPLp3knacfNqNS4yWOk0HmYGdXL2JIyjaauaccxME/MljGNskX5Lq2TpGbuv5JaDQYtB8ukMTPn+v/2F5q5ic3y4P2BbeBfoitRoYiZpl30GOONoVsC/ki5IQldsRFdAR3MljEd5Ns0dzE8uev3pq0w24P3hz1Nmppu69iO8/hkP1Cy2/Y46eHqLKkL7Q3SQ9CtpEVyT5DGhbov8lmlHS2ynWUY00G61KX14+gKNGgb+DCpVVKJM013lJzQMLB7cWCVcwnDWNXsptRBtkmvLZl1q3SvOX+D9FoiJa9GV6AydtvOji5MTGo1w5jGcSa6Ag34fnQFgpyjnuU87gre/jYGkGEuEDw7NqjnPNceDGMaxxaz3Z2wRr73ZbbR50nj5SKtUMc+eCy6AhWx23a2RL3NQWMwjGlcTzObi4VukmZudtk28E3iAvdKf/s1uMhsHueTsNt2trjgc8UMYxrXNtO9Y69WX6SZwcpt8CTNdhVukmbO1RLEBr4cXYFKbBPfYqq8PLYrZRjTYWwwW92Vq8Dz0ZWozEXg3ZS/CZ8FbqbOz7/W1rHNgG12Ybxol1ykzgV0I47tqhjGdFhPMhuDnNdIY6X0Tluk1qoSoWwNOAI8TPlXEE3jOHXdIDaBewK2u4WtY7PmEeq7ht9DfXVqlGFMk/gk7T5x1kj/h64s8DqpQSh7F6n7coXJAsoqqTvy3cDHaccSIleICT/7uYc05ifCE9TVUrhOXfVpm23SONlaHjZOkY7tTg8XcdFXTWKbFGbO0L5uS4PY4W2TujcuksLZAul1NoMV0wHuAP4T+FP/z4P34b1Jez/ry6QbRfTreE6zE8TWaH5l+u3+NteJX/x5s1+X75Lec6nJXAHuA35K7D5dJS2vA2kttM4uTGsY06S2SV1Nv6Q9CwqeJnWzajpX+r82hv7u3N7f2nrngLeJO8ZXuPqYjWo9GNy8LwRtf+Cefl1cUX56F0mBNipkr3L1UJG3A+pQDbspNa3nSd1PNS8ouEoap2QQ66Zpu/eeJx0/TXbr7DfTNPLB5yLNfw7D7mJnX/oarzyukCbSND3s5BSpq3S41fyVhutQFcOYctginVhHqCuUrZEu4Mu0Y5ySyvhzhjI2gBto5vheZf+ZptGtBxukz6HJm/cq8H6uXhS40zfuzLZIQzdOUT5or5H25V4t6W8W3nbVDGPKaYMUfAaz8CKeoDf72z5CGixew6ruGk8vugIHGAx8LvXQsc5Oi8F+M01rCCHbpHPrLsqG00Hr4DLv7J7t9GDvArZJAelmysyeHRzbn2T/fdfWsaVZXHPTbQ9E16FWPeDOQmWfp+5p/Tn1SBfUeyk38HiN9Jm+SDMzznrkPzbewOC4RJkxSUco0zLaAz4HfIbJB5NvAk8BP2a8Os6Td/HlHGP9eqTP4UtMP/ZoE3gW+AnwMqNv0DnfnDHO59CjzD2hxvGWg+PsC0x+3R4c2z9j/OvyEnDjhNvbrVX3WcOYmtZjZxbeHcD7+n8+6Ga2Cfy6//VzpO6aV7D7cRJ/zVxerrCzTJmZi++i/FP3PPBB4GPALf2/u5urw8kaqVXgVeA10g0qarmKUgafw4dIwWWB0TfzwWfyHLP5ecyCOeB2rj6297pmD67Rl4D/4OAwrSGGMal7/kjeZQFOkGcl/V9RpvX0mgJlSlI2jhmTuif3uKNPZChjmTJBrKYJJZK0J8OYpGmdJo31mNQC5RZWbcsaeJI6zDAmdU+JgHKB1Lo1d4ifmev/TMlX2/yqYNmSlIUr8EvdU2qtqmf6v86SZsMN1g0avBJp+DVKR4CvU3bl701cAkFSCxjGpO75TeHyT1PHO0ufja6AJI3Dbkqpe7Zo/vUnEX4YXQFJGodhTOqm70RXoLBVXLNKUksYxqRu+k10BQp7NLoCkjQuw5jUTVvUMa6rhFV8M4OkFjGMSd31NDEvcy/NVjFJrWIYk7prG7gvuhKZ3YWtYpJaxjAmddtFYCW6EpmskP4/ktQqhjFJ36T9gews6f8hSa1jGJME7Q5kq8Aj0ZWQpEkZxiQNPEFqYWqTU6T3W25HV0SSJmUYkzSwDTwMHKP+WZbrpPdbnouuiCRNyzAmabfLwA3Uuw7ZCvCPOGtS0owwjEnayzbwJPB+6hhLtkmqx7tJ49vslpQ0Mwxjkka5Qgo/7yKt4dX0mLKz/e3e0K/HVsPbl6Tirrnptgei6yCpfXrAncAJYAE4nqHMdeBF4CXgEnZDSuqIa6MrIKmVNvq/hgfQLwDz/a9vBa47oIxL/d+3SC1wktRJhjFJuVxhJ1RtBNZDklrFMWOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmBDGOSJEmB/g8Lhp6gYQXNSgAAAABJRU5ErkJggg==" alt="Forguard">
+  <!-- Antes era un PNG que traía ÚNICAMENTE la palabra "Forguard", sin el
+       escudo. Ahora usa la misma obra que la animación, así el logo que vuela
+       al entrar aterriza encima de algo idéntico y del mismo alto. -->
+  <svg class="logo-header" id="logoHeader" viewBox="0 0 335.42 102.75" role="img" aria-label="Forguard">
+    <title>Forguard</title>
+    <use href="#fgArte" fill="var(--navy)"/>
+  </svg>
   <div class="bar"></div>
   <h1>Control de Forpass</h1>
   <div class="nube-zona">
@@ -648,21 +670,15 @@ table.tabla .yo{font-size:10.5px; color:var(--accent); font-weight:600;}
 <div class="cargando" id="cargando" role="status" aria-live="polite">
   <svg class="c-logo" id="logoCarga" viewBox="0 0 335.42 102.75" aria-label="Cargando">
     <defs>
-      <g id="fgArtCarga">
-        <g><path d="M60.71,2.53L18.42,31.04l-14.69,9.9c-.83.56-1.33,1.49-1.33,2.49v32.08c0,4.3,2.21,6.54,4.11,7.67l10.84,7.42c.33.22.69.37,1.06.45.21.05.42.08.64.08.6,0,1.21-.18,1.72-.54l24.95-17.44c.13-.09.21-.24.21-.4v-6.16c0-.39-.44-.62-.76-.39l-26.14,18.28-.62-.42-8.59-5.88c-.06-.04-.13-.09-.2-.12-.63-.36-1.21-.92-1.21-2.52v-30.48l2.58-1.74,2.41-1.63,5-3.37L61.24,9.43c.13-.09.21-.24.21-.4V2.93c0-.38-.43-.61-.75-.4Z"/></g>
-        <g><path d="M19.18,56l42.07-28.53c.13-.09.21-.24.21-.4v-6.1c0-.39-.43-.62-.76-.4l-42.07,28.53c-.13.09-.21.24-.21.4v6.1c0,.39.43.62.76.4Z"/></g>
-        <g><path d="M56.68,39.93l-27.16,19.4h0l-10.86,7.76c-.15.11-.24.28-.24.47v5.96c0,.47.53.75.92.47l10.74-7.67h0s25.18-17.98,25.18-17.98c.07-.05.17,0,.17.09v27.09c0,1.04-.51,2.02-1.32,2.59l-26.6,18.43c-.33.23-.33.71,0,.94l4.1,2.8c.2.13.46.13.65,0l25.28-17.24c.62-.44,1.17-.95,1.66-1.51,1.42-1.66,2.24-3.78,2.24-6.01v-37.41c0-.67-.76-1.06-1.3-.67l-3.45,2.49Z"/></g>
-        <g><path d="M111.21,48.96h-16.82v15.73h-11.25V22.34h29.89v9.68h-18.63v7.26h16.82v9.68Z"/><path d="M115.32,51.86v-7.02c0-1.74.25-3.36.75-4.87.5-1.51,1.31-2.94,2.42-4.29s2.73-2.42,4.87-3.21c2.14-.79,4.68-1.18,7.62-1.18s5.48.39,7.62,1.18c2.14.79,3.77,1.86,4.9,3.21,1.13,1.35,1.94,2.77,2.42,4.27.48,1.49.73,3.13.73,4.9v7.02c0,1.77-.24,3.41-.73,4.9-.48,1.49-1.29,2.91-2.42,4.27-1.13,1.35-2.76,2.42-4.9,3.21-2.14.79-4.68,1.18-7.62,1.18s-5.49-.39-7.62-1.18c-2.14-.79-3.76-1.86-4.87-3.21s-1.92-2.78-2.42-4.29c-.5-1.51-.75-3.14-.75-4.87ZM136.01,51.98v-7.26c0-3.19-1.67-4.78-5.02-4.78s-5.02,1.59-5.02,4.78v7.26c0,3.19,1.67,4.78,5.02,4.78s5.02-1.59,5.02-4.78Z"/><path d="M161.42,64.69h-10.65v-32.67h9.44l.66,4.72c2.02-3.47,5.83-5.2,11.44-5.2v9.98h-2c-3.11,0-5.37.59-6.78,1.78-1.41,1.19-2.12,3.06-2.12,5.59v15.79Z"/><path d="M189.49,76.18c-5.08,0-8.82-1.01-11.22-3.03-2.4-2.02-3.6-4.66-3.6-7.92v-.18h9.98v.18c0,1.86,1.58,2.78,4.72,2.78s4.78-1.37,4.78-4.11v-5.63c-2.02,2.62-4.9,3.93-8.65,3.93-3.55,0-6.4-1.13-8.56-3.39-2.16-2.26-3.24-5.45-3.24-9.56v-5.02c0-4.11,1.08-7.3,3.24-9.56,2.16-2.26,5.01-3.39,8.56-3.39,1.94,0,3.74.39,5.41,1.18,1.68.79,2.98,1.95,3.9,3.48l.55-3.93h9.44v30.86c0,4.19-1.26,7.46-3.78,9.8-2.52,2.34-6.36,3.51-11.53,3.51ZM189.01,53.07c3.43,0,5.14-1.92,5.14-5.75v-1.21c0-3.83-1.72-5.75-5.14-5.75-1.69,0-2.89.49-3.6,1.48-.71.99-1.06,2.41-1.06,4.27v1.21c0,1.86.35,3.28,1.06,4.27.71.99,1.91,1.48,3.6,1.48Z"/><path d="M230.75,64.69l-.6-4.11c-.89,1.58-2.16,2.78-3.81,3.6-1.65.83-3.43,1.24-5.32,1.24-3.43,0-6.19-1.01-8.29-3.02-2.1-2.02-3.15-4.88-3.15-8.59v-21.78h10.65v19.06c0,1.66.31,2.89.94,3.69.62.81,1.74,1.21,3.36,1.21,1.89,0,3.21-.56,3.93-1.69s1.09-2.84,1.09-5.14v-17.12h10.65v32.67h-9.44Z"/><path d="M263.91,64.69l-.48-3.27c-1.61,2.66-4.56,3.99-8.83,3.99-3.79,0-6.56-.89-8.32-2.66-1.75-1.77-2.63-4.19-2.63-7.26,0-6.65,3.89-9.98,11.68-9.98h7.38v-1.94c0-2.74-1.33-4.11-3.99-4.11s-4.05.93-4.05,2.78v.48h-9.98v-.48c0-3.23,1.19-5.86,3.57-7.9,2.38-2.04,5.97-3.06,10.77-3.06,9.56,0,14.34,4.24,14.34,12.71v20.69h-9.44ZM257.62,57.37c1.53,0,2.76-.4,3.69-1.21.93-.81,1.39-1.91,1.39-3.33v-.3h-5.69c-1.77,0-2.66.85-2.66,2.54,0,1.53,1.09,2.3,3.27,2.3Z"/><path d="M288.78,64.69h-10.65v-32.67h9.44l.66,4.72c2.02-3.47,5.83-5.2,11.44-5.2v9.98h-2c-3.11,0-5.37.59-6.78,1.78-1.41,1.19-2.12,3.06-2.12,5.59v15.79Z"/><path d="M322.66,64.69l-.61-4.17c-.89,1.57-2.17,2.78-3.84,3.63-1.68.84-3.48,1.27-5.41,1.27-3.55,0-6.4-1.13-8.56-3.39-2.16-2.26-3.24-5.45-3.24-9.56v-8.23c0-4.11,1.08-7.3,3.24-9.56,2.16-2.26,5.01-3.39,8.56-3.39,3.79,0,6.68,1.25,8.65,3.75v-14.52h10.65v44.16h-9.44ZM316.3,55.98c1.94,0,3.28-.56,4.02-1.69.75-1.13,1.12-2.84,1.12-5.14v-1.63c0-2.3-.37-4.01-1.12-5.14-.75-1.13-2.09-1.69-4.02-1.69-1.77,0-2.99.51-3.66,1.54-.66,1.03-1,2.59-1,4.69v2.84c0,2.1.33,3.66,1,4.69.66,1.03,1.88,1.54,3.66,1.54Z"/></g>
-      </g>
       <clipPath id="fgClipCarga">
         <rect id="fgRectCarga" x="0" y="0" height="102.75" width="0">
-          <animate attributeName="width" dur="3s" values="0;335.42;335.42" keyTimes="0;0.7;1"
+          <animate attributeName="width" dur="3.7s" values="0;335.42;335.42" keyTimes="0;0.7;1"
                    calcMode="spline" keySplines="0.5 0 0.2 1;0 0 1 1" repeatCount="indefinite"/>
         </rect>
       </clipPath>
     </defs>
-    <use href="#fgArtCarga" fill="#dbe0e8"/>
-    <use href="#fgArtCarga" fill="var(--navy)" clip-path="url(#fgClipCarga)"/>
+    <use href="#fgArte" fill="#dbe0e8"/>
+    <use href="#fgArte" fill="var(--navy)" clip-path="url(#fgClipCarga)"/>
   </svg>
   <p class="c-texto">Preparando tu tablero…</p>
 </div>
@@ -3622,7 +3638,7 @@ function mostrarCargando(){
      que vuela) con márgenes internos distintos, así que nunca calzan exacto.
      Escondido, el que vuela ocupa su lugar y al final se hace el cambio cuando ya
      están del mismo tamaño y en la misma posición: no se nota. */
-  const logoHeader = document.querySelector('header.app img');
+  const logoHeader = $('logoHeader');
   if(logoHeader) logoHeader.style.visibility = 'hidden';
 
   /* Deja el llenado en cero y le devuelve su <animate> si una carga anterior lo
@@ -3633,7 +3649,7 @@ function mostrarCargando(){
     if(!rect.querySelector('animate')){
       const a = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
       a.setAttribute('attributeName', 'width');
-      a.setAttribute('dur', '3s');
+      a.setAttribute('dur', '3.7s');
       a.setAttribute('values', '0;' + ANCHO_LOGO_SVG + ';' + ANCHO_LOGO_SVG);
       a.setAttribute('keyTimes', '0;0.7;1');
       a.setAttribute('calcMode', 'spline');
@@ -3693,7 +3709,7 @@ function completarLlenado(svg){
 /* Manda el logo a encogerse encima del logo del encabezado. El destino se mide
    en vivo porque depende del ancho de la ventana; no se puede dejar fijo. */
 function volarAlEncabezado(c, svg){
-  const meta = document.querySelector('header.app img');
+  const meta = $('logoHeader');
   if(!meta || menosMovimiento()){ c.classList.add('volando'); return; }
   const d = meta.getBoundingClientRect();
   const o = svg.getBoundingClientRect();
@@ -3721,7 +3737,7 @@ async function ocultarCargando(desde){
 
   /* El cambio de estafeta: se devuelve el logo del encabezado justo antes de
      quitar el que voló, cuando los dos están del mismo tamaño y encimados. */
-  const logoHeader = document.querySelector('header.app img');
+  const logoHeader = $('logoHeader');
   if(logoHeader) logoHeader.style.visibility = '';
 
   c.classList.remove('abierto', 'volando');
