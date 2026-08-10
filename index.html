@@ -138,6 +138,11 @@ button.kpi{font-family:inherit; text-align:left; width:100%; cursor:pointer;}
   box-shadow:var(--sombra-suave);
   animation:aparece .3s cubic-bezier(.22,1,.36,1) both; animation-delay:var(--d,0ms);
 }
+/* La entrada escalonada solo debe correr cuando la reja se ve por primera vez.
+   render() rehace todo el HTML, así que sin esto la animación se reinicia en cada
+   redibujado —y al arrancar hay varios— y las tarjetas se ven desaparecer y
+   reaparecer. Con la clase puesta el cambio es instantáneo. */
+.grid.sin-entrada .tarjeta{animation:none;}
 /* Las tarjetas de sitio no recortan, para que la etiqueta del encargado pueda
    asomarse por fuera del borde. La barra de color de arriba lleva su propio
    redondeo, que antes lo daba el overflow:hidden. */
@@ -1775,7 +1780,7 @@ function vistaClientes(){
     return h;
   }
 
-  h += '<div class="grid">' + lista.map((c,i)=>{
+  h += '<div class="grid' + (animarTarjetas ? '' : ' sin-entrada') + '">' + lista.map((c,i)=>{
     const ss = sitiosDe(c.id);
     const rr = resumir(ss);
     const tono = rr.atrasados ? 'error' : (rr.porPagar ? 'alerta' : (rr.forpass ? 'ok' : 'neutro'));
@@ -1915,7 +1920,7 @@ function vistaCliente(){
     return peso(ca.tono) - peso(cb.tono) || a.nombre.localeCompare(b.nombre, 'es');
   });
 
-  h += '<div class="grid grid-sitios">' + ordenados.map((s,i)=> tarjetaSitio(s, i)).join('') + '</div>';
+  h += '<div class="grid grid-sitios' + (animarTarjetas ? '' : ' sin-entrada') + '">' + ordenados.map((s,i)=> tarjetaSitio(s, i)).join('') + '</div>';
   return h;
 }
 
@@ -2049,6 +2054,13 @@ function avisoLocal(){
        + 'y ábrelo allá con <b>Restaurar</b>. El <b>Excel</b> es para reportar y respaldar en tu formato de siempre.</div></div>';
 }
 
+/* La entrada escalonada de las tarjetas corre al llegar a una lista, no en cada
+   redibujado. render() rehace el HTML completo, y al arrancar corre varias veces
+   —copia local, datos del servidor, avisos—; sin esta bandera la animación se
+   reiniciaba en cada una y se veía un parpadeo. Se prende al cambiar de vista y
+   se apaga en cuanto se dibujó. */
+let animarTarjetas = true;
+
 function render(){
   pintarEstadoNube();
   pintarCabecera();
@@ -2067,6 +2079,9 @@ function render(){
   const fe = $('filtroEncargado');
   if(fe) fe.addEventListener('change', ()=>{ estado.encargadoFiltro = fe.value; render(); });
   if(estado.vista === 'admin') montarAdmin();
+  /* Ya se dibujó: los siguientes redibujados de esta misma lista son instantáneos.
+     Solo cambiar de vista vuelve a prender la animación. */
+  animarTarjetas = false;
 }
 
 function pintarCabecera(){
@@ -2093,6 +2108,7 @@ function pintarCabecera(){
 /* Una sola función para volver a la portada: la usan el botón "Clientes" de la
    ruta de migas y el atajo del logo. Separadas se desincronizan. */
 function irAClientes(){
+  animarTarjetas = true;                                  /* lista nueva: sí anima */
   estado.vista = 'clientes';
   estado.clienteId = null;
   render();
@@ -3590,6 +3606,7 @@ $('vista').addEventListener('keydown', ev=>{
 });
 
 function entrarCliente(id){
+  animarTarjetas = true;                                  /* lista nueva: sí anima */
   estado.vista = 'cliente'; estado.clienteId = id;
   estado.sitioFiltro = ''; estado.encargadoFiltro = '';   /* cada cliente arranca viendo todos sus sitios */
   render();
@@ -4416,8 +4433,15 @@ async function arrancarNube(){
     const r = await bajarDeLaNube();
     sincronizado = true;
     /* Sin await encadenado al render: si tardan, no retrasan el tablero. */
-    revisarRespaldo().then(()=>{ if(estado.vista === 'clientes') render(); });
-    revisarClaveInicial().then(()=>{ if(estado.vista === 'clientes') render(); });
+    /* Las dos revisiones solo cambian avisos de la portada, nada de las tarjetas.
+       Van juntas y con UN solo render, y únicamente si el aviso cambió de verdad:
+       cada render rehace el HTML completo, así que dos redibujados extra por dos
+       banderitas se veían como un parpadeo de la lista al arrancar. */
+    const avisos = () => avisoRespaldo() + avisoClaveInicial();
+    const avisosAntes = avisos();
+    Promise.all([revisarRespaldo(), revisarClaveInicial()]).then(()=>{
+      if(estado.vista === 'clientes' && avisos() !== avisosAntes) render();
+    });
     arrancarVigilancia();
     /* Primera conexión: el servidor está vacío y aquí ya había capturas. Se suben. */
     if(r === 'vacia'){
@@ -4434,6 +4458,11 @@ async function arrancarNube(){
     manejarFalloDeArranque(e);
     return;
   }
+  /* Si la pantalla de carga está encima, el render anterior pasó tapado y nadie
+     lo vio: que la entrada escalonada corra en ESTE, que es el que se destapa.
+     En un refresh normal no aplica —ahí el primero sí se vio— y así no se anima
+     dos veces, que era justo el parpadeo. */
+  if($('cargando').classList.contains('abierto')) animarTarjetas = true;
   render();
   vaciarCola();
 }
