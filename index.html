@@ -48,6 +48,13 @@ body{font-family:'Manrope',system-ui,-apple-system,sans-serif; background:var(--
 header.app{background:#fff; border-bottom:1px solid var(--line); padding:14px 24px; display:flex; align-items:center; gap:16px; position:sticky; top:0; z-index:50;}
 header.app::before{content:""; position:absolute; inset:0 0 auto 0; height:3px; background:linear-gradient(90deg,var(--navy),var(--accent));}
 header.app .logo-header{height:22px; width:auto; display:block;}
+/* El logo hace de atajo a Clientes. Sin fondo, borde ni relleno: visualmente
+   sigue siendo solo el logo. La única pista es el cursor y que se aclara al
+   pasar encima, y solo cuando de verdad lleva a algún lado. */
+.ir-inicio{background:none; border:none; padding:0; display:flex; align-items:center; cursor:default;}
+.ir-inicio:not([disabled]){cursor:pointer;}
+.ir-inicio:not([disabled]):hover{opacity:.7;}
+.ir-inicio:focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:5px;}
 header.app .bar{width:4px; height:26px; border-radius:2px; background:linear-gradient(180deg,var(--navy),var(--accent));}
 header.app h1{font-size:15px; font-weight:600; color:var(--navy);}
 header.app .sub{font-size:12px; color:var(--gray); margin-left:auto;}
@@ -594,13 +601,19 @@ table.tabla .yo{font-size:10.5px; color:var(--accent); font-weight:600;}
 </svg>
 
 <header class="app">
-  <!-- Antes era un PNG que traía ÚNICAMENTE la palabra "Forguard", sin el
-       escudo. Ahora usa la misma obra que la animación, así el logo que vuela
-       al entrar aterriza encima de algo idéntico y del mismo alto. -->
-  <svg class="logo-header" id="logoHeader" viewBox="0 0 335.42 102.75" role="img" aria-label="Forguard">
-    <title>Forguard</title>
-    <use href="#fgArte" fill="var(--navy)"/>
-  </svg>
+  <!-- El logo es también el atajo a Clientes: el instinto es picarle ahí para
+       volver, no buscar el botón de regresar. Va sin nada de botón encima —se ve
+       igual que antes— y queda deshabilitado cuando ya estás en Clientes, así no
+       entra al recorrido del teclado cuando no lleva a ningún lado.
+       Antes era un PNG que traía ÚNICAMENTE la palabra "Forguard", sin el escudo.
+       Ahora usa la misma obra que la animación, así el logo que vuela al entrar
+       aterriza encima de algo idéntico y del mismo alto. -->
+  <button type="button" class="ir-inicio" id="btnInicio" disabled>
+    <svg class="logo-header" id="logoHeader" viewBox="0 0 335.42 102.75" role="img" aria-label="Forguard">
+      <title>Forguard</title>
+      <use href="#fgArte" fill="var(--navy)"/>
+    </svg>
+  </button>
   <div class="bar"></div>
   <h1>Control de Forpass</h1>
   <div class="nube-zona">
@@ -1980,6 +1993,23 @@ function pintarCabecera(){
   $('btnPerfil').style.display = dentro ? '' : 'none';
   $('btnSalir').style.display = dentro ? '' : 'none';
   pintarPuntoClave();
+
+  /* El logo solo funciona como atajo cuando hay a dónde volver. En la portada
+     queda deshabilitado: sin esto sería un botón que no hace nada y además
+     estorbaría en el recorrido del teclado. */
+  const inicio = $('btnInicio');
+  const enPortada = estado.vista === 'clientes';
+  inicio.disabled = enPortada;
+  inicio.title = enPortada ? '' : 'Volver a Clientes';
+  inicio.setAttribute('aria-label', enPortada ? 'Forguard' : 'Volver a Clientes');
+}
+
+/* Una sola función para volver a la portada: la usan el botón "Clientes" de la
+   ruta de migas y el atajo del logo. Separadas se desincronizan. */
+function irAClientes(){
+  estado.vista = 'clientes';
+  estado.clienteId = null;
+  render();
 }
 
 /* Corta la acción si la cuenta no tiene permiso de modificar. */
@@ -3374,7 +3404,7 @@ $('vista').addEventListener('click', ev=>{
     const a = acc.dataset.accion;
     if(a === 'nuevo-cliente'){ if(exigirPermiso()) modalCliente(null); }
     else if(a === 'nuevo-sitio'){ if(exigirPermiso()) modalSitio(estado.clienteId, null); }
-    else if(a === 'ir-clientes'){ estado.vista = 'clientes'; estado.clienteId = null; render(); }
+    else if(a === 'ir-clientes') irAClientes();
     else if(a === 'excel') descargarExcel(null);
     else if(a === 'excel-cliente') descargarExcel(estado.clienteId);
     else if(a === 'respaldo'){ if(exigirAdmin('descargar el respaldo completo')) descargarRespaldo(); }
@@ -4209,6 +4239,10 @@ $('btnSalir').addEventListener('click', ()=>{
   }
   salirConPersiana();
 });
+
+/* El manejador de data-accion vive en #vista, y la cabecera está fuera de ahí:
+   este botón necesita su propio listener. */
+$('btnInicio').addEventListener('click', ()=>{ if(estado.vista !== 'clientes') irAClientes(); });
 
 $('btnPerfil').addEventListener('click', ()=> modalPerfil());
 
