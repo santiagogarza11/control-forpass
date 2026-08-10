@@ -486,6 +486,15 @@ table.tabla select.sel-rol{font-weight:600;}
   .cargando.volando .c-logo{transition:none; transform:none;}
   .cargando.volando{animation-duration:.01s;}
 }
+
+/* ---------- Persiana de cierre de sesión ---------- */
+/* z-index 300: encima del login (150) y de la pantalla de carga (200), porque
+   tapa la transición completa.
+   pointer-events sí activo, a propósito: mientras la persiana cubre no queremos
+   que se pueda escribir a ciegas en el formulario de acceso que está detrás. */
+.persiana{position:fixed; inset:0; z-index:300; display:none;}
+.persiana.abierta{display:block;}
+.persiana svg{display:block; width:100%; height:100%;}
 .acceso-error.visible{display:block;}
 .acceso-pie{font-size:11.5px; color:var(--gray); text-align:center; margin-top:16px; line-height:1.55;}
 .acceso-pie button{background:none; border:none; font-family:inherit; font-size:11.5px; color:var(--accent); font-weight:600; cursor:pointer; padding:0;}
@@ -681,6 +690,44 @@ table.tabla .yo{font-size:10.5px; color:var(--accent); font-weight:600;}
     <use href="#fgArte" fill="var(--navy)" clip-path="url(#fgClipCarga)"/>
   </svg>
   <p class="c-texto">Preparando tu tablero…</p>
+</div>
+
+<!-- Persiana de cierre de sesión. Baja, sostiene mientras el logo se "drena"
+     de derecha a izquierda, y sube dejando ver la pantalla de acceso.
+     IMPORTANTE: la sesión se borra ANTES de que esto empiece, no al final. Si
+     alguien le pica salir y se va del escritorio, no puede haber dos segundos
+     en los que su sesión siga viva detrás de una animación.
+     Usa el mismo sprite #fgArte que el encabezado y la pantalla de carga. -->
+<div class="persiana" id="persiana" aria-hidden="true">
+  <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Cerrando sesión">
+    <title>Cerrando sesión</title>
+    <defs>
+      <!-- El blanco se drena de derecha a izquierda y deja el logo fantasma. -->
+      <clipPath id="fgDrenaje">
+        <rect x="0" y="0" height="102.75" width="335.42">
+          <animate attributeName="width" dur="2s" values="335.42;335.42;0;0"
+                   keyTimes="0;0.20;0.62;1" calcMode="spline"
+                   keySplines="0 0 1 1;0.45 0 0.2 1;0 0 1 1" fill="freeze"/>
+        </rect>
+      </clipPath>
+    </defs>
+    <g>
+      <animateTransform attributeName="transform" type="translate"
+                        dur="2s" values="0 -900;0 0;0 0;0 -900"
+                        keyTimes="0;0.42;0.60;1" calcMode="spline"
+                        keySplines="0.55 0 0.2 1;0 0 1 1;0.7 0 0.25 1" fill="freeze"/>
+      <!-- Ancha de sobra (x=-720, 2880) para cubrir pantallas panorámicas. -->
+      <rect x="-720" y="0" width="2880" height="900" fill="#002369"/>
+      <g transform="translate(510 385) scale(1.2522)">
+        <use href="#fgArte" fill="#ffffff" opacity="0.20"/>
+        <use href="#fgArte" fill="#ffffff" clip-path="url(#fgDrenaje)"/>
+      </g>
+      <text x="720" y="565" text-anchor="middle" fill="#ffffff" fill-opacity="0.62"
+            font-family="Manrope, system-ui, sans-serif" font-size="15" font-weight="600"
+            letter-spacing="0.6">Cerrando sesión<animate attributeName="opacity" dur="2s"
+            values="0;1;1;0" keyTimes="0;0.30;0.58;0.70" fill="freeze"/></text>
+    </g>
+  </svg>
 </div>
 
 <!-- Ventana modal genérica -->
@@ -3811,15 +3858,48 @@ $('aOlvide').addEventListener('click', async ()=>{
   }catch(e){ errorAcceso(e.message); }
 });
 
+/* --------------------- Persiana de cierre de sesión --------------------- */
+/* Tiene que coincidir con los dur="2s" del SVG #persiana. Si cambias uno,
+   cambia el otro: de menos, la persiana se corta a media subida; de más, queda
+   la pantalla azul parada sin nada pasando. */
+const PERSIANA_MS = 2000;
+
+/* El orden aquí es lo importante: salir() —que borra la sesión y el token—
+   corre de INMEDIATO, antes de que la animación empiece. La persiana solo tapa
+   algo que ya sucedió. Nunca hay dos segundos con la sesión viva detrás.
+   Solo se usa en el logout deliberado; si la sesión expiró se va por salir() a
+   secas, porque ahí toca un mensaje de error, no una animación. */
+async function salirConPersiana(){
+  const p = $('persiana');
+  const svg = p && p.querySelector('svg');
+
+  if(menosMovimiento() || !svg || typeof svg.setCurrentTime !== 'function'){
+    salir();
+    return;
+  }
+
+  p.classList.add('abierta');
+  try{ svg.setCurrentTime(0); svg.unpauseAnimations(); }catch(e){}
+
+  salir();   /* borra sesión y datos, y deja el login listo detrás de la persiana */
+
+  await new Promise(r => setTimeout(r, PERSIANA_MS));
+  p.classList.remove('abierta');
+
+  /* El intro del logo del login ya corrió tapado por la persiana. Se rebobina
+     para que se vea completo ahora que no hay nada encima. */
+  reproducirIntro();
+}
+
 $('btnSalir').addEventListener('click', ()=>{
   if(cola.length){
     confirmar('Salir con cambios pendientes',
       'Hay <b>' + cola.length + ' ' + plural(cola.length,'cambio','cambios') + '</b> que todavía no se subieron al servidor. '
       + 'Si sales ahora se pierden. Conéctate a internet y espera a que diga «Guardado en la nube».',
-      'Salir de todos modos', ()=>{ cola = []; guardarCola(); salir(); });
+      'Salir de todos modos', ()=>{ cola = []; guardarCola(); salirConPersiana(); });
     return;
   }
-  salir();
+  salirConPersiana();
 });
 
 $('btnAdmin').addEventListener('click', ()=>{
