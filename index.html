@@ -1038,13 +1038,19 @@ async function tokenVigente(){
   if(Date.now() > sesion.expira - 60000) await renovarToken();
   return sesion.idToken;
 }
-function salir(porVencimiento){
+/* Borra sesión y datos, SIN mostrar el login. Está separado porque la persiana
+   de cierre necesita borrar de inmediato pero destapar el login más tarde,
+   cuando ya está cubierta la pantalla. */
+function limpiarSesionYDatos(){
   Object.assign(sesion, { correo:null, uid:null, idToken:null, refreshToken:null, expira:0, rol:null, nombre:'' });
   try{ localStorage.removeItem(LLAVE_SESION); }catch(e){}
   datos = { v:1, clientes:[], sitios:[] };
   try{ localStorage.removeItem(LLAVE); }catch(e){}
   estado.vista = 'clientes'; estado.clienteId = null;
   sincronizado = false;
+}
+function salir(porVencimiento){
+  limpiarSesionYDatos();
   mostrarAcceso(porVencimiento ? 'Tu sesión expiró. Vuelve a entrar.' : '');
   render();
 }
@@ -3623,22 +3629,39 @@ function olvidarCorreo(){
 /* La animación SMIL del logo arranca sola al cargar la página. Si el login se
    abre después, ya se acabó y aparecería congelada en el logo final; por eso hay
    que rebobinarla justo cuando se muestra la pantalla.
-   Con "menos movimiento" activado en el sistema, se salta al final de una vez. */
-function reproducirIntro(){
+   Con "menos movimiento" activado en el sistema, se salta al final de una vez.
+
+   retrasoMs: espera antes de arrancar, PARADA en el fotograma cero. Se usa al
+   volver de la persiana de cierre de sesión: si arranca de inmediato, el logo se
+   empieza a mover mientras la persiana todavía está subiendo. Parada en cero el
+   logo no se ve, así que entra limpio cuando le toca en vez de aparecer completo
+   y luego reiniciarse. */
+let temporizadorIntro = null;
+function reproducirIntro(retrasoMs){
   const svg = $('logoAcceso');
   if(!svg || typeof svg.setCurrentTime !== 'function') return;
+  if(temporizadorIntro){ clearTimeout(temporizadorIntro); temporizadorIntro = null; }
   const quieto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   try{
-    if(quieto){ svg.setCurrentTime(3.7); svg.pauseAnimations(); }
-    else{ svg.setCurrentTime(0); svg.unpauseAnimations(); }
+    if(quieto){ svg.setCurrentTime(3.7); svg.pauseAnimations(); return; }
+    svg.setCurrentTime(0);
+    if(retrasoMs > 0){
+      svg.pauseAnimations();
+      temporizadorIntro = setTimeout(()=>{
+        temporizadorIntro = null;
+        try{ svg.setCurrentTime(0); svg.unpauseAnimations(); }catch(e){}
+      }, retrasoMs);
+    }else{
+      svg.unpauseAnimations();
+    }
   }catch(e){ /* si el navegador no deja controlar SMIL, se queda el logo fijo */ }
 }
 
-function mostrarAcceso(mensaje){
+function mostrarAcceso(mensaje, retrasoIntro){
   $('acceso').classList.add('abierto');
   document.body.style.overflow = 'hidden';
   errorAcceso(mensaje || '');
-  reproducirIntro();
+  reproducirIntro(retrasoIntro);
 
   const recordado = correoRecordado();
   const campoCorreo = $('aCorreo');
@@ -3859,36 +3882,50 @@ $('aOlvide').addEventListener('click', async ()=>{
 });
 
 /* --------------------- Persiana de cierre de sesión --------------------- */
-/* Tiene que coincidir con los dur="2s" del SVG #persiana. Si cambias uno,
-   cambia el otro: de menos, la persiana se corta a media subida; de más, queda
-   la pantalla azul parada sin nada pasando. */
-const PERSIANA_MS = 2000;
+/* Estos tres números salen de los keyTimes del SVG #persiana y tienen que ir a
+   la par con sus dur="2s". Si cambias la duración del SVG, recalcula el 0.42. */
+const PERSIANA_MS = 2000;                                  /* duración total */
+const PERSIANA_CUBRE_MS = Math.round(2000 * 0.42);         /* 840 ms: ya tapa toda la pantalla */
+const INTRO_TRAS_PERSIANA_MS = 400;                        /* aire antes de animar el logo del login */
 
-/* El orden aquí es lo importante: salir() —que borra la sesión y el token—
-   corre de INMEDIATO, antes de que la animación empiece. La persiana solo tapa
-   algo que ya sucedió. Nunca hay dos segundos con la sesión viva detrás.
+/* Orden, que es lo que importa:
+   1. La sesión se borra de INMEDIATO. Si alguien le pica salir y se va del
+      escritorio, su sesión ya murió aunque la animación siga corriendo.
+   2. El login NO se muestra hasta que la persiana ya cubre (840 ms). Antes se
+      mostraba en el milisegundo cero y se veía el login primero y la persiana
+      encima después — al revés de como debe ser.
+   3. El intro del logo del login espera a que la persiana acabe de subir, más un
+      respiro. Si arranca antes se empieza a mover mientras la persiana todavía
+      va subiendo.
    Solo se usa en el logout deliberado; si la sesión expiró se va por salir() a
    secas, porque ahí toca un mensaje de error, no una animación. */
 async function salirConPersiana(){
   const p = $('persiana');
   const svg = p && p.querySelector('svg');
+  const espera = (ms) => new Promise(r => setTimeout(r, ms));
+
+  /* La sesión se va primero, sin importar si habrá animación o no. */
+  limpiarSesionYDatos();
 
   if(menosMovimiento() || !svg || typeof svg.setCurrentTime !== 'function'){
-    salir();
+    mostrarAcceso();
+    render();
     return;
   }
 
   p.classList.add('abierta');
   try{ svg.setCurrentTime(0); svg.unpauseAnimations(); }catch(e){}
 
-  salir();   /* borra sesión y datos, y deja el login listo detrás de la persiana */
+  await espera(PERSIANA_CUBRE_MS);
 
-  await new Promise(r => setTimeout(r, PERSIANA_MS));
+  /* Ya no se ve nada del tablero: aquí sí se destapa el login, detrás. El intro
+     del logo queda parado en cero hasta que la persiana termine de subir. */
+  const subida = PERSIANA_MS - PERSIANA_CUBRE_MS;
+  mostrarAcceso('', subida + INTRO_TRAS_PERSIANA_MS);
+  render();
+
+  await espera(subida);
   p.classList.remove('abierta');
-
-  /* El intro del logo del login ya corrió tapado por la persiana. Se rebobina
-     para que se vea completo ahora que no hay nada encima. */
-  reproducirIntro();
 }
 
 $('btnSalir').addEventListener('click', ()=>{
