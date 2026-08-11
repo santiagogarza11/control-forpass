@@ -16,7 +16,7 @@ manual (`Control_Forpass_2.xlsx`) y sigue exportando a ese formato.
 | Datos y cuentas | Firebase, proyecto `control-de-forpass` |
 | Respaldo 3×/día | GitHub Actions → repo privado |
 
-**Todo es `index.html`** (~4,300 líneas): fuente Manrope, logo, estilos, lógica,
+**Todo es `index.html`** (~4,500 líneas): fuente Manrope, logo, estilos, lógica,
 animaciones y generador de Excel embebidos. Sin dependencias, sin build, sin
 `npm install`. Firestore y Auth por **REST con `fetch`**, sin SDK. Commit a
 `main` = deploy (1–3 min).
@@ -87,13 +87,18 @@ Contrato cubierto / Pausado-Baja. Los tres puntos abren el plan de pagos.
 — un "Ver cuáles" con cero adentro decepciona. Los dos primeros son sumas y no
 abren nada a propósito. En la tarjeta del cliente, un sitio pausado y un contrato
 ya cubierto llevan insignias distintas: sin eso los dos se veían como "0 Forpass
-activos · $0", que son situaciones opuestas.
+activos · $0", que son situaciones opuestas. **El logo del encabezado es atajo a
+Clientes** (`btnInicio` → `irAClientes`): el instinto es picarle ahí para volver.
+Queda deshabilitado en la portada para salir del recorrido del teclado, y
+funciona también en el panel de admin.
 
 **Mi cuenta** (`modalPerfil`): nombre, correo, permiso con su descripción y la
 lista concreta de lo que ese rol puede hacer (`loQuePuedeHacer`). Desde ahí se
 cambia la contraseña: **se pide la actual** — no es trámite, sin eso quien
 encuentre una laptop con la sesión abierta podría cambiarla y dejar fuera al
-dueño. Ese re-login además entrega el token fresco que Firebase exige.
+dueño. Ese re-login además entrega el token fresco que Firebase exige, y hay que
+**guardar los tokens nuevos** que devuelve o el cambio saca al usuario justo
+después de hacer todo bien.
 
 **Excel:** ZIP y OOXML armados a mano, sin librerías. Hoja *Control Forpass*
 (una fila por sitio; las columnas de mes crecen según el contrato más largo; las
@@ -108,6 +113,32 @@ no hay commit. La fecha queda en `sistema/respaldo`; el tablero avisa en la
 portada si pasan `DIAS_RESPALDO_VIEJO` (2). No hay limpieza automática (~67 KB
 c/u). Restaurar reemplaza el servidor para todo el equipo: bajar un respaldo
 antes.
+
+## Vigilancia de la cuenta
+
+Bloquear a alguien escribe `activo:false` en `usuarios/{uid}`. **Desde el
+navegador NO se puede deshabilitar la cuenta de Auth** —eso pide el Admin SDK—
+así que esa bandera de Firestore es la única señal que existe. El servidor la
+respeta al instante, pero la app del bloqueado ya tiene todo en memoria: sin
+vigilancia seguiría viendo un tablero que ya no le toca hasta recargar.
+
+`revisarCuenta()` corre por tres disparadores, del más barato al más frecuente:
+
+| Disparador | Costo | Cuándo actúa |
+|---|---|---|
+| 403 del servidor | gratis | al instante, en cuanto intenta algo |
+| `visibilitychange` al volver a la pestaña | gratis | cuando retoma el trabajo |
+| Reloj de `VIGILAR_CUENTA_MS` (2 min) con la pestaña visible | 1 lectura | el respaldo |
+
+Cuesta **~240 lecturas al día por persona**; con un equipo de 10 son ~2,400, un
+5% del tope gratuito. Subir el intervalo lo abarata.
+
+Funciona porque **un usuario siempre puede leer su propio documento aunque esté
+bloqueado**: la regla lo permite por uid sin exigir `activo`.
+
+También detecta **cambios de rol**, y en ese caso **no desconecta**: actualiza
+`sesion.rol`, avisa, y saca del panel de admin si ya no le toca. `arrancarVigilancia()`
+al entrar, `detenerVigilancia()` al salir.
 
 ## Animaciones
 
@@ -124,6 +155,14 @@ Tres momentos, todos con el logo de la marca y todos respetando
 `dur` del llenado.** El llenado es un ciclo infinito, así que da igual cuánto
 tarde la red; al llegar los datos `completarLlenado()` lo termina en 240 ms y
 `volarAlEncabezado()` lo manda al header. El mínimo es un piso, nunca un techo.
+
+**La entrada escalonada de las tarjetas corre solo al cambiar de vista**, nunca
+en cada redibujado (`animarTarjetas`, clase `.grid.sin-entrada`). `render()`
+rehace `$('vista').innerHTML` completo, y al arrancar corre varias veces: si la
+animación se reinicia en cada una, las tarjetas se ven desaparecer y reaparecer.
+Se prende en `entrarCliente()` e `irAClientes()`, y se apaga al final de
+`render()`. **Excepción:** si la pantalla de carga está encima, ese render pasó
+tapado y nadie lo vio, así que sí hay que animar el siguiente.
 
 ## Decisiones
 
@@ -145,7 +184,8 @@ tarde la red; al llegar los datos `completarLlenado()` lo termina en 240 ms y
 - **"Sigue con la contraseña inicial" se deduce, no se guarda.** Se comparan dos
   fechas que Firebase ya tiene (`createdAt` vs `passwordUpdatedAt` de
   `accounts:lookup`). **No agregar una bandera en Firestore:** obligaría a tocar
-  las reglas —que se pegan a mano— y sería un dato más que se desincroniza.
+  las reglas —que se pegan a mano— y sería un dato más que se desincroniza. Ver
+  `revisarClaveInicial()` y `claveEsInicial`.
 
 ## Trampas conocidas (ya nos mordieron)
 
@@ -158,6 +198,8 @@ tarde la red; al llegar los datos `completarLlenado()` lo termina en 240 ms y
   listeners: leer un campo después de cerrar devuelve `null`. Leer antes.
 - **Listeners delegados en `#modalCuerpo` van una sola vez**, fuera de la función
   que redibuja. Adentro se acumulan y una acción corre N veces.
+- **El manejador de `data-accion` vive en `#vista`**, y el encabezado está fuera:
+  un botón de la cabecera necesita su propio listener.
 - **Cachés del panel de admin** (`admin.usuarios`, `admin.bitacora`) se llenan
   desde varios lados; `modalEncargado` también carga `usuarios`. Revisar todas
   las que se van a usar antes de saltarse una consulta.
@@ -171,15 +213,22 @@ tarde la red; al llegar los datos `completarLlenado()` lo termina en 240 ms y
   quería decir "no se ha preguntado" **y** "ya se preguntó y no hay nada": el
   aviso se pintaba en cada refresh y al quitarse movía las tarjetas. Se arregló
   con `respaldoRevisado` aparte. Mismo patrón en `claveRevisada`.
+- **Cada `render()` extra se paga en pantalla.** Los avisos de portada se revisan
+  juntos con un solo render, y solo si el HTML del aviso cambió de verdad. Antes
+  eran dos redibujados completos por dos banderitas.
 - **Tapar antes de cambiar.** La persiana de logout tarda 840 ms en bajar; si el
   login se muestra en el milisegundo cero, se ve primero y la persiana lo tapa
-  después. Ver `PERSIANA_CUBRE_MS`.
+  después. Ver `PERSIANA_CUBRE_MS` y `salirConPersiana()`. Por lo mismo
+  `limpiarSesionYDatos()` está separado de `salir()`: la sesión se borra en el
+  milisegundo cero, el login se destapa 840 ms después.
 - **En CSS, una animación con `forwards` le gana a una declaración normal.** Para
   desvanecer algo que entró con `animation`, hay que sacarlo con **otra
   animación**, no con un `opacity:0`.
-- **`requestAnimationFrame` y las animaciones SMIL no corren en pestañas
-  ocultas.** Cualquier promesa que dependa de ellas necesita un `setTimeout` de
-  respaldo, o se queda colgada tapando el tablero para siempre.
+- **`requestAnimationFrame`, las animaciones SMIL y las transiciones CSS no
+  corren en pestañas ocultas.** Cualquier promesa que dependa de ellas necesita un
+  `setTimeout` de respaldo, o se queda colgada tapando el tablero para siempre. Y
+  no se puede medir una animación en una pestaña de fondo: da valores congelados
+  que parecen un bug.
 - **SMIL arranca al cargar la página.** Si el elemento se muestra después, hay
   que rebobinarlo con `setCurrentTime(0)` o aparece congelado en su fotograma
   final. Ver `reproducirIntro()` y `mostrarCargando()`.
@@ -203,8 +252,9 @@ Un sitio pesa **1.1 KB** y un cliente sin logo **94 bytes**; un logo pesa hasta
 | Lecturas de Firebase (50k/día gratis) | ~60–80 clientes con equipo de 8 | Firebase deja de contestar hasta medianoche. Se arregla pasando a plan Blaze: centavos al mes |
 
 Cada carga de página lee **todos** los clientes y sitios (`listarNube` pagina de
-300 en 300, así que no se corta en silencio). Pintar la portada son 1.5 ms hoy;
-con 500 clientes serían ~125 ms. Nunca va a ser el cuello de botella.
+300 en 300, así que no se corta en silencio), más ~240 lecturas al día por
+persona de la vigilancia de cuenta. Pintar la portada son 1.5 ms hoy; con 500
+clientes serían ~125 ms. Nunca va a ser el cuello de botella.
 
 ## Pendientes
 
@@ -215,12 +265,16 @@ con 500 clientes serían ~125 ms. Nunca va a ser el cuello de botella.
   **dos** listas o el login truena: restricciones de la llave en Google Cloud
   **y** *Authorized domains* de Firebase Auth. Orden obligatorio: DNS primero,
   Pages después.
-- **Outfit para los titulares.** La marca usa dos tipografías (Camber/Outfit para
-  títulos, Manrope para cuerpo); hoy todo es Manrope. Camber es de paga; Outfit es
-  el respaldo libre que el propio CSS de forguard.com declara. ~18 KB.
+- **Falta probar con dos cuentas.** El cambio de contraseña contra Firebase y el
+  bloqueo de accesos no se han probado de punta a punta: hacen falta dos cuentas
+  (nadie se puede bloquear a sí mismo). Se desbloquea al dar de alta a la primera
+  persona del equipo.
 - **Dar de alta al equipo** desde Admin → Crear cuenta. Hoy solo existe el Owner
   de Santiago. El flujo ya está completo: se crea la cuenta, se pasa la
   contraseña, y el tablero mismo le recomienda cambiarla.
+- **Outfit para los titulares.** La marca usa dos tipografías (Camber/Outfit para
+  títulos, Manrope para cuerpo); hoy todo es Manrope. Camber es de paga; Outfit es
+  el respaldo libre que el propio CSS de forguard.com declara. ~18 KB.
 - Limpieza de respaldos viejos (opcional, sin urgencia).
 - El historial dice *"entró **el** sesión"* en vez de *"entró **a la** sesión"*.
 - Ideas sueltas: vista de "mis sitios" por encargado desde la portada, filtro por
@@ -229,13 +283,17 @@ con 500 clientes serían ~125 ms. Nunca va a ser el cuello de botella.
 
 ## Al trabajar en esto
 
+- **Los arreglos de bugs se suben directo**, sin preguntar: probar, subir,
+  verificar el build y reportar. Las **funciones nuevas** y los cambios de diseño
+  sí se muestran antes de subir.
 - **Probar en el sitio en vivo**, no solo leer el diff. Varios bugs se veían
   perfectos en el código y solo aparecieron al ejecutarlos.
 - **Para ver la app sin cuenta**, copiar `index.html` con `CONFIG_NUBE` vacío
   (modo local) y servirla. Editar **siempre el archivo real**: si se edita la
   copia el cambio no llega a producción, y si se sube la copia se va el `apiKey`
   en blanco y todo el equipo entra a modo local con la base vacía.
-- **Verificar el deploy** antes de decir "ya quedó".
+- **Verificar el deploy** antes de decir "ya quedó", y decir claramente qué **no**
+  se pudo probar.
 - **Explicar en términos simples.** Santiago es nuevo en código: qué hace algo y
   por qué, no cómo está implementado, salvo que lo pida.
 - **Avisar cuando algo tarda** (cada deploy son 1–3 minutos de espera).
