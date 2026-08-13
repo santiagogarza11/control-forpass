@@ -1,0 +1,517 @@
+{
+  "cliente": "Mercado Libre",
+  "sitio": "MXGT01",
+  "fecha": "29 de julio 2026",
+  "proyecto": "Póliza de Mantenimiento Preventivo",
+  "tituloPortada": [
+    "Cotización",
+    "Póliza de",
+    "Mtto Prev."
+  ],
+  "inicioCalendario": {
+    "mes": 5,
+    "anio": 2026
+  },
+  "contacto": {
+    "tel": "811 60 71 051",
+    "correo": "pablo.quiroga@forguard.com"
+  },
+  "telOficina": "+(52) 81 8458 8845",
+  "oficinas": [
+    "Lázaro Garza Ayala, 1213",
+    "SPGG, Nuevo León"
+  ],
+  "vigencia": "La póliza se contrata y se presta por un periodo anual de doce (12) meses, independientemente de que la facturación se realice de forma anual o mensual. La vigencia iniciará en la fecha acordada por las partes y se mantendrá por el periodo anual establecido.",
+  "partidas": [
+    {
+      "concepto": "Amasadora industrial",
+      "marca": "EUROPAN",
+      "cantidad": 1,
+      "precioUnitario": 1512.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        0,
+        4,
+        8
+      ],
+      "descripcion": ""
+    },
+    {
+      "concepto": "Banda transportadora de charola",
+      "marca": "INTERTECNIA",
+      "cantidad": 1,
+      "precioUnitario": 2700.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        0,
+        4,
+        8
+      ],
+      "descripcion": ""
+    },
+    {
+      "concepto": "Barra caliente de servicio eléctrica",
+      "marca": "FAB. ACERO INOX",
+      "cantidad": 5,
+      "precioUnitario": 5625.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        1,
+        5,
+        9
+      ],
+      "descripcion": "Revisión de voltaje y amperaje del equipo y contacto, revisión de componentes eléctricos, verificación de funcionamiento y temperatura adecuada y revisión de empaques de puerta."
+    },
+    {
+      "concepto": "Barra fría",
+      "marca": "FAB. ACERO INOX",
+      "cantidad": 5,
+      "precioUnitario": 5625.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        1,
+        5,
+        9
+      ],
+      "descripcion": "Revisión de tubería, válvulas, estado de tanques de carga y descarga de agua y limpieza de quemadores y del equipo en general con ice machine."
+    },
+    {
+      "concepto": "Bascula de cocina",
+      "marca": "TORREY",
+      "cantidad": 2,
+      "precioUnitario": 540.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        0,
+        4,
+        8
+      ],
+      "descripcion": "Inspección del estado y funcionamiento de tarjeta y componentes, limpieza de componentes mecánicos."
+    },
+    {
+      "concepto": "Bascula de recibo",
+      "marca": "TORREY",
+      "cantidad": 1,
+      "precioUnitario": 982.8,
+      "frecuencia": 3,
+      "mesesServicio": [
+        0,
+        4,
+        8
+      ],
+      "descripcion": "Inspección del estado y funcionamiento de tarjeta y componentes, limpieza de componentes mecánicos."
+    },
+    {
+      "concepto": "Batidora industrial",
+      "marca": "GLOBE",
+      "cantidad": 2,
+      "precioUnitario": 940.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        0,
+        4,
+        8
+      ],
+      "descripcion": ""
+    },
+    {
+      "concepto": "Cámara de congelación",
+      "marca": "ARTIC",
+      "cantidad": 1,
+      "precioUnitario": 7000.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        2,
+        6
+      ],
+      "descripcion": "Lavado de condensador y evaporador, inspección del funcionamiento correcto de motores y ventiladores, revisión de voltaje y amperaje así como verificación de presión de gas. Limpieza y ajuste de contactores y reapriete de terminales y tornillería."
+    },
+    {
+      "concepto": "Cámara de refrigeración",
+      "marca": "ARTIC",
+      "cantidad": 2,
+      "precioUnitario": 7000.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        2,
+        6,
+        10
+      ],
+      "descripcion": "Lavado de condensador y evaporador, inspección del funcionamiento correcto de motores y ventiladores, revisión de voltaje y amperaje así como verificación de presión de gas. Limpieza y ajuste de contactores y reapriete de terminales y tornillería."
+    },
+    {
+      "concepto": "Campana de extracción",
+      "marca": "FAB. ACERO INOX",
+      "cantidad": 3,
+      "precioUnitario": 16000.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        3,
+        7,
+        11
+      ],
+      "descripcion": "Limpieza a campana de extracción de humo con desengrasante y alta presión, incluye lavado de filtros."
+    },
+    {
+      "concepto": "Estufa",
+      "marca": "CORIAT",
+      "cantidad": 1,
+      "precioUnitario": 3024.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        1,
+        5,
+        9
+      ],
+      "descripcion": ""
+    },
+    {
+      "concepto": "Extracción",
+      "marca": "",
+      "cantidad": 1,
+      "precioUnitario": 22000.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        3,
+        7,
+        11
+      ],
+      "descripcion": "Medición de amperaje y voltaje del equipo, así como la revisión de las condiciones y funcionamiento de bandas y componentes del equipo, lubricación de chumaceras y limpieza del equipo con desengrasante."
+    },
+    {
+      "concepto": "Horno convencional doble",
+      "marca": "VULCAN",
+      "cantidad": 1,
+      "precioUnitario": 4428.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        1,
+        5,
+        9
+      ],
+      "descripcion": ""
+    },
+    {
+      "concepto": "Horno Rational",
+      "marca": "ICOMBI PRO",
+      "cantidad": 4,
+      "precioUnitario": 7000.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        1,
+        5,
+        9
+      ],
+      "descripcion": "Revisión de voltaje, amperaje y conexiones, ajuste y reapriete de conexiones, limpieza mecánica, lubricación de componentes y revisión de funcionamiento de componentes."
+    },
+    {
+      "concepto": "Licuadora chica",
+      "marca": "WARING",
+      "cantidad": 2,
+      "precioUnitario": 450.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        0,
+        4,
+        8
+      ],
+      "descripcion": ""
+    },
+    {
+      "concepto": "Máquina de agua doble",
+      "marca": "OMEGA",
+      "cantidad": 4,
+      "precioUnitario": 1296.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        3,
+        7,
+        11
+      ],
+      "descripcion": ""
+    },
+    {
+      "concepto": "Máquina de hielo",
+      "marca": "SCOTSMAN",
+      "cantidad": 1,
+      "precioUnitario": 7000.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        2,
+        6,
+        10
+      ],
+      "descripcion": "Limpieza del motor y abanico, y limpieza con ice machine del evaporador y condensador, así como la inspección del cableado eléctrico y ajuste de terminales."
+    },
+    {
+      "concepto": "Máquina lavaloza",
+      "marca": "MEIKO",
+      "cantidad": 2,
+      "precioUnitario": 7000.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        2,
+        6,
+        10
+      ],
+      "descripcion": "Inspección visual de los componentes físicos del equipo, así como la revisión de mangueras y componentes hidráulicos, limpieza en general con desincrustante."
+    },
+    {
+      "concepto": "Marmita",
+      "marca": "INTERTECNIA",
+      "cantidad": 2,
+      "precioUnitario": 8400.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        1,
+        5,
+        9
+      ],
+      "descripcion": ""
+    },
+    {
+      "concepto": "Mesa fria",
+      "marca": "TRUE",
+      "cantidad": 2,
+      "precioUnitario": 4800.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        2,
+        6,
+        10
+      ],
+      "descripcion": ""
+    },
+    {
+      "concepto": "Pasarela caliente doble",
+      "marca": "CONTINENTAL",
+      "cantidad": 2,
+      "precioUnitario": 5625.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        1,
+        5,
+        9
+      ],
+      "descripcion": "Revisión de voltaje y amperaje del equipo y contacto, revisión de componentes eléctricos, verificación de funcionamiento y temperatura adecuada y revisión de empaques de puerta."
+    },
+    {
+      "concepto": "Pasarela fría doble",
+      "marca": "CONTINENTAL",
+      "cantidad": 2,
+      "precioUnitario": 5625.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        2,
+        6,
+        10
+      ],
+      "descripcion": ""
+    },
+    {
+      "concepto": "Procesador de alimentos",
+      "marca": "ROBOTCOUPE",
+      "cantidad": 2,
+      "precioUnitario": 918.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        3,
+        7,
+        11
+      ],
+      "descripcion": ""
+    },
+    {
+      "concepto": "Refrigerador doble",
+      "marca": "TRUE",
+      "cantidad": 2,
+      "precioUnitario": 4800.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        2,
+        6,
+        10
+      ],
+      "descripcion": "Inspección visual del estado y funcionamiento de empaques de puertas, lámparas, ventiladores y motores, así como la revisión de temperatura adecuada, medición del voltaje y amperaje y la limpieza de evaporador."
+    },
+    {
+      "concepto": "Refrigerador doble",
+      "marca": "OJEDA",
+      "cantidad": 5,
+      "precioUnitario": 4800.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        2,
+        6,
+        10
+      ],
+      "descripcion": "Inspección visual del estado y funcionamiento de empaques de puertas, lámparas, ventiladores y motores, así como la revisión de temperatura adecuada, medición del voltaje y amperaje y la limpieza de evaporador."
+    },
+    {
+      "concepto": "Refrigerador sencillo",
+      "marca": "TRUE",
+      "cantidad": 1,
+      "precioUnitario": 4800.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        2,
+        6,
+        10
+      ],
+      "descripcion": "Inspección visual del estado y funcionamiento de empaques de puertas, lámparas, ventiladores y motores, así como la revisión de temperatura adecuada, medición del voltaje y amperaje y la limpieza de evaporador."
+    },
+    {
+      "concepto": "Sarteneta",
+      "marca": "RATIONAL",
+      "cantidad": 2,
+      "precioUnitario": 4750.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        1,
+        5,
+        9
+      ],
+      "descripcion": ""
+    },
+    {
+      "concepto": "Trampa de grasa",
+      "marca": "HELVEX/FAB. ESPEC",
+      "cantidad": 3,
+      "precioUnitario": 3500.0,
+      "frecuencia": 12,
+      "mesesServicio": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "descripcion": "Limpieza de trampa de grasa, raspado de paredes, deflectores y filtros para eliminar residuos, retiro de sólidos y revisión de tapa."
+    },
+    {
+      "concepto": "Turbo licuador",
+      "marca": "ROBOTCOUPE",
+      "cantidad": 2,
+      "precioUnitario": 920.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        3,
+        7,
+        11
+      ],
+      "descripcion": ""
+    },
+    {
+      "concepto": "Ultracongelador",
+      "marca": "INFRICO",
+      "cantidad": 2,
+      "precioUnitario": 4800.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        2,
+        6,
+        10
+      ],
+      "descripcion": ""
+    },
+    {
+      "concepto": "Recolección de basura",
+      "marca": "S/N",
+      "cantidad": 1,
+      "precioUnitario": 21495.0,
+      "frecuencia": 12,
+      "mesesServicio": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "descripcion": ""
+    },
+    {
+      "concepto": "Trabajos de inmueble",
+      "marca": "S/N",
+      "cantidad": 1,
+      "precioUnitario": 28300.0,
+      "frecuencia": 2,
+      "mesesServicio": [
+        5,
+        11
+      ],
+      "descripcion": ""
+    },
+    {
+      "concepto": "Sistema de extracción mayor",
+      "marca": "S/N",
+      "cantidad": 1,
+      "precioUnitario": 52245.0,
+      "frecuencia": 2,
+      "mesesServicio": [
+        5,
+        11
+      ],
+      "descripcion": ""
+    },
+    {
+      "concepto": "Sistema de filtrado",
+      "marca": "S/N",
+      "cantidad": 1,
+      "precioUnitario": 10400.0,
+      "frecuencia": 2,
+      "mesesServicio": [
+        5,
+        11
+      ],
+      "descripcion": ""
+    },
+    {
+      "concepto": "Sistema de climatización",
+      "marca": "S/N",
+      "cantidad": 1,
+      "precioUnitario": 17300.0,
+      "frecuencia": 2,
+      "mesesServicio": [
+        5,
+        11
+      ],
+      "descripcion": ""
+    },
+    {
+      "concepto": "Segurista",
+      "marca": "S/N",
+      "cantidad": 1,
+      "precioUnitario": 25000.0,
+      "frecuencia": 12,
+      "mesesServicio": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "descripcion": ""
+    }
+  ]
+}

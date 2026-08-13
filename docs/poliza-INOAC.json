@@ -1,0 +1,183 @@
+{
+  "cliente": "INOAC",
+  "sitio": "",
+  "fecha": "15 de abril 2026",
+  "proyecto": "Póliza de Mantenimiento Preventivo",
+  "tituloPortada": [
+    "Cotización",
+    "Póliza de",
+    "Mtto Prev."
+  ],
+  "inicioCalendario": {
+    "mes": 4,
+    "anio": 2026
+  },
+  "contacto": {
+    "tel": "811 60 71 051",
+    "correo": "pablo.quiroga@forguard.com"
+  },
+  "telOficina": "+(52) 81 8458 8845",
+  "oficinas": [
+    "Lázaro Garza Ayala, 1213",
+    "SPGG, Nuevo León"
+  ],
+  "vigencia": "La póliza se contrata y se presta por un periodo anual de doce (12) meses, independientemente de que la facturación se realice de forma anual o mensual. La vigencia iniciará en la fecha acordada por las partes y se mantendrá por el periodo anual establecido.",
+  "partidas": [
+    {
+      "concepto": "Barra Fría 4 Insertos",
+      "marca": "",
+      "cantidad": 1,
+      "precioUnitario": 6800.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        0,
+        4,
+        8
+      ],
+      "descripcion": "Revisión de tubería, válvulas, estado de tanques de carga y descarga de agua y limpieza de quemadores y del equipo en general con ice machine."
+    },
+    {
+      "concepto": "Barra Caliente de Servicio Gas",
+      "marca": "",
+      "cantidad": 1,
+      "precioUnitario": 7200.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        0,
+        4,
+        8
+      ],
+      "descripcion": "Revisión de tubería, válvulas, estado de tanques de carga y descarga de agua y limpieza de quemadores y del equipo en general con ice machine."
+    },
+    {
+      "concepto": "Estufon Doble",
+      "marca": "",
+      "cantidad": 1,
+      "precioUnitario": 3000.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        0,
+        4,
+        8
+      ],
+      "descripcion": "Revisión de válvulas de gas, perillas, quemadores (flautas), manguera de gas y regulador. Limpieza con desengrasante."
+    },
+    {
+      "concepto": "Estufón",
+      "marca": "",
+      "cantidad": 2,
+      "precioUnitario": 8500.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        0,
+        4,
+        8
+      ],
+      "descripcion": "Revisión de válvulas de gas, perillas, quemadores (flautas), manguera de gas y regulador. Limpieza con desengrasante."
+    },
+    {
+      "concepto": "Horno Rational",
+      "marca": "",
+      "cantidad": 1,
+      "precioUnitario": 5600.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        3,
+        7,
+        11
+      ],
+      "descripcion": "Revisión de voltaje, amperaje y conexiones, ajuste y reapriete de conexiones, limpieza mecánica, lubricación de componentes y revisión de funcionamiento de componentes."
+    },
+    {
+      "concepto": "Plancha Industrial",
+      "marca": "",
+      "cantidad": 2,
+      "precioUnitario": 7500.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        0,
+        4,
+        8
+      ],
+      "descripcion": "Revisión de válvulas de gas, perillas, quemadores (flautas), manguera de gas y regulador. Limpieza con desengrasante."
+    },
+    {
+      "concepto": "Campana de Extracción",
+      "marca": "",
+      "cantidad": 2,
+      "precioUnitario": 7200.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        1,
+        5,
+        9
+      ],
+      "descripcion": "Limpieza a campana de extracción de humo con desengrasante y alta presión, incluye lavado de filtros."
+    },
+    {
+      "concepto": "Extracción",
+      "marca": "",
+      "cantidad": 1,
+      "precioUnitario": 4800.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        1,
+        5,
+        9
+      ],
+      "descripcion": "Medición de amperaje y voltaje del equipo, así como la revisión de las condiciones y funcionamiento de bandas y componentes del equipo, lubricación de chumaceras y limpieza del equipo con desengrasante."
+    },
+    {
+      "concepto": "Freídora",
+      "marca": "",
+      "cantidad": 1,
+      "precioUnitario": 1200.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        0,
+        4,
+        8
+      ],
+      "descripcion": "Revisión de válvulas de gas, perillas, quemadores (flautas), manguera de gas y regulador. Limpieza con desengrasante."
+    },
+    {
+      "concepto": "Licuadora Industrial",
+      "marca": "",
+      "cantidad": 1,
+      "precioUnitario": 7280.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        1,
+        5,
+        9
+      ],
+      "descripcion": "Revisión del voltaje y amperaje del equipo, inspección del estado físico de los componentes y comprobación del funcionamiento adecuado del equipo."
+    },
+    {
+      "concepto": "Máquina Lavaloza",
+      "marca": "",
+      "cantidad": 1,
+      "precioUnitario": 6800.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        1,
+        5,
+        9
+      ],
+      "descripcion": "Inspección visual de los componentes físicos del equipo, así como la revisión de mangueras y componentes hidráulicos, limpieza en general con desincrustante."
+    },
+    {
+      "concepto": "Calentón Doble",
+      "marca": "",
+      "cantidad": 1,
+      "precioUnitario": 7200.0,
+      "frecuencia": 3,
+      "mesesServicio": [
+        0,
+        4,
+        8
+      ],
+      "descripcion": "Revisión de voltaje y amperaje del equipo y contacto, revisión de componentes eléctricos, verificación de funcionamiento y temperatura adecuada y revisión de empaques de puerta."
+    }
+  ]
+}

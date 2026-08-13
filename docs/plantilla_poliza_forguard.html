@@ -172,14 +172,26 @@
 <div id="doc"></div>
 
 <script>
-/* ==================== DATOS · contrato para Firestore ==================== */
+/* ==================== DATOS · contrato para Firestore ====================
+
+   ⚠ CASO DEMO. Estos NO son los datos de ninguna cotización real: son once
+   renglones de muestra para poder ver la plantilla dibujada. La cotización real
+   de MXNL02 trae 34 renglones y suma $683,134 anuales, no los $393,000 de aquí.
+
+   Sirven de respaldo cuando la plantilla se abre sola, sin que el tablero le
+   haya pasado una póliza. Nunca los tomes como cifras verificadas.
+   ========================================================================= */
 const POLIZA = {
-  cliente:"Mercado Libre",
-  sitio:"MXNL02",
+  cliente:"Cliente Demo",
+  sitio:"CASO-DEMO",
   fecha:"29 de julio 2026",
   proyecto:"Póliza de Mantenimiento Preventivo",
   tituloPortada:["Cotización","Póliza de","Mtto Prev."],
-  etiquetaPrecio:"Precio",              // "Precio" o "Costo"
+  /* Ya no hay etiquetaPrecio: siempre dice "Precio". Las cotizaciones de abril y
+     principios de julio decían "Costo", pero eso era desorden de documentos hechos
+     a mano, no un requisito de nadie — las dos más recientes ya decían "Precio".
+     Modelarlo como campo habría petrificado esa inconsistencia para siempre.
+     Además "costo" es lo que le cuesta a Forguard; al cliente se le da un precio. */
   inicioCalendario:{mes:7,anio:2026},   // mes 0-11 → 7 = agosto 2026
   contacto:{tel:"811 60 71 051",correo:"pablo.quiroga@forguard.com"},
   telOficina:"+(52) 81 8458 8845",
@@ -314,7 +326,7 @@ function pagePoliza(){
       <td class="c">${p.frecuencia}</td>
       <td class="n">${mxn0(totalRenglon(p))}</td>
     </tr>`).join("");
-  const anual=precioAnual(),L=POLIZA.etiquetaPrecio;
+  const anual=precioAnual();
   return `<section class="page">
     <div class="sheet">
       ${sheetHead("Póliza de Mantenimiento")}
@@ -328,8 +340,8 @@ function pagePoliza(){
           <tbody>${filas}</tbody>
         </table>
         <table class="totals">
-          <tr><td class="lbl">${L} Anual</td><td class="val">${mxn2(anual)}</td></tr>
-          <tr class="grand"><td class="lbl">${L} Mensual</td><td class="val">${mxn2(anual/12)}</td></tr>
+          <tr><td class="lbl">Precio Anual</td><td class="val">${mxn2(anual)}</td></tr>
+          <tr class="grand"><td class="lbl">Precio Mensual</td><td class="val">${mxn2(anual/12)}</td></tr>
         </table>
         <ul class="note">
           <li>Precio más IVA.</li>
