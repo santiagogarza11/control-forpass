@@ -60,49 +60,81 @@ negocio, no técnico.
 
 ## A medias
 
-### Las cuatro pólizas reales están extraídas pero **no cargadas**
+### Las cuatro pólizas reales: **cargador hecho, decisiones tomadas** (14-ago-2026)
 
-`docs/poliza-MXNL02.json`, `poliza-MXGT01.json`, `poliza-INOAC.json`,
-`poliza-NGK.json` — con la forma del objeto `POLIZA`, `mesesServicio` como
-corrimientos 0–11 desde `inicioCalendario`, cantidades consolidadas y las 23
-descripciones reales cruzadas por concepto.
+Hay botón **Pólizas → Importar JSON**: se escogen archivos, sale una vista previa
+con lo que va a entrar y sus avisos, y **nada se guarda hasta confirmar**. Entra
+como `enviada` con la fecha del documento y **facturación mensual** (doce casillas)
+— decidido por Santiago.
 
-**No hay cargador.** Son datos listos, nadie los importa. Falta un botón
-"Importar póliza desde JSON" en el módulo, o meterlos por consola.
+No lee de la red a propósito: un `fetch` a `docs/` dependería de que Pages sirva esa
+carpeta —nunca comprobado— y no funcionaría en modo local.
 
-| | Renglones | Consolidado | Equipos | Anual limpio | Impreso | Dif |
+| | Renglones | Consolidado | Equipos | **Anual que entra** | Impreso | Dif |
 |---|---|---|---|---|---|---|
-| MXNL02 | 34 | 30 | 40 | $683,134.80 | $683,134.00 | **+$0.80** |
-| MXGT01 | 72 | 36 | 72 | $1,884,480.40 | $1,790,257.88 | **+$94,222.52** |
-| INOAC | 12 | 12 | 15 | $288,840.00 | $288,840.00 | $0.00 ✓ |
-| NGK | 17 | 17 | 22 | $373,518.00 | $373,518.00 | $0.00 ✓ |
+| MXNL02 | 34 | 30 | 40 | **$737,134.80** | $683,134.00 | +$54,000.80 |
+| MXGT01 | 72 | 36 | 72 | **$1,884,480.40** | $1,790,257.88 | +$94,222.52 |
+| INOAC | 12 | 12 | 15 | **$288,840.00** | $288,840.00 | $0.00 ✓ |
+| NGK | 17 | 17 | 22 | **$373,518.00** | $373,518.00 | $0.00 ✓ |
+| | | | | **$3,283,973.20** | | |
 
-**Las dos diferencias están explicadas y NO se deben "ajustar":**
+**Las diferencias están explicadas y NO se deben "ajustar":**
 
 - **MXNL02, +$0.80** — la báscula de recibo cuesta $982.80 y × 3 = $2,948.40, pero
-  el PDF imprime $2,948: truncó los centavos. Dos básculas × $0.40. El total
-  impreso está 80 centavos abajo del precio que de verdad se cotizó.
-- **MXGT01, +$94,222.52** — el **5% de descuento escondido** en cada Total Mtto
-  (`1,884,480.40 × 0.95 = 1,790,256.38`; el $1.50 restante es el mismo
-  truncamiento). Con la decisión B ya tomada —precios limpios, sin descuento— este
-  número **tiene que subir**.
+  el PDF imprime $2,948: truncó los centavos. Dos básculas × $0.40.
+- **MXNL02, +$54,000** — el Segurista, corregido a mano (abajo).
+- **MXGT01, +$94,222.52** — el **5% de descuento escondido** en cada Total Mtto.
+  Con la decisión B ya tomada —precios limpios, sin descuento— **tiene que subir**.
+
+**Los dos renglones donde la cotización se contradecía a sí misma** están en
+`CORRECCIONES` de `consolidar.py`, llaveados por *(sitio, renglón del papel)* para
+poder ir a checarlos contra la cotización impresa. Con eso, **las cuatro entran con
+cero renglones sin cuadrar y las cuatro ya son cerrables**:
+
+- **MXGT01 #18, Cámara de congelación** — decía 3 servicios con 2 meses marcados.
+  Único así en 72 renglones; su gemela (Cámara de refrigeración ARTIC, mismo precio
+  y frecuencia) y los 9 renglones de su bloque están en mar/jul/nov. Falta la marca
+  de nov. **El dinero no se mueve.**
+- **MXNL02 #32, Segurista** — decía 1 servicio con 3 meses marcados. **$27,000 no
+  puede ser tarifa anual: el mismo concepto cuesta $25,000 AL MES en MXGT01 y en
+  Nexxus**, dos sitios hermanos del mismo cliente. Es precio por servicio, o sea que
+  la línea venía cotizada de menos. En las otras dos la frecuencia y el calendario
+  coinciden, así que el "1" es el tecleado. Se tomó el calendario: **3**.
+
+**Lo que NO se corrigió, y por qué.** La regla es estrecha: se toca un renglón
+**solo cuando el documento se contradice a sí mismo**. Que el mismo equipo cueste
+distinto en dos clientes no es un error, es un precio. Por eso sigue igual —aunque
+huela raro— la **licuadora industrial de INOAC a $7,280** contra ~$919 en MXNL02 y
+NGK: ocho veces, pero INOAC cuadra exacto con su total impreso. Vale la pena que
+alguien la revise; no vale la pena cambiarla sola.
+
+**Precios dobles de MXNL02, resueltos:** Campana de Extracción a $16,000 y $8,000,
+Extracción a $22,000 y $11,000 son **dos equipos distintos**, no un error —
+confirmado por Santiago. Los dos pares tienen **calendarios distintos** ([2,6,10] y
+[3,7,11]), o sea dos sistemas escalonados, y ese equipo va de $4,800 a $22,000 entre
+los otros clientes.
 
 **Cantidades escondidas detectadas** (solo MXNL02, sin columna de cantidad):
 renglón 7 Refrigerador Doble ×2, renglón 24 Barra Caliente Eléctrica ×4, renglón 25
 Barra Fría ×2, renglón 34 Trampa de Grasa ×2.
 
-**Dato del criterio de agrupación:** se aplicó concepto + marca + precio +
-frecuencia + **meses**, y **ningún grupo se partió por meses** en ninguna de las
-cuatro. Las unidades del mismo equipo siempre comparten calendario; el escalonado
-se hace por tipo de equipo. Lo que sí impidió agrupar fueron **precios distintos
-para el mismo concepto** en MXNL02: Campana de Extracción a $16,000 y a $8,000,
-Extracción a $22,000 y a $11,000 — exactamente la mitad. Puede ser equipo chico y
-grande, o un error de la cotización original. **Falta que Santiago lo confirme.**
+### El lector de PDF ya está en el repo y corre con cualquier PDF
 
-### El lector de PDF no está en el repo
+`scripts/lector-pdf/` — ver su README. Un comando:
 
-Vive en el scratchpad de la sesión (`leer.py`, `consolidar.py`, `generar.py`) y se
-pierde al cerrar. Si hay que volver a extraer, lo que importa saber:
+```bash
+python3 scripts/lector-pdf/generar.py ~/Downloads/"la cotización.pdf"
+```
+
+Lee cliente, sitio y fecha **de la portada** y los imprime para revisarlos; se
+corrigen con `--cliente`, `--sitio`, `--fecha`, `--total`. Sin argumentos rehace las
+cuatro conocidas. **Verificado: regenera los cuatro JSON idénticos.**
+
+**No machaca un `docs/poliza-*.json` existente.** Ese candado no es teórico: la
+portada de la cotización de Nexxus dice «MXGT01» porque la copiaron de la anterior,
+y sin él se habría llevado por delante la de MXGT01 en silencio.
+
+Lo que importa saber del formato:
 
 - Los meses **no son texto**: son trazados `m`/`l`/`h f` con color de relleno
   `(0.576, 0.702, 0.835)`.
@@ -114,6 +146,14 @@ pierde al cerrar. Si hay que volver a extraer, lo que importa saber:
 - MXGT01 numera hasta 79 con solo 72 renglones (faltan 44, 51, 69–73) y NGK hasta
   19 con 17 (faltan 14, 18): son huecos reales de Canva, no filas perdidas — la
   suma cuadra sin ellos.
+- `leer.py` es **librería, no se corre solo** (el README decía que sí; era falso).
+
+### Hay una quinta cotización sin cargar: **Mercado Libre Nexxus**
+
+26-jun-2026, 79 renglones, **$1,952,850.40** limpio contra **$1,855,207.88**
+impresos — el **mismo 5% escondido** de MXGT01. El lector la saca sin tocarle nada
+(probado). Santiago dijo **todavía no**: primero las cuatro verificadas. Ojo con su
+portada, que dice «MXGT01».
 
 ---
 
@@ -152,12 +192,14 @@ Verificado intacto en cada bloque de esta sesión:
 
 ### Fase 3B — cargar las cuatro pólizas reales
 
-1. Un botón **"Importar póliza desde JSON"** que lea los archivos de `docs/`.
-2. Confirmar con Santiago los precios dobles de MXNL02 (campana y extracción).
-3. Decidir si MXGT01 entra con el anual limpio de $1,884,480.40.
-4. **Registrar servicios ejecutados** — el esquema lo aguanta (`hechosDetalle`) y
-   el calendario ya los pinta, pero no hay dónde marcar "este ya se hizo". Es el
-   gemelo exacto de la cobranza y va en el mismo molde.
+1. ~~Botón "Importar póliza desde JSON"~~ **hecho**, con vista previa.
+2. ~~Precios dobles de MXNL02~~ **dos equipos distintos**, confirmado.
+3. ~~¿MXGT01 con el anual limpio?~~ **sí**, $1,884,480.40.
+4. **Registrar servicios ejecutados** — lo único que queda de esta fase. El esquema
+   lo aguanta (`hechosDetalle`) y el calendario ya los pinta, pero no hay dónde
+   marcar "este ya se hizo". Es el gemelo exacto de la cobranza y va en el mismo
+   molde: `modalCobroPoliza` es el patrón a copiar.
+5. Cargar **Nexxus** cuando Santiago diga.
 
 ### Fase 4 — tablero
 

@@ -279,6 +279,15 @@ tapado y nadie lo vio, así que sí hay que animar el siguiente.
 - **Los meses del calendario de un PDF de Canva no son texto**: son trazados
   `m`/`l`/`h f` con color de relleno, y la posición viene del CTM (`cm`) con su
   pila `q`/`Q`, no de `Tm`. Ver el lector de la Fase 3B en el traspaso.
+- **Las cotizaciones en PDF traen errores humanos, y la portada miente.** La de
+  Nexxus dice «MXGT01» porque la copiaron de la anterior: un script que le crea al
+  PDF habría machacado `docs/poliza-MXGT01.json` en silencio. El lector no
+  sobreescribe un JSON existente, y las correcciones a mano viven en
+  `CORRECCIONES` de `consolidar.py` —llaveadas por *(sitio, renglón del papel)*—
+  para que **sobrevivan a volver a leer el PDF**. La regla para corregir es
+  estrecha: **solo donde el documento se contradice a sí mismo** (la columna de
+  servicios dice una cosa y el calendario otra). Que el mismo equipo cueste
+  distinto en dos clientes **no** es un error, es un precio: el renglón manda.
 - **Un arreglo paralelo se desalinea cuando el otro cambia.** `hechosDetalle`
   empezó como arreglo paralelo a `mesesServicio` y mover el calendario recorría
   los registros de mes sin error y sin aviso. Si lo que indexa puede cambiar,
@@ -362,13 +371,14 @@ clientes serían ~125 ms. Nunca va a ser el cuello de botella.
 
 ### Módulo de pólizas — Fase 3B en adelante
 
-- **Falta el examen con datos reales.** MXNL02 completa, 34 renglones, debe dar
-  **$683,134 anual / $56,927.83 mensual** (los `$56,928` de la cotización en papel
-  son ese número redondeado a pesos). Lo probado hasta hoy son 11 renglones
-  inventados del caso demo y un caso sintético que suma 683,134.
 - **Registrar servicios ejecutados.** El esquema ya lo soporta (`hechosDetalle`) y
   el calendario ya los pinta, pero no hay dónde marcar "este ya se hizo". Es el
   gemelo de la cobranza y va en el mismo molde.
+- **Cargar la quinta cotización, Mercado Libre Nexxus.** Extraída y verificada
+  ($1,952,850.40 limpio, mismo 5% escondido que MXGT01); Santiago dijo todavía no.
+- **Revisar la licuadora industrial de INOAC**: $7,280 contra ~$919 en MXNL02 y NGK.
+  No se tocó porque INOAC cuadra exacto con su total impreso — no es contradicción
+  interna, y ahí la regla es que el renglón manda.
 - **Documento imprimible (Fase 5).** `docs/plantilla_poliza_forguard.html` se abre
   en pestaña nueva y recibe los datos por `sessionStorage`. Tres cosas antes:
   embeber Poppins en base64 (hoy la carga por CDN y rompe la regla de "sin

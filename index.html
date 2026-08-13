@@ -449,6 +449,16 @@ button.encargado:focus-visible{outline:2px solid var(--accent); outline-offset:2
 /* Renglón con meses que no siguen el intervalo: se marca para que no se pierda. */
 .tabla-renglones tr.irregular > td{background:#fffdf6;}
 .fila-meses > td{background:var(--bg); padding:10px 12px 13px; border-bottom:1px solid var(--line);}
+/* Vista previa de la importación. Los avisos van en su PROPIO renglón a todo lo
+   ancho, no en una columna: son la razón de ser de esta pantalla, y metidos en
+   una columna estrecha se cortaban justo donde empezaba lo importante. */
+table.tabla tr.tiene-notas > td{border-bottom:none; padding-bottom:2px;}
+.imp-notas > td{padding-top:0; padding-bottom:13px; font-size:11.5px; color:var(--gray); line-height:1.6;}
+.imp-notas b{color:var(--error);}
+.imp-pie{display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap;
+  margin-top:16px; padding-top:13px; border-top:1.5px solid var(--line); font-size:13px;}
+.imp-pie span{color:var(--gray);}
+.imp-pie b{font-size:15.5px; color:var(--navy);}
 .icono-mini{background:none; border:1px solid var(--line); border-radius:6px; cursor:pointer;
   padding:5px 6px; color:var(--gray); line-height:0; margin-left:3px;}
 .icono-mini:hover{border-color:var(--navy); color:var(--navy); background:#fff;}
@@ -930,6 +940,7 @@ table.tabla .yo{font-size:10.5px; color:var(--accent); font-weight:600;}
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <input type="file" id="archivoRestaurar" accept="application/json,.json" style="display:none">
+<input type="file" id="archivoPolizas" accept="application/json,.json" multiple style="display:none">
 
 <script>
 /* =========================================================================
@@ -2893,6 +2904,11 @@ function vistaPolizas(){
      /* Mientras no haya pólizas, el único botón es el del estado vacío: dos
         "Nueva cotización" en la misma pantalla es preguntar lo mismo dos veces. */
      +   '<button type="button" class="btn btn-suave btn-mini" data-accion="ver-precios">' + ICONO.credencial + 'Lista de precios</button>'
+     /* Las cotizaciones viejas ya existen en JSON: se cargan, no se recapturan. */
+     +   (puedeEditar()
+          ? '<button type="button" class="btn btn-suave btn-mini" data-accion="importar-polizas" '
+            + 'title="Cargar una cotización ya extraída de su PDF">' + ICONO.subir + 'Importar JSON</button>'
+          : '')
      +   (datos.polizas.length
           ? '<button type="button" class="btn btn-primario" data-accion="nueva-poliza">' + ICONO.mas + 'Nueva cotización</button>'
           : '')
@@ -3019,7 +3035,10 @@ function vistaPoliza(){
      +   '<p>' + esc(cli ? cli.nombre : 'Sin cliente ligado')
      +     (p.folio ? ' · ' + esc(p.folio) : '')
      +     ' · <b>' + esc(ETIQUETA_ESTATUS[p.estatus]) + '</b>'
-     +     ' · ' + esc(c.estado) + '</p>'
+     /* El semáforo solo se agrega si dice algo distinto del estatus. En cuatro
+        de los cinco el texto es el mismo —«En la calle · En la calle»— porque
+        solo una póliza activa se juzga por servicios, cobranza y vigencia. */
+     +     (c.estado === ETIQUETA_ESTATUS[p.estatus] ? '' : ' · ' + esc(c.estado)) + '</p>'
      + '</div><div class="acciones">'
      +   '<button type="button" class="btn btn-suave btn-mini" data-accion="calendario-poliza">' + ICONO.calendario + 'Calendario</button>'
      +   (puedeEditar() ? '<button type="button" class="btn btn-primario" data-accion="editar-poliza">' + ICONO.lapiz + 'Editar</button>' : '')
@@ -4891,6 +4910,285 @@ function modalPoliza(id){
   };
 }
 
+/* ==================== IMPORTAR PÓLIZAS DESDE UN JSON ====================
+   Las cotizaciones viejas viven en PDF de Canva. El lector de
+   scripts/lector-pdf/ las convierte a JSON con la forma de una póliza; esto
+   es lo que las mete al tablero.
+
+   Se escogen archivos, NO se bajan de la red. Un fetch a docs/ dependería de
+   que Pages sirva esa carpeta —cosa que nunca se comprobó— y no funcionaría
+   en modo local. Con el selector funciona igual en los dos, y sirve para
+   cualquier cotización futura y no solo para las cuatro que ya están.
+
+   NADA se guarda hasta que se confirma: primero se ve qué va a entrar, con
+   cuánto, y qué renglones traen problema.
+   ======================================================================= */
+
+/* En el JSON los meses vienen escritos: "29 de julio 2026". */
+const MESES_TEXTO = ['enero','febrero','marzo','abril','mayo','junio','julio',
+                     'agosto','septiembre','octubre','noviembre','diciembre'];
+
+/* Compara nombres sin que un acento o una mayúscula estorben: el catálogo dice
+   «Báscula de recibo» y la cotización «Bascula De Recibo», y es el mismo
+   equipo. Solo para comparar — lo que se guarda es siempre el texto original. */
+function llaveTexto(s){
+  return String(s ?? '').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, ' ').trim();
+}
+
+/* «29 de julio 2026» → «2026-07-29». Devuelve '' si no se entiende, para que
+   quien llama decida el respaldo en vez de inventar una fecha aquí. */
+function fechaEsp(txt){
+  const m = /^\s*(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+(?:de\s+)?(\d{4})\s*$/i.exec(String(txt ?? ''));
+  if(!m) return '';
+  const mes = MESES_TEXTO.indexOf(llaveTexto(m[2]));
+  if(mes < 0) return '';
+  return m[3] + '-' + String(mes+1).padStart(2,'0') + '-' + String(Number(m[1])).padStart(2,'0');
+}
+
+function leerTexto(archivo){
+  return new Promise((listo, falla)=>{
+    const l = new FileReader();
+    l.onerror = ()=> falla(new Error('No se pudo leer el archivo.'));
+    l.onload  = ()=> listo(String(l.result));
+    l.readAsText(archivo);
+  });
+}
+
+/* Un archivo → una póliza lista, más lo que hay que advertir antes de meterla.
+   NO escribe nada: eso pasa en confirmarImportacion() y solo si se acepta. */
+function polizaDesdeJSON(j, archivo){
+  if(!j || typeof j !== 'object' || !Array.isArray(j.partidas))
+    return { error:'No trae un arreglo «partidas»: no parece una cotización.' };
+
+  const nombreCliente = String(j.cliente || '').trim();
+  if(!nombreCliente) return { error:'No trae el nombre del cliente.' };
+
+  const avisos = [];
+
+  /* El cliente se busca por nombre y se crea al confirmar si no está. Uno solo
+     para los dos módulos: Mercado Libre con kioscos y con pólizas es un
+     registro con un solo logo. */
+  const cli = datos.clientes.find(c => llaveTexto(c.nombre) === llaveTexto(nombreCliente)) || null;
+
+  /* Sin sitio, el nombre del cliente. sitioNombre es lo que sale impreso y lo
+     que titula la tarjeta: dejarlo vacío daría una póliza llamada «Póliza». */
+  const sitioNombre = String(j.sitio || '').trim() || nombreCliente;
+
+  /* Se liga al kiosco de Forpass solo si el nombre coincide y es del mismo
+     cliente. Adivinar la liga es peor que no ligarla: se pone a mano después. */
+  const sitio = cli
+    ? datos.sitios.find(s => s.clienteId === cli.id && llaveTexto(s.nombre) === llaveTexto(sitioNombre)) || null
+    : null;
+
+  const fechaCot = fechaEsp(j.fecha);
+  if(!fechaCot) avisos.push('La fecha «' + esc(String(j.fecha || '')) + '» no se entendió: entra con la de hoy.');
+
+  /* inicioCalendario manda la vigencia, y con ella el calendario entero:
+     mesesServicio son corrimientos DESDE esta fecha. Día 1 porque el PDF solo
+     dice el mes. */
+  const ic = j.inicioCalendario || {};
+  const mes = parseInt(ic.mes, 10), anio = parseInt(ic.anio, 10);
+  let fechaInicio = '';
+  if(mes >= 1 && mes <= 12 && anio >= 2000 && anio <= 2999){
+    fechaInicio = anio + '-' + String(mes).padStart(2,'0') + '-01';
+  }else{
+    avisos.push('Sin «inicioCalendario» válido: la vigencia arranca en la fecha de la cotización.');
+  }
+
+  /* El vendedor se guarda COPIADO, igual que al capturar a mano: el documento
+     tiene que seguir diciendo lo mismo dentro de un año. Del JSON solo viene
+     su correo y su teléfono, así que el nombre se saca del correo. */
+  const contacto = j.contacto || {};
+  const correo = String(contacto.correo || '').trim();
+  const vendedor = { uid:'', nombre: correo ? nombreDeCorreo(correo) : '',
+                     correo, telefono: String(contacto.tel || '').trim() };
+
+  const lista = catalogo();          /* una vez, no una por renglón */
+  let sinCatalogo = 0;
+  const partidas = j.partidas.map(x=>{
+    const eq = lista.find(e => llaveTexto(e.concepto) === llaveTexto(x.concepto)) || null;
+    if(!eq) sinCatalogo++;
+    /* La descripción se resuelve del catálogo y solo se guarda si es distinta
+       —la regla de siempre—. De los renglones reales, la gran mayoría trae
+       exactamente el texto del catálogo: guardarlo sería repetirlo decenas de
+       veces y perder la mejora si algún día se corrige el catálogo. */
+    const propia = String(x.descripcion || '').trim();
+    const suya = (eq && llaveTexto(propia) === llaveTexto(eq.descripcion)) ? '' : propia;
+    return normalizarPartida(Object.assign({}, x, { catalogoId: eq ? eq.id : '', descripcion: suya }));
+  }).filter(x => x.concepto);
+
+  if(!partidas.length) return { error:'Ningún renglón trae concepto: no hay nada que importar.' };
+
+  if(sinCatalogo){
+    avisos.push(sinCatalogo + ' ' + plural(sinCatalogo,'renglón no está','renglones no están')
+      + ' en la lista de precios: entran con su propio texto y sin ligar al catálogo.');
+  }
+  const noCuadran = partidas.filter(x => !cuadraFrecuencia(x)).length;
+  if(noCuadran){
+    avisos.push(noCuadran + ' ' + plural(noCuadran,'renglón no cuadra','renglones no cuadran')
+      + ' entre sus meses y sus servicios al año: así no se podrá cerrar como activa.');
+  }
+
+  /* Importar dos veces el mismo archivo es el error fácil. Se detecta y la fila
+     llega DESMARCADA: que se pueda no quiere decir que se deba. Si el cliente
+     ya existe se exige que sea el mismo, porque dos clientes distintos sí
+     pueden tener sitios con el mismo nombre. */
+  const repetida = datos.polizas.find(p =>
+        llaveTexto(p.sitioNombre) === llaveTexto(sitioNombre)
+        && (!cli || p.clienteId === cli.id)) || null;
+
+  /* Estatus «enviada» con la fecha del documento: es una cotización que ya
+     salió y todavía no se cierra. Los precios NO quedan congelados —eso pasa
+     al pasarla a activa— así que se puede corregir un renglón sin pelearse con
+     la regla del servidor. */
+  const poliza = normalizarPoliza({
+    id: nuevoId(),
+    clienteId: cli ? cli.id : '',       /* si no existe, se rellena al crearlo */
+    sitioId: sitio ? sitio.id : '',
+    sitioNombre,
+    estatus: 'enviada',
+    facturacion: 'mensual',
+    fechaCotizacion: fechaCot || hoyISO(),
+    fechaEnvio: fechaCot || hoyISO(),
+    fechaInicio: fechaInicio || fechaCot || hoyISO(),
+    vendedor, partidas,
+    notas: 'Importada de ' + archivo + '.'
+  });
+
+  return { poliza, nombreCliente, cli, sitio, repetida, avisos };
+}
+
+/* Lee los archivos escogidos y abre la vista previa. */
+async function importarPolizas(archivos){
+  const lecturas = [];
+  for(const f of archivos){
+    let r;
+    try{
+      r = polizaDesdeJSON(JSON.parse(await leerTexto(f)), f.name);
+    }catch(e){
+      /* El mensaje de JSON.parse viene en inglés y hablando de posiciones de
+         caracteres: no le sirve a nadie. El archivo lo genera el lector de PDF,
+         así que si viene roto lo que toca es volver a generarlo. */
+      r = { error: (e instanceof SyntaxError)
+              ? 'El archivo no es un JSON válido: vuelve a generarlo.'
+              : 'No se pudo leer el archivo.' };
+    }
+    r.archivo = f.name;
+    lecturas.push(r);
+  }
+  modalImportar(lecturas);
+}
+
+/* Vista previa. Una fila por archivo con lo que de verdad va a entrar: el
+   dinero se calcula aquí mismo con calcularPoliza(), o sea con el mismo código
+   que la tarjeta, así que lo que se ve es lo que va a quedar. */
+function modalImportar(lecturas){
+  /* Un archivo repetido llega desmarcado; los demás marcados. */
+  const marcado = lecturas.map(r => !r.error && !r.repetida);
+
+  const filas = lecturas.map((r,i)=>{
+    if(r.error){
+      return '<tr><td></td><td>' + esc(r.archivo) + '</td>'
+           + '<td colspan="6" style="color:var(--error)">' + esc(r.error) + '</td></tr>';
+    }
+    const c = calcularPoliza(r.poliza);
+    const notas = r.avisos.slice();
+    if(r.repetida) notas.unshift('<b>Ya hay una póliza de ese sitio</b> en el tablero. Si la importas quedan dos.');
+    if(!r.cli) notas.push('El cliente «' + esc(r.nombreCliente) + '» no existe todavía: se va a crear.');
+    if(r.sitio) notas.push('Queda ligada al sitio de Forpass «' + esc(r.sitio.nombre) + '».');
+
+    return '<tr' + (notas.length ? ' class="tiene-notas"' : '') + '>'
+         + '<td><input type="checkbox" data-imp="' + i + '"' + (marcado[i] ? ' checked' : '') + '></td>'
+         + '<td>' + esc(r.poliza.sitioNombre) + '<div class="pista">' + esc(r.archivo) + '</div></td>'
+         + '<td>' + esc(r.nombreCliente) + (r.cli ? '' : ' <span class="insignia i-info">nuevo</span>') + '</td>'
+         + '<td style="text-align:right">' + r.poliza.partidas.length + '</td>'
+         + '<td style="text-align:right">' + numero(r.poliza.partidas.reduce((t,x)=> t + x.cantidad, 0)) + '</td>'
+         + '<td style="text-align:right"><b>' + dineroCent(c.precioAnual) + '</b></td>'
+         + '<td style="text-align:right">' + dineroCent(c.precioMensual) + '</td>'
+         + '<td style="white-space:nowrap">' + fmtFecha(r.poliza.fechaInicio) + ' → ' + fmtFecha(c.fin) + '</td>'
+         + '</tr>'
+         + (notas.length
+             ? '<tr class="imp-notas"><td></td><td colspan="7">' + notas.join('<br>') + '</td></tr>'
+             : '');
+  }).join('');
+
+  abrirModal('Importar pólizas desde JSON',
+      '<p class="pista" style="margin-bottom:12px">Entran como <b>enviadas</b> —cotizaciones en la calle, con sus precios todavía editables— '
+    + 'y con <b>facturación mensual</b>, o sea doce casillas de cobro. Nada se guarda hasta que le des a Importar.</p>'
+    + '<div class="rodillo"><table class="tabla" style="min-width:760px"><thead><tr>'
+    + '<th></th><th>Sitio</th><th>Cliente</th><th style="text-align:right">Renglones</th>'
+    + '<th style="text-align:right">Equipos</th><th style="text-align:right">Anual</th>'
+    + '<th style="text-align:right">Mensual</th><th>Vigencia</th>'
+    + '</tr></thead><tbody>' + filas + '</tbody></table></div>'
+    + '<div id="impResumen" class="imp-pie"></div>',
+      '<button type="button" class="btn btn-suave" data-modal="cancelar">Cancelar</button>'
+    + '<button type="button" class="btn btn-primario" data-modal="guardar" id="btnImportar">Importar</button>');
+  $('modal').classList.add('enorme');
+
+  const resumir = ()=>{
+    const escogidas = lecturas.filter((r,i)=> !r.error && marcado[i]);
+    const total = escogidas.reduce((t,r)=> t + calcularPoliza(r.poliza).precioAnualCent, 0);
+    const porCrear = [...new Set(escogidas.filter(r => !r.cli).map(r => llaveTexto(r.nombreCliente)))].length;
+    $('impResumen').innerHTML =
+        '<span>' + escogidas.length + ' de ' + lecturas.length + ' ' + plural(lecturas.length,'archivo','archivos')
+      + (porCrear ? ' · ' + porCrear + ' ' + plural(porCrear,'cliente nuevo','clientes nuevos') : '')
+      + '</span><b>' + dineroCent(deCentavos(total)) + ' al año</b>';
+    $('btnImportar').disabled = !escogidas.length;
+  };
+  resumir();
+
+  /* Delegado y colgado una sola vez: dentro de resumir() se acumularían. */
+  $('modalCuerpo').addEventListener('change', ev=>{
+    const ch = ev.target.closest('[data-imp]');
+    if(!ch) return;
+    marcado[Number(ch.dataset.imp)] = ch.checked;
+    resumir();
+  });
+
+  cerrarModalActual = ()=>{
+    const escogidas = lecturas.filter((r,i)=> !r.error && marcado[i]);
+    if(!escogidas.length) return;
+    cerrarModal();
+    confirmarImportacion(escogidas);
+  };
+}
+
+function confirmarImportacion(escogidas){
+  /* Los clientes que faltan se crean UNA vez por nombre: dos archivos de
+     Mercado Libre no pueden dejar dos registros con el mismo logo por subir. */
+  const creados = new Map();
+  let nuevosClientes = 0;
+  escogidas.forEach(r=>{
+    if(r.poliza.clienteId) return;
+    const llave = llaveTexto(r.nombreCliente);
+    if(!creados.has(llave)){
+      const c = normalizarCliente({ nombre: r.nombreCliente });
+      datos.clientes.push(c);
+      guardarCliente(c, 'creó');
+      creados.set(llave, c);
+      nuevosClientes++;
+    }
+    r.poliza.clienteId = creados.get(llave).id;
+  });
+
+  escogidas.forEach(r=>{
+    datos.polizas.push(r.poliza);
+    const c = calcularPoliza(r.poliza);
+    guardarPoliza(r.poliza, 'importó',
+      r.poliza.partidas.length + ' ' + plural(r.poliza.partidas.length,'equipo','equipos')
+      + ' · ' + dineroCent(c.precioAnual) + ' al año · ' + r.archivo);
+  });
+
+  estado.modulo = 'polizas'; guardarModulo();
+  estado.vista = 'polizas'; estado.polizaId = null;
+  animarTarjetas = true;
+  render();
+  aviso(escogidas.length + ' ' + plural(escogidas.length,'póliza importada','pólizas importadas')
+    + (nuevosClientes ? ' · ' + nuevosClientes + ' ' + plural(nuevosClientes,'cliente nuevo','clientes nuevos') : '') + '.');
+}
+
 /* ------------------- Modal: encargado del sitio (de nuestro lado) ----------
    Quién de nuestro equipo lleva ese sitio. Lo ve todo el mundo en la tarjeta,
    pero solo Owner y Admin pueden asignarlo.
@@ -5536,6 +5834,7 @@ $('vista').addEventListener('click', ev=>{
     else if(a === 'ir-clientes') irAClientes();
     else if(a === 'ir-polizas') irAPolizas();
     else if(a === 'nueva-poliza'){ if(exigirPermiso()) modalPoliza(null); }
+    else if(a === 'importar-polizas'){ if(exigirPermiso()) $('archivoPolizas').click(); }
     else if(a === 'ver-precios') irAPrecios();
     else if(a === 'nuevo-equipo') modalEquipo(null);
     else if(a === 'guardar-catalogo') sembrarCatalogo();
@@ -5770,6 +6069,16 @@ $('archivoRestaurar').addEventListener('change', ev=>{
   };
   lector.readAsText(f);
   ev.target.value = '';
+});
+
+$('archivoPolizas').addEventListener('change', ev=>{
+  const fs = Array.from(ev.target.files || []);
+  /* Se limpia ANTES de trabajar: si no, escoger el mismo archivo dos veces
+     seguidas no dispara 'change' y parece que el botón se descompuso. */
+  ev.target.value = '';
+  if(!fs.length) return;
+  if(!puedeEditar()){ aviso('Tu permiso no alcanza para importar pólizas.', true); return; }
+  importarPolizas(fs);
 });
 
 /* ======================= GENERADOR DE ARCHIVO XLSX =======================
