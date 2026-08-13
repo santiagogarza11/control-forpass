@@ -7014,8 +7014,15 @@ function completarLlenado(svg){
   return new Promise(listo => {
     const rect = svg && svg.querySelector('#fgRectCarga');
     if(!rect){ listo(); return; }
+    /* El valor se ACOTA a [0, ancho]. Sin esto llegaba a ser negativo y el
+       navegador tiraba «<rect> attribute width: A negative value is not valid»
+       en cada carga: SMIL lo devuelve fuera de rango porque el keySplines del
+       llenado no es monótono en x (`0.5 0 0.2 1`, con x1 > x2), y ahí la curva
+       se dobla. Acotar aquí lo arregla venga de donde venga — un ancho negativo
+       nunca es un estado válido de esta barra. */
     let desde = 0;
     try{ desde = rect.width.animVal.value || 0; }catch(e){ desde = 0; }
+    desde = Math.max(0, Math.min(ANCHO_LOGO_SVG, desde));
     const anim = rect.querySelector('animate');
     if(anim) anim.remove();          /* libera el valor animado por SMIL */
     rect.setAttribute('width', String(desde));

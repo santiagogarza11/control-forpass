@@ -242,21 +242,49 @@ Verificado intacto en cada bloque de esta sesión:
    abajo.
 5. Cargar **Nexxus** cuando Santiago diga.
 
-### ⚠ La Fase 3B NO está cerrada: las pólizas nunca tocaron el servidor
+### ✅ Fase 3B cerrada — 14-ago-2026, verificada contra Firestore
 
-El cargador está hecho y probado, pero **las cuatro pólizas solo existen en el
-`localStorage` de una copia de prueba en modo local** (`CONFIG_NUBE` vacío). En
-Firestore no hay ni una.
+Desplegado (`bf6cf56` en `main`), reglas de `polizas` y `catalogo` pegadas en la
+consola, y **las cuatro pólizas importadas contra el servidor real** desde el sitio
+en vivo, con el selector de archivos.
 
-No es descuido: **la rama nunca se ha desplegado**, así que el importador todavía
-no existe para nadie más y no ha podido correr contra el servidor. Cualquier
-verificación «contra Firestore» de esta fase es en realidad contra
-`docs/poliza-*.json`.
+Verificado releyendo de Firestore con `listarNube('polizas')`, no en pantalla:
 
-**3B se cierra cuando**: se haga el merge a `main`, se peguen las reglas de
-`polizas` y `catalogo` en la consola, y se importen las cuatro **contra el
-servidor** — comprobando que el gran total sigue en $3,283,973.20 y que las cuatro
-arrancan en su mes correcto.
+| | |
+|---|---|
+| MXGT01 | $1,884,480.40 |
+| MXNL02 | $737,134.80 |
+| INOAC | $288,840.00 |
+| NGK | $373,518.00 |
+| **Total de las cuatro** | **$3,283,973.20** ✓ |
+| Vigencia de MXNL02 | **ago-26** |
+| Segurista | **nov-26 · mar-27 · jul-27** — igual al documento medido |
+| **Idempotencia tras el viaje** | **`true`** |
+
+La última es la que sostiene el congelado de precios: `partidas` sale de Firestore
+**byte por byte igual** a como entró, así que un Analyst sí va a poder capturar
+cobranza y servicios sobre una póliza activa.
+
+**Queda una sola verificación pendiente**, y no se puede hacer antes: que `polizas`
+aparezca **dentro de `backups/ultimo.json`** del repo privado. El robot corre a las
+03:00, 09:00 y 15:00 de Monterrey, así que hay que esperar la primera corrida
+posterior a la importación y **abrir el archivo**, no leer el log — el log puede
+decir «ok» sin incluir la colección. `CLAUDE.md` advierte que ese script escribía
+las colecciones a mano y es el lugar que se olvida.
+
+```bash
+gh api repos/santiagogarza11/control-forpass-backups/contents/backups/ultimo.json --jq '.content' | base64 -d | python3 -c "import json,sys; d=json.load(sys.stdin); print({k: (len(v) if isinstance(v,list) else type(v).__name__) for k,v in d.items()})"
+```
+
+### Hay una quinta póliza en el servidor: «Prolec»
+
+$106,461, cliente NGK, con **2 de 15 servicios ya marcados**. **No salió del
+importador** —no existe ningún `poliza-Prolec.json`— y la aritmética lo confirma:
+el indicador de portada da $3,390,434, y `3,390,434 − 3,283,973 = 106,461`, o sea
+exactamente Prolec. Las cuatro importadas están intactas.
+
+Falta saber si es captura real o una prueba. **No se toca hasta confirmarlo**: esos
+dos servicios marcados son trabajo capturado y borrarla se los lleva.
 
 ### El registro de servicios movió el esquema (y por poco sale roto)
 
