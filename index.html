@@ -2644,6 +2644,27 @@ function armarPayloadPoliza(p){
     calendario: { encabezados: Array.from({length: MESES_POLIZA},
                     (_, i) => etiquetaColumnaCalendario(p.fechaInicio, i)) },
 
+    /* La hoja de «Descripción de Trabajos»: UNA fila por concepto distinto, no
+       por renglón —dos refrigeradores de la misma marca comparten el texto del
+       mantenimiento—. La deduplicación se hace aquí y no en la plantilla, que no
+       calcula nada.
+
+       Se omiten los conceptos SIN texto. MXGT01 tiene 20 de 35 y MXNL02 10 de 26,
+       porque esas dos cotizaciones no traían esta página y sus descripciones se
+       cruzaron por concepto desde INOAC y NGK. Imprimir esos renglones con la
+       celda en blanco no informa de nada y ensucia una hoja que el cliente lee.
+       Y no se inventa el texto de un mantenimiento. */
+    descripciones: (() => {
+      const vistos = new Set(), out = [];
+      p.partidas.forEach(x => {
+        const texto = descripcionDe(x);
+        if(!texto || vistos.has(x.concepto)) return;
+        vistos.add(x.concepto);
+        out.push({ concepto: x.concepto, texto });
+      });
+      return out;
+    })(),
+
     totales: { anual:   dineroCent(c.precioAnual),
                mensual: dineroCent(c.precioMensual),
                crudo:   { anual: c.precioAnual, mensual: c.precioMensual } },

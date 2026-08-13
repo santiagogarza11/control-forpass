@@ -106,9 +106,16 @@
   *{box-sizing:border-box;margin:0;padding:0;}
   body{background:#E9EBEE;font-family:var(--font-body);color:var(--text);-webkit-font-smoothing:antialiased;}
 
+  /* SIN overflow:hidden, y no se vuelve a poner.
+     Lo tenía, y con él una tabla más larga que la hoja perdía renglones EN
+     SILENCIO: MXGT01 imprimía 27 de sus 36 equipos y el bloque de Precio Anual
+     quedaba fuera del papel, con la hoja viéndose llena y bien formada. Recortar
+     es la peor forma de fallar en un documento que se le manda a un cliente.
+     Ahora la tabla se parte en hojas (ver partirEnHojas) y si algún día algo se
+     desborda, se VE que se desborda. */
   .page{
     position:relative;width:8.5in;height:11in;margin:22px auto;
-    background:#fff;overflow:hidden;
+    background:#fff;
     box-shadow:0 4px 24px rgba(8,25,75,.15);
   }
 
@@ -349,6 +356,28 @@ function pageCover(){
   </section>`;
 }
 
+/* ========================= PAGINACIÓN =========================
+   Tres de las cinco hojas se desbordan con datos reales, y las tres se parten
+   aquí. Los topes salen de MEDIR los cuatro documentos, no de estimar:
+
+     · Tabla de renglones — 23 por hoja. Paso de fila 21.53 pt, primera fila en
+       y=183.5, última posible en y=657.1. (183.5 + 22 × 21.53 = 657.2.)
+     · Calendario — 21 por hoja. Máximo observado, en MXGT01, con paso 22.4 pt.
+     · Descripción de trabajos — NO se puede partir por conteo: sus filas son de
+       altura VARIABLE (19.8 a 28.0 pt medidos) porque el texto es largo. Se
+       parte midiendo el alto real ya pintado.
+
+   El bloque de cierre —Precio Anual, Precio Mensual y las notas— va SOLO en la
+   última hoja de la tabla. En las intermedias sobraría y en la primera mentiría. */
+const FILAS_POR_HOJA = 23;
+const RENGLONES_CALENDARIO_POR_HOJA = 21;
+
+function partirEnHojas(items, porHoja){
+  const out = [];
+  for(let i = 0; i < items.length; i += porHoja) out.push(items.slice(i, i + porHoja));
+  return out.length ? out : [[]];
+}
+
 /* ====================== PÓLIZA (tabla + totales) ====================== */
 /* Siete columnas, las de NGK: es el único de los cuatro documentos que imprime la
    aritmética completa, así que el cliente puede seguir la multiplicación de
@@ -360,7 +389,10 @@ function pageCover(){
    pero entonces no cabe Cantidad, y una tabla sin Cantidad es exactamente de
    donde salieron las cantidades escondidas que hubo que deducir de los totales. */
 function pagePoliza(){
-  const filas=POLIZA.renglones.map(r=>`<tr>
+  const hojas = partirEnHojas(POLIZA.renglones, FILAS_POR_HOJA);
+  return hojas.map((grupo, h) => {
+    const ultima = h === hojas.length - 1;
+    const filas = grupo.map(r=>`<tr>
       <td class="ix">${r.n}</td>
       <td class="cpt">${esc(r.concepto)}${r.marca?`<span class="marca"> — ${esc(r.marca)}</span>`:""}</td>
       <td class="c">${esc(r.cantidad)}</td>
@@ -369,18 +401,9 @@ function pagePoliza(){
       <td class="c">${esc(r.frecuencia)}</td>
       <td class="c">${esc(r.totalMtto)}</td>
     </tr>`).join("");
-  return `<section class="page">
-    <div class="sheet">
-      ${sheetHead("Póliza de Mantenimiento")}
-      <div class="body">
-        <table class="grid">
-          <thead><tr>
-            <th class="ix">#</th><th class="cpt">Concepto</th>
-            <th class="c">Cantidad</th><th class="c">Precio Unitario</th>
-            <th class="c">Total</th><th class="c">Frecuencia</th><th class="c">Total Mtto</th>
-          </tr></thead>
-          <tbody>${filas}</tbody>
-        </table>
+    /* El cierre solo en la última: en una intermedia sobraría, y en la primera
+       diría un total que todavía no se ha terminado de listar. */
+    const cierre = ultima ? `
         <table class="totals">
           <tr><td class="lbl">Precio Anual</td><td class="val">${esc(POLIZA.totales.anual)}</td></tr>
           <tr class="grand"><td class="lbl">Precio Mensual</td><td class="val">${esc(POLIZA.totales.mensual)}</td></tr>
@@ -389,7 +412,44 @@ function pagePoliza(){
           <li>${esc(POLIZA.pie.iva)}</li>
           <li>Vigencia: del ${esc(POLIZA.fechas.vigenciaInicio)} al ${esc(POLIZA.fechas.vigenciaFin)}.</li>
           <li>La póliza se contrata y se presta por un periodo anual de doce (12) meses, independientemente de que la facturación se realice de forma anual o mensual.</li>
-        </ul>
+        </ul>` : '';
+    return `<section class="page">
+    <div class="sheet">
+      ${sheetHead("Póliza de Mantenimiento")}
+      <div class="body">
+        <table class="grid" data-filas="${grupo.length}">
+          <thead><tr>
+            <th class="ix">#</th><th class="cpt">Concepto</th>
+            <th class="c">Cantidad</th><th class="c">Precio Unitario</th>
+            <th class="c">Total</th><th class="c">Frecuencia</th><th class="c">Total Mtto</th>
+          </tr></thead>
+          <tbody>${filas}</tbody>
+        </table>${cierre}
+      </div>
+    </div>
+    ${sheetFoot(hojas.length > 1 ? `Equipos ${grupo[0].n}–${grupo[grupo.length-1].n} de ${POLIZA.renglones.length}` : '')}
+  </section>`;
+  }).join("");
+}
+
+/* ================== DESCRIPCIÓN DE TRABAJOS ==================
+   Una fila por concepto distinto —la app ya dedujo la lista—, y solo los que
+   tienen texto: no se inventa el trabajo de un mantenimiento.
+
+   Se pinta TODO en una hoja y después partirDescripcion() la reparte midiendo el
+   alto real, porque estas filas no son de altura fija. */
+function pageDescripcion(){
+  if(!POLIZA.descripciones.length) return '';
+  const filas = POLIZA.descripciones.map((d,i)=>
+    `<tr><td class="ix">${i+1}</td><td class="eq">${esc(d.concepto)}</td><td>${esc(d.texto)}</td></tr>`).join("");
+  return `<section class="page" data-parte="descripcion">
+    <div class="sheet">
+      ${sheetHead("Descripción de Trabajos")}
+      <div class="body">
+        <table class="grid desc">
+          <thead><tr><th class="ix">#</th><th>Equipo</th><th>Descripción del trabajo a realizar</th></tr></thead>
+          <tbody>${filas}</tbody>
+        </table>
       </div>
     </div>
     ${sheetFoot()}
@@ -403,15 +463,17 @@ function pageCalendario(){
      inicio de la vigencia, así que el valor guardado ES la columna. Aquí NO se
      rota nada — un % 12 de más movería todos los servicios de todos los
      renglones a la vez, sin error y sin aviso. */
-  const filas=POLIZA.renglones.map(r=>{
-    const celdas=MESES.map((_,mi)=>`<td class="${r.columnas.includes(mi)?"on":""}"></td>`).join("");
-    return `<tr><td class="ix">${r.n}</td><td class="lbl">${esc(r.concepto)}</td>${celdas}</tr>`;
-  }).join("");
-  return `<section class="page">
+  const hojas = partirEnHojas(POLIZA.renglones, RENGLONES_CALENDARIO_POR_HOJA);
+  return hojas.map((grupo, h) => {
+    const filas = grupo.map(r=>{
+      const celdas=MESES.map((_,mi)=>`<td class="${r.columnas.includes(mi)?"on":""}"></td>`).join("");
+      return `<tr><td class="ix">${r.n}</td><td class="lbl">${esc(r.concepto)}</td>${celdas}</tr>`;
+    }).join("");
+    return `<section class="page">
     <div class="sheet">
       ${sheetHead("Calendario de<br>Mantenimientos",true)}
       <div class="body" style="top:2.85in">
-        <table class="cal">
+        <table class="cal" data-filas="${grupo.length}">
           <colgroup><col style="width:22px"><col style="width:1.55in">
             ${MESES.map(()=>'<col style="width:6.55%">').join("")}</colgroup>
           <thead><tr><th class="ix"></th><th class="cpt">Concepto</th>${th}</tr></thead>
@@ -419,8 +481,9 @@ function pageCalendario(){
         </table>
       </div>
     </div>
-    ${sheetFoot()}
+    ${sheetFoot(hojas.length > 1 ? `Equipos ${grupo[0].n}–${grupo[grupo.length-1].n} de ${POLIZA.renglones.length}` : '')}
   </section>`;
+  }).join("");
 }
 
 /* ========================= CONSIDERACIONES ========================= */
@@ -481,15 +544,102 @@ function pageSinDatos(motivo){
 }
 
 
-/* Orden de hojas: Portada → Tabla → Calendario → Consideraciones.
+/* Orden de hojas:
+     Portada → Tabla → Descripción de Trabajos → Calendario → Consideraciones.
    Consideraciones va AL FINAL porque es el único bloque de prosa de largo
    variable: si fuera antes de la tabla, agregar o quitar una cláusula correría
    el arranque de la tabla y cambiaría cuántas filas caben en la primera hoja. */
 document.getElementById("doc").innerHTML = POLIZA
-  ? pageCover() + pagePoliza() + pageCalendario() + pageConsideraciones()
+  ? pageCover() + pagePoliza() + pageDescripcion() + pageCalendario() + pageConsideraciones()
   : pageSinDatos(LEIDO.error);
 
 if(POLIZA) document.title = 'Póliza ' + (POLIZA.cliente.sitio || POLIZA.cliente.nombre || '') + ' · Forguard';
+
+/* --- La descripción se parte MIDIENDO, no contando ---
+   Sus filas son de altura variable —19.8 a 28.0 pt en los documentos reales—
+   porque el texto del mantenimiento es largo y envuelve. Un tope de filas por
+   hoja se pasaría con textos largos y desperdiciaría media hoja con cortos. Así
+   que se pinta todo y aquí se reparte según lo que de verdad ocupó. */
+function partirDescripcion(){
+  const pagina = document.querySelector('[data-parte="descripcion"]');
+  if(!pagina) return;
+  /* SIEMPRE 'table.grid.desc tbody', nunca un 'tbody' pelón: el encabezado de la
+     hoja lleva su propia <table class="metabar"> y el navegador le inserta un
+     <tbody> implícito, así que un querySelector('tbody') devuelve ESE y no el de
+     las descripciones. Con eso el molde no se vaciaba y la segunda hoja salía
+     con la lista completa repetida. */
+  const TB = 'table.grid.desc tbody';
+  const filas = [...pagina.querySelectorAll(TB + ' tr')];
+  if(!filas.length) return;
+
+  /* Se mide UNA vez, con todo pintado, y se decide el reparto completo antes de
+     tocar el DOM. Una versión anterior clonaba la hoja dentro de un bucle y se
+     desbocó: 616 filas donde había 16. Medir primero y repartir después no tiene
+     ese modo de fallar. */
+  const arranque = pagina.querySelector('.body').getBoundingClientRect().top;
+  const limite   = pagina.getBoundingClientRect().bottom - 64;   /* sitio para el pie */
+  const alturaCabeza = pagina.querySelector('table.grid.desc thead').getBoundingClientRect().height;
+  const disponible = limite - arranque - alturaCabeza;
+  const altos = filas.map(f => f.getBoundingClientRect().height);
+
+  const grupos = [[]];
+  let usado = 0;
+  filas.forEach((f, i) => {
+    if(usado + altos[i] > disponible && grupos[grupos.length-1].length){
+      grupos.push([]); usado = 0;
+    }
+    grupos[grupos.length-1].push(f); usado += altos[i];
+  });
+  if(grupos.length < 2) return;                 /* cabe entera */
+
+  const molde = pagina.cloneNode(true);         /* una plantilla vacía, UNA vez */
+  molde.querySelector(TB).innerHTML = '';
+  let anterior = pagina;
+  grupos.slice(1).forEach(grupo => {
+    const hoja = molde.cloneNode(true);
+    const tb = hoja.querySelector(TB);
+    grupo.forEach(f => tb.appendChild(f));      /* appendChild MUEVE, no copia */
+    anterior.after(hoja);
+    anterior = hoja;
+  });
+}
+if(POLIZA) partirDescripcion();
+
+/* --- La aserción que se queda para siempre ---
+   Cuenta los renglones REALMENTE IMPRESOS en todas las hojas y los compara con
+   los del payload. Es la red que faltaba: la tabla tenía overflow:hidden y
+   MXGT01 salía con 27 de sus 36 equipos, con la hoja viéndose llena y bien
+   formada. Un recorte silencioso en un papel que va al cliente no lo cacha nadie
+   revisando el diff — solo lo cacha contar.
+
+   Si no cuadra, NO se falla en silencio: se pinta una banda roja hasta arriba y
+   se imprime también en el papel. Vale mil veces más un documento que se ve roto
+   que uno que se ve bien y le faltan nueve equipos. */
+function verificarRenglonesImpresos(){
+  const cuenta = sel => [...document.querySelectorAll(sel)]
+    .reduce((t, tb) => t + tb.querySelectorAll('tr').length, 0);
+  const pruebas = [
+    { que:'renglones de la tabla',      impreso: cuenta('table.grid:not(.desc) tbody'), esperado: POLIZA.renglones.length },
+    { que:'renglones del calendario',   impreso: cuenta('table.cal tbody'),             esperado: POLIZA.renglones.length },
+    { que:'filas de la descripción',    impreso: cuenta('table.grid.desc tbody'),       esperado: POLIZA.descripciones.length }
+  ];
+  const mal = pruebas.filter(p => p.impreso !== p.esperado);
+  if(!mal.length){ console.info('Documento completo:', pruebas.map(p=>`${p.que} ${p.impreso}/${p.esperado}`).join(' · ')); return true; }
+
+  const aviso = document.createElement('div');
+  /* Bloque normal, no sticky: sticky no se imprime en algunos navegadores y este
+     aviso tiene que salir EN EL PAPEL, que es donde el error hace daño. Que
+     además descuadre la primera hoja es lo de menos — es justo lo que se busca. */
+  aviso.setAttribute('style',
+    'background:#B3312C;color:#fff;padding:14px 18px;margin:0 auto 8px;max-width:8.5in;'
+  + 'font:700 13px/1.5 Poppins,Helvetica,Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact');
+  aviso.innerHTML = 'ESTE DOCUMENTO ESTÁ INCOMPLETO — NO LO MANDES.<br>'
+    + mal.map(p=>`Se imprimieron ${p.impreso} ${p.que} de ${p.esperado}.`).join('<br>');
+  document.getElementById('doc').prepend(aviso);
+  console.error('Documento incompleto', mal);
+  return false;
+}
+if(POLIZA) verificarRenglonesImpresos();
 </script>
 </body>
 </html>

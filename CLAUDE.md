@@ -288,8 +288,25 @@ tapado y nadie lo vio, así que sí hay que animar el siguiente.
   doble de tamaño. Ver `docs/ESPECIFICACION-DOCUMENTO.md`.
 - **Las cuatro cotizaciones no comparten columnas.** MXNL02 y MXGT01 traen Marca y
   no Cantidad, INOAC al revés, NGK tiene siete columnas. **"El formato actual" no
-  existe**: el documento nuevo imprime la unión (Concepto · Marca · Cantidad ·
-  Precio · Frecuencia · Total), decidido el 14-ago-2026.
+  existe**: el documento nuevo imprime las **siete de NGK** —`#` · Concepto ·
+  Cantidad · Precio Unitario · Total · Frecuencia · Total Mtto—, con la marca
+  pegada al concepto. Es el único que imprime la aritmética completa, y sus 17
+  renglones la cumplen. Tampoco comparten el **orden de hojas**; el adoptado es
+  Portada → Tabla → Descripción → Calendario → Consideraciones.
+- **`overflow:hidden` en una hoja del documento recorta datos en silencio.** Lo
+  tenía y MXGT01 imprimía **27 de sus 36 equipos** —más el bloque de Precio Anual
+  fuera del papel— con la hoja viéndose llena y bien formada. Ya no está y no
+  vuelve. Tres de las cinco hojas se parten: tabla a 23 filas, calendario a 21, y
+  la descripción **por altura medida**, porque sus filas no son de alto fijo. Hay
+  una aserción permanente —`verificarRenglonesImpresos()`— que cuenta lo impreso
+  contra el payload y, si no cuadra, pinta una banda roja que **también sale en el
+  papel**. Un documento que se ve roto vale mil veces más que uno que se ve bien y
+  le faltan nueve equipos.
+- **En la plantilla, `querySelector('tbody')` no devuelve el que crees.** El
+  encabezado de cada hoja lleva su propia `<table class="metabar">` y el navegador
+  le inserta un `<tbody>` implícito, así que un selector pelón agarra ESE. Por eso
+  el molde de la paginación no se vaciaba y la segunda hoja salía con la lista
+  entera repetida. Siempre `table.grid.desc tbody`, nunca `tbody` solo.
 - **Las cotizaciones en PDF traen errores humanos, y la portada miente.** La de
   Nexxus dice «MXGT01» porque la copiaron de la anterior: un script que le crea al
   PDF habría machacado `docs/poliza-MXGT01.json` en silencio. El lector no

@@ -120,8 +120,48 @@ título de portada en `x = 145.6`.
 
 ## Inventario hoja por hoja
 
+**Solo existen cinco tipos de hoja** en las cuatro cotizaciones, ni uno más:
+
+| Tipo | Título de 31.7 pt | Aparece en |
+|---|---|---|
+| Portada | *(el de 72 pt)* | las 4 |
+| Tabla de renglones | «Póliza de Mantenimiento» | las 4 |
+| **Descripción de Trabajos** | «Descripción de Trabajos» | **solo INOAC y NGK** |
+| Calendario | «Calendario de Mantenimientos» | las 4 |
+| Consideraciones | «Consideraciones Relevantes» | las 4 |
+
+**Orden adoptado:** Portada → Tabla → Descripción → Calendario → Consideraciones.
+
 Confirmado: **el calendario siempre va en hojas aparte, siempre después de la
 tabla.** Nunca dentro de la tabla de renglones.
+
+### Tres de las cinco hojas se desbordan y hay que partirlas
+
+| Hoja | Tope | De dónde sale |
+|---|---|---|
+| Tabla de renglones | **23 filas** | paso 21.53 pt · 1ª en y=183.5 · última en y=657.1 |
+| Calendario | **21 renglones** | máximo observado (MXGT01), paso 22.4 pt |
+| Descripción | **por altura, no por conteo** | sus filas miden de 19.8 a 28.0 pt: el texto es largo y envuelve |
+
+El bloque de cierre —Precio Anual, Precio Mensual y las notas— va **solo en la
+última hoja de la tabla**: en una intermedia sobraría y en la primera diría un
+total que todavía no se termina de listar.
+
+### La hoja de Descripción sale corta en dos de las cuatro
+
+Lista **un renglón por concepto distinto**, y solo los que tienen texto:
+
+| | Conceptos únicos | Con descripción | Sin |
+|---|---|---|---|
+| INOAC | 12 | **12** | 0 |
+| NGK | 17 | 15 | 2 |
+| MXNL02 | 26 | 16 | **10** |
+| MXGT01 | 35 | 15 | **20** |
+
+MXNL02 y MXGT01 **no traían esa hoja**, así que sus descripciones se cruzaron por
+concepto desde INOAC y NGK. Los que quedaron sin texto **se omiten**: imprimir un
+renglón con la celda en blanco no informa de nada, y no se inventa el texto de un
+mantenimiento.
 
 | | Orden de las hojas |
 |---|---|
