@@ -114,6 +114,41 @@ portada si pasan `DIAS_RESPALDO_VIEJO` (2). No hay limpieza automática (~67 KB
 c/u). Restaurar reemplaza el servidor para todo el equipo: bajar un respaldo
 antes.
 
+## Pólizas de mantenimiento preventivo
+
+Segundo producto: mantenimiento preventivo a cafeterías industriales. Se cotiza
+listando equipos y, cuando el cliente acepta, **esa misma cotización se vuelve
+póliza activa** — el mismo documento en otro momento, distinguido por `estatus`,
+igual que un sitio usa `estado`.
+
+**El detalle completo está en [docs/POLIZAS.md](docs/POLIZAS.md).** Léelo antes de
+tocar cualquier cosa del módulo. Lo mínimo que hay que saber:
+
+- **Un solo lugar calcula el dinero:** `totalRenglon()` = precio × cantidad ×
+  frecuencia. **Ningún total se guarda nunca.** No hay campo de descuento.
+- **La cobranza se reparte en centavos enteros** (`repartirCentavos`) y el residuo
+  va a la última casilla, para que las doce sumen el anual exacto.
+- **Colecciones nuevas:** `polizas` y `catalogo` (un solo documento,
+  `catalogo/lista`). Las reglas se pegan a mano — ver `config/firestore.rules`.
+- **Los precios se congelan por regla de servidor** cuando la póliza sale de
+  `cotizacion`/`enviada`. Eso exige que `normalizarPoliza` sea **idempotente**.
+- **Selector de módulo en el encabezado** (`estado.modulo`), donde antes estaba el
+  `<h1>`. `render()` despacha por módulo y luego por vista; admin va antes de los
+  dos. Cambiar de módulo es UN render.
+
+**Decisiones cerradas — no se reabren sin motivo nuevo:**
+
+| Decisión | Por qué |
+|---|---|
+| `hechosDetalle` es un **mapa por mes**, `{"0":{…}}`, no arreglo paralelo | mover el calendario recorría los registros de mes en silencio |
+| **Plazo fijo en 12** (`MESES_POLIZA`), sin campo `meses` | la cláusula impresa dice "doce (12) meses" y el calendario del documento tiene 12 columnas clavadas |
+| **Cinco estatus**: `cotizacion → enviada → activa`, más `perdida` y `cancelada` | "terminada" y "por vencer" se derivan de las fechas, como los sitios no guardan "Contrato cubierto" |
+| **Congelado de precios por regla de servidor**, no por convención | la interfaz sola no es seguridad; la regla exige que `partidas` salga idéntica |
+| **Sin campo de descuento, en ninguna parte** | MXGT01 traía un 5% escondido en los totales y por eso dejó de cuadrar |
+| **El total siempre derivado**, nunca guardado | ni `precioAnual` ni el total de un renglón. Guardar un total calculado es cómo se llega a que no cuadre |
+| **El catálogo es colección** (`catalogo/lista`), un documento con el arreglo | los precios los edita el equipo, así que persisten; uno y no 48 para que sea 1 lectura |
+| **Un solo `clientes`**, cada módulo filtra el suyo | una empresa con kioscos y pólizas es un registro con un solo logo |
+
 ## Vigilancia de la cuenta
 
 Bloquear a alguien escribe `activo:false` en `usuarios/{uid}`. **Desde el
@@ -168,6 +203,17 @@ tapado y nadie lo vio, así que sí hay que animar el siguiente.
 
 - **Un archivo sin dependencias.** Cero mantenimiento, funciona offline, nada
   que actualizar. El costo es un `index.html` grande; se asumió a gusto.
+- **Los totales derivados no se guardan.** Ni `precioAnual`, ni el total de un
+  renglón. Guardar un total calculado es cómo se llega a que no cuadre.
+- **Selector de módulo en el encabezado, no portada con dos botones.** Una portada
+  sería un clic extra al entrar, todos los días, para siempre.
+- **Para probar en local hay que autorizar `localhost` en la llave.** El `apiKey`
+  está restringido por dominio, así que el login rebota desde `file://` y desde
+  `http://localhost:8000` con *"Requests from referer … are blocked"*. Se agrega
+  `http://localhost:8000/*` en Google Cloud → Credenciales. Firestore no lo
+  necesita —va con `Bearer`—, solo el login. Esa restricción no es una barrera de
+  seguridad: se pasa forjando el `Referer` con `curl`. Sirve contra que otro sitio
+  reuse la llave; lo que protege los datos son las reglas y el login.
 - **El `apiKey` va en claro y no es secreto** — es un identificador público de
   Firebase, restringido por dominio en Google Cloud (`santiagogarza11.github.io/*`
   y `control-de-forpass.firebaseapp.com/*`). Lo que protege los datos son las
@@ -189,6 +235,56 @@ tapado y nadie lo vio, así que sí hay que animar el siguiente.
 
 ## Trampas conocidas (ya nos mordieron)
 
+- **Al agregar una colección hay que tocar SIETE lugares**, y el respaldo es el
+  que se olvida. Con `polizas`: las reglas (a mano en la consola), `datos`,
+  `cargar()`, `limpiarSesionYDatos()`, `bajarDeLaNube()`, `subirTodo()`, el
+  respaldo JSON y el **robot del repo privado**. Faltó `limpiarSesionYDatos` y
+  `datos.polizas` quedaba en `undefined` al cerrar sesión. Y el script del robot
+  escribía las colecciones **a mano** en el archivo de salida: agregarla a
+  `COLECCIONES` no bastaba —la bajaba, la contaba, la imprimía en el log y la
+  dejaba fuera del archivo—. Ahora se arma de `datos`, un solo lugar.
+- **Un 403 se disfraza de problema de cuenta.** `pedirNube` trata CUALQUIER 403
+  como "te quitaron el acceso", y eso solo es cierto si viene de algo que sí
+  deberías poder leer. Pasó tres veces en una sesión: la lectura de
+  `catalogo/lista` sin su regla pegada respondía 403 —no 404, así que
+  `permitirVacio` no ayudaba—, `manejarFalloDeArranque` lo leía como cuenta sin
+  acceso y **no se podía entrar**. De pasada disparaba `revisarCuenta()`, que
+  anunciaba un cambio de permiso que nadie había hecho. Cada colección nueva
+  necesita que su lectura se aísle en su propio try/catch: **un dato de comodidad
+  no puede tumbar el login.** Ver `leerCatalogo()`.
+- **Un 403 de escritura NO es pasajero y no se debe reintentar.** La cola lo
+  reintentaba para siempre: el tablero decía "cambios pendientes" a perpetuidad,
+  estorbaba al cerrar sesión, y el aviso genérico culpaba a la cuenta cuando lo
+  que faltaba era publicar una regla. Ahora se saca de la cola y el aviso dice
+  **cuál** colección falló.
+- **Nada debe escribir solo al arrancar.** La siembra del catálogo era automática
+  y, sin la regla pegada, envenenaba la cola de quien entrara. Un botón no le
+  puede hacer eso a nadie sin que se haya pedido.
+- **`confirmar()` desde dentro de un modal borra la captura.** Llama a
+  `abrirModal`, que reemplaza `#modalCuerpo`. El sistema de modales es de uno a la
+  vez, así que dentro del modal de la póliza se usan `window.confirm` y
+  `window.prompt`: feos, pero no tocan el DOM.
+- **Borrar código por rangos de texto se lleva lo que no era.** Al quitar
+  "balancear calendario" y "copiar de otra póliza" con cortes de índice a índice
+  se fueron con ellos CUATRO listeners del modal (`pInicio`, `pFacturacion`,
+  `pCliente`, `btnClienteNuevo`). Síntoma: mover la vigencia no movía el
+  calendario y el resumen no se actualizaba. Después de borrar por rango,
+  **contar los listeners que deben quedar.**
+- **Los meses del calendario de un PDF de Canva no son texto**: son trazados
+  `m`/`l`/`h f` con color de relleno, y la posición viene del CTM (`cm`) con su
+  pila `q`/`Q`, no de `Tm`. Ver el lector de la Fase 3B en el traspaso.
+- **Un arreglo paralelo se desalinea cuando el otro cambia.** `hechosDetalle`
+  empezó como arreglo paralelo a `mesesServicio` y mover el calendario recorría
+  los registros de mes sin error y sin aviso. Si lo que indexa puede cambiar,
+  **llavea por el dato, no por la posición**. (`pagos[]` de sitios tiene la misma
+  limitación: cambiar `meses` trunca por posición. Ahí duele menos porque es una
+  casilla, no historial de trabajo.)
+- **Doce sumas de flotantes no dan el total.** Ver la sección de pólizas: el
+  dinero que se reparte va en centavos enteros.
+- **Un `<h1>` deja de ser cierto cuando la app crece.** Decía "Control de
+  Forpass" y con el módulo de pólizas era mentira la mitad del tiempo.
+- **`renderConservandoFoco` tenía el id del buscador clavado.** Cualquier segundo
+  buscador necesita que se le pase el suyo, o el foco salta al de Forpass.
 - **`leerForm()` solo trae los campos del formulario** y `normalizarSitio`
   rellena el resto en blanco. Al guardar una edición hay que **arrastrar
   explícitamente** `pagosDetalle`, `contactos` y `encargado` — y cualquier campo
@@ -257,6 +353,32 @@ persona de la vigilancia de cuenta. Pintar la portada son 1.5 ms hoy; con 500
 clientes serían ~125 ms. Nunca va a ser el cuello de botella.
 
 ## Pendientes
+
+### Módulo de pólizas — Fase 3B en adelante
+
+- **Falta el examen con datos reales.** MXNL02 completa, 34 renglones, debe dar
+  **$683,134 anual / $56,927.83 mensual** (los `$56,928` de la cotización en papel
+  son ese número redondeado a pesos). Lo probado hasta hoy son 11 renglones
+  inventados del caso demo y un caso sintético que suma 683,134.
+- **Registrar servicios ejecutados.** El esquema ya lo soporta (`hechosDetalle`) y
+  el calendario ya los pinta, pero no hay dónde marcar "este ya se hizo". Es el
+  gemelo de la cobranza y va en el mismo molde.
+- **Documento imprimible (Fase 5).** `docs/plantilla_poliza_forguard.html` se abre
+  en pestaña nueva y recibe los datos por `sessionStorage`. Tres cosas antes:
+  embeber Poppins en base64 (hoy la carga por CDN y rompe la regla de "sin
+  internet"), cambiar su navy `#08194B` por el de marca `#002369`, y verificar que
+  Pages sirva el archivo en `docs/`. **La pestaña se debe abrir SIN `noopener`** o
+  no hereda el `sessionStorage` y llega vacía.
+- **Decidir qué mensual imprime el documento.** El nominal no cuadra por doce; o
+  lleva nota al pie, o imprime la última mensualidad aparte. Es decisión comercial.
+- **El 403 del congelado no se ha visto de verdad.** Un Owner pasa por la primera
+  cláusula sin comparar partidas, así que hace falta una cuenta Analyst — se
+  desbloquea con el pendiente de las dos cuentas.
+- **Excel de pólizas: no existe y no se tocó a propósito.** Si algún día se agrega
+  una hoja, las letras de columna se calculan con `letraCol()`, nunca a mano, y el
+  total del renglón va como fórmula, no tecleado.
+
+### Generales
 
 - **Dominio propio.** Verificado ago-2026: el DNS de `forguard.com` está en **AWS
   Route 53** y Santiago **no tiene acceso** — hay que pedir el CNAME. El
