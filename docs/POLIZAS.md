@@ -124,6 +124,28 @@ frecuencia`**. Con la frecuencia y el mes de arranque los meses salen solos, as�
 que la captura es **un control por renglón** en vez de picar 3 de 12 casillas.
 Capturar MXNL02 eran 102 clics; ahora son 0.
 
+> ## ⚠ `arranque` y `mesesServicio` son DESFASES, nunca meses calendario
+>
+> Los dos cuentan **meses dentro del plazo**, contados desde `fechaInicio`. El `0`
+> es el primer mes de la vigencia, no enero. Con `fechaInicio` en agosto de 2026,
+> `mesesServicio: [3,7,11]` significa **nov-26 · mar-27 · jul-27**.
+>
+> **Esto ya hizo tropezar a dos personas.** La palabra «arranque» se lee como «el
+> mes en que arranca la póliza» y no es eso: es el desfase del primer servicio de
+> **un renglón** dentro del plazo — lo que hace falta para escalonar equipos entre
+> sí. Que existan **12 desfases posibles** por frecuencia es la prueba: si fueran
+> meses calendario no habría doce ciclos distintos que probar.
+>
+> Dos consecuencias prácticas:
+>
+> - **La columna del calendario impreso ES el valor guardado.** No se rota. Aplicar
+>   un `(mes - mesArranque + 12) % 12` rotaría lo ya rotado y movería todos los
+>   servicios: el Segurista de MXNL02 pasaría de nov/mar/jul a abr/ago/dic.
+> - **`fechaInicio`, con año, es la única fuente de los encabezados** (`ago 26` …
+>   `jul 27`). Nunca `Math.min(...mesesServicio)`: si ningún equipo se atiende el
+>   primer mes —normal, en INOAC están escalonados a propósito— el mínimo ancla el
+>   calendario en el mes equivocado y **todos** los renglones se recorren juntos.
+
 El arranque **se deduce** de los meses (`mesArranqueDe`), no se guarda: un campo
 más sería un dato que se desincroniza de los meses reales, que son los que
 alimentan el calendario y el seguimiento. El selector ofrece solo los ciclos

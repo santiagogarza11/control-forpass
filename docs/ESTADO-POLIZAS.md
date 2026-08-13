@@ -24,6 +24,34 @@ Si vuelven a aparecer en una lista, es que la lista viene de notas viejas. **Cor
 la verificación antes de "arreglar" algo que ya funciona**, porque el arreglo
 correcto ya está puesto y volver a tocarlo solo puede romperlo.
 
+## El bug que sí era: el importador corría el calendario un mes
+
+De la misma familia que los dos de arriba —**el cero que se comporta como
+ausencia**— y encontrado el 14-ago-2026 comparando la primera columna que pinta la
+app contra los encabezados **medidos** de los cuatro PDF.
+
+`generar.py` escribe `inicioCalendario.mes` **0-indexado** (`MESN` se arma con
+`enumerate` sobre `['ene',…]`, así que `'ago'` es 7) y la plantilla lo documenta
+igual. El importador lo validaba con `mes >= 1 && mes <= 12` y lo usaba tal cual:
+las cuatro pólizas entraron con la vigencia **un mes antes**.
+
+Y como `mesesServicio` son **desfases** desde `fechaInicio`, no se movía un dato:
+**se movían todos los servicios de todos los renglones a la vez**, sin error y sin
+aviso. El Segurista de MXNL02 caía en oct/feb/jun y el papel lo marca en
+nov/mar/jul.
+
+Traía un segundo fallo callado en la misma línea: una póliza que arrancara en
+**enero** trae `mes: 0`, reprobaba la validación, y se iba sin vigencia a la fecha
+de la cotización con un aviso genérico.
+
+> **La firma de este bug vale más que el bug**: el gran total no se movió
+> ($3,283,973.20) mientras el calendario entero sí. Un error que no toca el dinero
+> no lo cacha ninguna prueba de totales. Solo se vio midiendo contra el documento.
+
+Arreglado en `6275058`. Con eso, **es la primera vez que el calendario de la app
+cuadra contra el documento medido**: las cuatro arrancan en el mes que sus PDF
+imprimen.
+
 ---
 
 ## Terminado y verificado
@@ -214,7 +242,21 @@ Verificado intacto en cada bloque de esta sesión:
    abajo.
 5. Cargar **Nexxus** cuando Santiago diga.
 
-**Fase 3B cerrada.**
+### ⚠ La Fase 3B NO está cerrada: las pólizas nunca tocaron el servidor
+
+El cargador está hecho y probado, pero **las cuatro pólizas solo existen en el
+`localStorage` de una copia de prueba en modo local** (`CONFIG_NUBE` vacío). En
+Firestore no hay ni una.
+
+No es descuido: **la rama nunca se ha desplegado**, así que el importador todavía
+no existe para nadie más y no ha podido correr contra el servidor. Cualquier
+verificación «contra Firestore» de esta fase es en realidad contra
+`docs/poliza-*.json`.
+
+**3B se cierra cuando**: se haga el merge a `main`, se peguen las reglas de
+`polizas` y `catalogo` en la consola, y se importen las cuatro **contra el
+servidor** — comprobando que el gran total sigue en $3,283,973.20 y que las cuatro
+arrancan en su mes correcto.
 
 ### El registro de servicios movió el esquema (y por poco sale roto)
 
