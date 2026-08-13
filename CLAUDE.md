@@ -24,9 +24,15 @@ animaciones y generador de Excel embebidos. Sin dependencias, sin build, sin
 ```
 index.html              ← toda la app
 config/firestore.rules  ← se pegan a mano en la consola (no hay Firebase CLI)
-docs/CONECTAR-SERVIDOR.md
+scripts/lector-pdf/     ← herramienta suelta, NO es parte de la app
+docs/CONECTAR-SERVIDOR.md · docs/POLIZAS.md · docs/ESTADO-POLIZAS.md
+docs/plantilla_poliza_forguard.html · docs/poliza-*.json
 README.md · CLAUDE.md
 ```
+
+`scripts/lector-pdf/` es Python que se corre a mano para sacar los datos de una
+cotización hecha en Canva. **La app sigue sin dependencias**: eso no se carga en
+el navegador ni se despliega.
 
 `ControlForpassBackups/` está anidado aquí pero es el repo privado. Está en
 `.gitignore` a propósito: **nunca debe entrar a este repo público.**
