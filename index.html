@@ -515,6 +515,20 @@ table.tabla tr.tiene-notas > td{border-bottom:none; padding-bottom:2px;}
 .cal-lista li{font-size:12px; color:var(--ink); line-height:1.4; display:flex; align-items:baseline; gap:5px;}
 .cal-lista li.hecho{color:var(--ok);}
 .cal-lista li svg{width:12px; height:12px; flex:0 0 auto; position:relative; top:2px;}
+/* El renglón del calendario es un botón: ahí se marca "este ya se hizo". Se ve
+   como texto hasta que el mouse encima lo delata — una lista de doce meses llena
+   de botones con marco se vuelve ilegible. */
+.cal-marcar{background:none; border:none; font-family:inherit; font-size:inherit; color:inherit;
+  text-align:left; padding:2px 4px; margin:-2px -4px; border-radius:6px; cursor:pointer;
+  display:flex; align-items:baseline; gap:5px; width:100%;}
+.cal-marcar:hover{background:var(--bg);}
+.cal-marcar:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.cal-lista li.hecho .cal-marcar{color:var(--ok);}
+/* Chip de mes clicable en la tabla del detalle. Hereda el color del chip; lo
+   único que cambia es que se puede picar. */
+.chip-mes{font-family:inherit; cursor:pointer;}
+.chip-mes:hover{filter:brightness(.95);}
+.chip-mes:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
 .busca-equipo .cuantos{flex:0 0 auto; width:58px; min-width:0; text-align:center; padding:6px 4px; font-size:12px;}
 /* Pie de la tabla de renglones. Fuera del scroll horizontal a propósito. */
 .pie-renglones{display:flex; gap:26px; justify-content:flex-end; flex-wrap:wrap;
@@ -2020,12 +2034,78 @@ function normalizarPoliza(p){
     telefono: v.telefono ? String(v.telefono) : ''
   };
 
-  /* Un renglón sin concepto es basura de una captura a medias: se tira. */
-  const partidas = (Array.isArray(p.partidas) ? p.partidas : [])
-    .map(normalizarPartida).filter(x => x.concepto);
+  /* Un renglón sin concepto es basura de una captura a medias: se tira. Se
+     normaliza TODO primero y se filtra después, para que los índices sigan
+     alineados con p.partidas mientras se sube el formato viejo — filtrar antes
+     recorría el arreglo y el historial acababa en el renglón equivocado. */
+  const partidasCrudas = (Array.isArray(p.partidas) ? p.partidas : []);
+  const todas = partidasCrudas.map(normalizarPartida);
+  const partidas = todas.filter(x => x.concepto);
+
+  /* Lo ejecutado: {"<idPartida>": {"<mes>": {cuando, quien, nota}}}.
+
+     Vive AQUÍ ARRIBA y no adentro de cada partida, y no es cosmético: la regla
+     de Firestore congela `partidas` en cuanto la póliza deja de ser cotización
+     —exige que salga idéntica a como entró—, así que un registro de servicio
+     guardado adentro haría que un Analyst NO pudiera marcar un mantenimiento en
+     una póliza activa. O sea, justo en el único momento en que se marcan. Un
+     403 sin explicación, en manos de quien más lo necesita. Es exactamente por
+     lo que la cobranza vive en `cobrosDetalle`, arriba: la simetría era la pista.
+
+     Se llavea por el ID de la partida y por el MES, nunca por posiciones. Con el
+     mes ya nos pasó: cuando esto era un arreglo paralelo a mesesServicio, meter
+     un equipo y pasar de [0,4,8] a [0,2,4,8] recorría el registro del mes 4 al
+     mes 2, sin error y sin aviso. Con el id de la partida es la misma trampa un
+     nivel más arriba: duplicar o borrar un renglón recorrería todo lo demás.
+
+     Un mes que ya NO está en el calendario no se borra si el servicio de verdad
+     se hizo: significa que se retiró un equipo después de haberle dado
+     mantenimiento, y borrarlo sería negar trabajo hecho y cobrado. La vista lo
+     marca aparte — ver serviciosFueraDeCalendario().
+
+     Las llaves se emiten ordenadas —los ids alfabéticamente, los meses por
+     número, no alfabéticamente, donde "10" < "2"— para que el objeto salga
+     siempre igual. De eso depende que normalizar sea idempotente. */
+  const vivas = new Set(partidas.map(x => x.id));
+  /* Copia, NO la referencia: abajo se le escribe al subir el formato viejo, y
+     hacerlo sobre p.hechos le metería mano al objeto que nos pasaron. Normalizar
+     lee y devuelve; no debe modificar su entrada. */
+  const crudos = Object.assign({},
+    (p.hechos && typeof p.hechos === 'object' && !Array.isArray(p.hechos)) ? p.hechos : {});
+  /* Formato viejo: hechosDetalle adentro de cada partida. Se sube solo. Lo que
+     ya esté arriba gana, por si el documento trae los dos. */
+  partidasCrudas.forEach((cruda, i)=>{
+    const viejo = cruda && cruda.hechosDetalle;
+    if(!viejo || typeof viejo !== 'object' || Array.isArray(viejo)) return;
+    const id = todas[i] && todas[i].id;
+    if(!id || !vivas.has(id)) return;
+    crudos[id] = Object.assign({}, viejo, crudos[id] || {});
+  });
+
+  const hechos = {};
+  Object.keys(crudos).filter(id => vivas.has(id)).sort().forEach(id=>{
+    const porMes = crudos[id];
+    if(!porMes || typeof porMes !== 'object' || Array.isArray(porMes)) return;
+    const limpio = {};
+    Object.keys(porMes).map(Number).filter(m => Number.isInteger(m) && m >= 0 && m < MESES_POLIZA)
+      .sort((a,b)=> a - b)
+      .forEach(m=>{
+        const d = porMes[String(m)];
+        /* Sin fecha no hubo servicio: es una casilla que alguien abrió y no
+           llenó. Se tira para que no se acumule basura invisible. */
+        if(!d || !d.cuando) return;
+        limpio[String(m)] = {
+          cuando: String(d.cuando),
+          quien:  d.quien ? String(d.quien) : '',
+          nota:   d.nota  ? String(d.nota)  : ''
+        };
+      });
+    /* Un renglón sin nada hecho no deja llave vacía colgando. */
+    if(Object.keys(limpio).length) hechos[id] = limpio;
+  });
 
   return {
-    partidas, cobros, cobrosDetalle, vendedor,
+    partidas, hechos, cobros, cobrosDetalle, vendedor,
     id: p.id || nuevoId(),
     clienteId: p.clienteId || '',
     /* El sitio es OPCIONAL: hay pólizas en cafeterías sin kiosco Forpass. El
@@ -2076,43 +2156,14 @@ function normalizarPartida(x){
         .filter(m => Number.isInteger(m) && m >= 0 && m < MESES_POLIZA)
     )].sort((a,b)=> a - b);
 
-  /* Lo ejecutado, LLAVEADO POR MES: {"0":{…}, "4":{…}}.
-
-     Iba como arreglos en paralelo a mesesServicio y estaba mal: si el cliente
-     mete un equipo y el calendario pasa de [0,4,8] a [0,2,4,8], el registro del
-     mes 4 se recorría al mes 2. Sin error y sin aviso. Y mover el calendario de
-     una póliza viva no es raro: es justo lo que dice la cláusula de
-     actualización cuando entran o salen equipos.
-
-     Con la llave, el mes ES el dato y no la posición. La llave presente ya
-     significa "se hizo": no hay un hechos[] aparte que pueda contradecir esto.
-
-     Las llaves se recorren ordenadas por número —no en el orden que vengan— para
-     que el objeto salga siempre idéntico. Es lo que la regla de congelado
-     compara. */
-  const hechosDetalle = {};
-  const previos = (x.hechosDetalle && typeof x.hechosDetalle === 'object' && !Array.isArray(x.hechosDetalle))
-    ? x.hechosDetalle : {};
-  Object.keys(previos).map(Number).filter(m => Number.isInteger(m) && m >= 0)
-    .sort((a,b)=> a - b)
-    .forEach(m => {
-      const d = previos[String(m)];
-      /* Sin fecha no hubo servicio: es una casilla que alguien abrió y no llenó.
-         Se tira para que no se acumule basura invisible. */
-      if(!d || !d.cuando) return;
-      /* Un mes que ya NO está en el calendario no se borra si el servicio de
-         verdad se hizo: significa que se retiró un equipo después de haberle
-         dado mantenimiento, y borrarlo sería negar trabajo hecho y cobrado. La
-         vista lo marca aparte — ver serviciosFueraDeCalendario(). */
-      hechosDetalle[String(m)] = {
-        cuando: String(d.cuando),
-        quien:  d.quien ? String(d.quien) : '',
-        nota:   d.nota  ? String(d.nota)  : ''
-      };
-    });
-
   return {
-    mesesServicio, hechosDetalle,
+    mesesServicio,
+    /* Identidad estable del renglón. NO es adorno: lo ejecutado se guarda
+       llaveado por este id (ver `hechos` en normalizarPoliza), y sin él habría
+       que llavear por la posición en el arreglo — que se recorre en cuanto
+       alguien duplica o borra un renglón. Es la misma lección que ya nos costó
+       una vez con los meses: llavear por el dato, nunca por la posición. */
+    id: (x.id || '').trim() || nuevoId(),
     concepto: (x.concepto || '').trim(),
     marca: (x.marca || '').trim(),
     /* Llave del catálogo, para rellenar la descripción sin guardarla. */
@@ -2304,13 +2355,29 @@ function repartirCentavos(totalCent, n){
   return partes;
 }
 
-const servicioHecho = (x, mes) => !!x.hechosDetalle[String(mes)];
-const serviciosHechos = x => x.mesesServicio.filter(m => servicioHecho(x, m)).length;
+/* Lo ejecutado de UN renglón. Todos pasan por aquí para que el resto del código
+   no tenga que saber que `hechos` vive en la póliza y no en la partida. */
+const hechosDe = (p, x) => (p.hechos && p.hechos[x.id]) || {};
+const servicioHecho = (p, x, mes) => !!hechosDe(p, x)[String(mes)];
+const servicioDetalle = (p, x, mes) => hechosDe(p, x)[String(mes)] || null;
+const serviciosHechos = (p, x) => x.mesesServicio.filter(m => servicioHecho(p, x, m)).length;
 /* Servicios reales en meses que ya salieron del calendario: la huella de un
    equipo que se retiró a media vigencia después de habérsele dado servicio. */
-function serviciosFueraDeCalendario(x){
-  return Object.keys(x.hechosDetalle).map(Number)
+function serviciosFueraDeCalendario(p, x){
+  return Object.keys(hechosDe(p, x)).map(Number)
     .filter(m => !x.mesesServicio.includes(m)).sort((a,b)=> a - b);
+}
+/* Escribe o borra un servicio, dejando `hechos` sin llaves vacías colgando.
+   Un solo lugar que lo toca, para no repetir el cuidado en cada quien. */
+function marcarServicio(p, partidaId, mes, det){
+  if(!p.hechos) p.hechos = {};
+  if(det){
+    if(!p.hechos[partidaId]) p.hechos[partidaId] = {};
+    p.hechos[partidaId][String(mes)] = det;
+  }else if(p.hechos[partidaId]){
+    delete p.hechos[partidaId][String(mes)];
+    if(!Object.keys(p.hechos[partidaId]).length) delete p.hechos[partidaId];
+  }
 }
 /* Se avisa, no se bloquea: una cotización a medias se puede guardar, pero no
    cerrarse como activa. */
@@ -2415,10 +2482,10 @@ function calcularPoliza(p){
   let programados = 0, hechos = 0, atrasados = 0, tocanEsteMes = 0, huerfanos = 0;
   p.partidas.forEach(x=>{
     programados += x.mesesServicio.length;
-    hechos      += serviciosHechos(x);
-    huerfanos   += serviciosFueraDeCalendario(x).length;
+    hechos      += serviciosHechos(p, x);
+    huerfanos   += serviciosFueraDeCalendario(p, x).length;
     x.mesesServicio.forEach(m=>{
-      if(servicioHecho(x, m)) return;
+      if(servicioHecho(p, x, m)) return;
       if(m < mesesCumplidos) atrasados++;
       else if(m === mesActual) tocanEsteMes++;
     });
@@ -3085,20 +3152,34 @@ function vistaPoliza(){
      + (p.notas ? '<div class="c-fila"><span>Notas</span><b style="font-weight:500; text-align:right">' + esc(p.notas) + '</b></div>' : '')
      + '</div>';
 
-  /* --- Los renglones --- */
+  /* --- Los renglones ---
+     Los meses son BOTONES cuando se puede editar: es donde se marca que un
+     mantenimiento ya se hizo. Mismo molde que las casillas de cobro. */
+  const marcable = puedeEditar();
   h += '<div class="bloque"><div class="bloque-cabeza"><div><h3>Equipos cotizados</h3>'
-     + '<p>El total de cada renglón se calcula: precio × cantidad × servicios al año. Nunca se captura.</p>'
+     + '<p>El total de cada renglón se calcula: precio × cantidad × servicios al año. Nunca se captura.'
+     + (marcable ? ' Pica un mes para registrar que ese mantenimiento ya se hizo.' : '') + '</p>'
      + '</div></div><div class="rodillo"><table class="tabla">'
      + '<thead><tr><th>#</th><th>Concepto</th><th>Marca</th><th>Cant.</th>'
      + '<th>P. unitario</th><th>Serv./año</th><th>Meses</th><th>Total</th></tr></thead><tbody>'
      + p.partidas.map((x,i)=>{
-         const fuera = serviciosFueraDeCalendario(x);
-         const meses = x.mesesServicio.map(m =>
-           '<span class="chip-zona ' + (servicioHecho(x,m) ? 'z-verde' : 'z-gris') + '" '
-           + 'title="' + esc(etiquetaMesServicio(p.fechaInicio, m) + (servicioHecho(x,m) ? ' · hecho el ' + fmtFecha(x.hechosDetalle[String(m)].cuando) : ' · pendiente')) + '">'
-           + esc(etiquetaMesServicio(p.fechaInicio, m)) + '</span>').join(' ')
-           + fuera.map(m => '<span class="chip-zona z-ambar" title="Servicio hecho en un mes que ya no está en el calendario">'
-               + esc(etiquetaMesServicio(p.fechaInicio, m)) + ' ⚠</span>').join(' ');
+         const fuera = serviciosFueraDeCalendario(p, x);
+         const chip = (m, tono, aviso) => {
+           const hecho = servicioDetalle(p, x, m);
+           const etiqueta = etiquetaMesServicio(p.fechaInicio, m);
+           const tip = etiqueta + (hecho ? ' · hecho el ' + fmtFecha(hecho.cuando)
+                                            + (hecho.quien ? ' · ' + hecho.quien : '')
+                                         : ' · pendiente')
+                     + (aviso ? ' · fuera del calendario' : '')
+                     + (marcable ? (hecho ? ' — pica para corregirlo' : ' — pica para marcarlo hecho') : '');
+           const dentro = esc(etiqueta) + (aviso ? ' ⚠' : '');
+           return marcable
+             ? '<button type="button" class="chip-zona chip-mes ' + tono + '" title="' + esc(tip) + '" '
+               + 'data-servicio="' + esc(p.id) + '" data-partida="' + esc(x.id) + '" data-mes="' + m + '">' + dentro + '</button>'
+             : '<span class="chip-zona ' + tono + '" title="' + esc(tip) + '">' + dentro + '</span>';
+         };
+         const meses = x.mesesServicio.map(m => chip(m, servicioHecho(p,x,m) ? 'z-verde' : 'z-gris', false)).join(' ')
+           + fuera.map(m => chip(m, 'z-ambar', true)).join(' ');
          return '<tr>'
            + '<td>' + (i+1) + '</td>'
            + '<td><b>' + esc(x.concepto) + '</b>'
@@ -4281,6 +4362,153 @@ function modalCobroPoliza(polizaId, idx){
   };
 }
 
+/* ------------------- Servicios ejecutados: "este ya se hizo" -------------------
+   Gemelo de la cobranza, en el mismo molde: quién capturó, cuándo se hizo, y un
+   servicio ya registrado se puede reabrir para corregirlo o deshacerlo.
+
+   Dos diferencias con el cobro, y las dos importan:
+
+   · La fecha SE CAPTURA en vez de ser la del momento. Un cobro se registra
+     cuando llega la OC, pero un mantenimiento se marca el lunes y se hizo el
+     viernes. Poner la del sistema sería mentir en el papel que se le enseña al
+     cliente. Se guarda aparte `capturado`, que sí es del momento.
+
+   · Se llega desde DOS lados: los chips de meses del detalle (por renglón) y el
+     calendario (por mes). El calendario es el que se usa de verdad —el técnico
+     va un mes y atiende varios equipos— así que al guardar desde ahí se vuelve
+     a abrir el calendario para seguir marcando sin salir y entrar.
+   ------------------------------------------------------------------------- */
+function modalServicioPoliza(polizaId, partidaId, mes, vuelveAlCalendario){
+  const p = polizaPorId(polizaId);
+  if(!p) return;
+  const x = p.partidas.find(q => q.id === partidaId);
+  if(!x) return;
+  if(!exigirPermiso()) return;
+
+  const det = servicioDetalle(p, x, mes);
+  const yaHecho = !!det;
+  const conCuenta = HAY_NUBE && haySesion();
+  const cli = clientePorId(p.clienteId);
+  const enCalendario = x.mesesServicio.includes(mes);
+  const etiqueta = etiquetaMesServicio(p.fechaInicio, mes);
+  /* El mes de la vigencia va del día 1 al último; la fecha del servicio se
+     propone dentro de él, no "hoy", que puede caer en otro mes. */
+  const inicioMes = sumarMeses(p.fechaInicio, mes);
+  const hoy = hoyISO();
+  const dentroDelMes = diasEntre(inicioMes, hoy) >= 0 && diasEntre(hoy, sumarMeses(p.fechaInicio, mes+1)) > 0;
+  const propuesta = (det && det.cuando) || (dentroDelMes ? hoy : inicioMes);
+
+  const cuerpo =
+      '<div class="resumen" style="margin-bottom:18px">'
+    +   '<div class="r-fila"><span>Póliza</span><span>' + esc(p.sitioNombre || p.folio || 'Póliza')
+    +     (cli ? ' · ' + esc(cli.nombre) : '') + '</span></div>'
+    +   '<div class="r-fila"><span>Equipo</span><span>' + esc(x.concepto)
+    +     (x.cantidad > 1 ? ' ×' + x.cantidad : '') + (x.marca ? ' · ' + esc(x.marca) : '') + '</span></div>'
+    +   '<div class="r-fila r-total"><span>Mes del calendario</span><span>' + esc(etiqueta) + '</span></div>'
+    +   (enCalendario ? ''
+        : '<div class="r-fila"><span>Ojo</span><span>Este mes ya no está en el calendario del equipo</span></div>')
+    + '</div>'
+
+    + (x.cantidad > 1
+        ? '<div class="pista" style="margin:-8px 0 14px">Son <b>' + x.cantidad + ' equipos</b> en un renglón: '
+          + 'marcarlo da por atendidos los ' + x.cantidad + '. Si se atendieron por separado, sepáralos en dos renglones.</div>'
+        : '')
+
+    + '<div class="campo"><label>Fecha en que se hizo *</label>'
+    +   '<input type="date" id="svCuando" value="' + esc(propuesta) + '">'
+    +   '<div class="pista">La fecha real del mantenimiento, no la de hoy. Es la que se le enseña al cliente.</div>'
+    + '</div>'
+
+    + '<div class="campo"><label>Nombre de quien captura *</label>'
+    +   (conCuenta
+          ? '<input type="text" id="svQuien" value="' + esc(nombreDe(sesion)) + '" readonly>'
+            + '<div class="pista">Es tu cuenta (' + esc(sesion.correo) + '). Queda registrada en el historial de cambios.</div>'
+          : '<input type="text" id="svQuien" placeholder="Ej. Santiago Garza" value="' + esc((det && det.quien) || nombreCapturador()) + '">'
+            + '<div class="pista">Se guarda para las siguientes capturas de esta computadora.</div>')
+    + '</div>'
+
+    + '<div class="campo"><label>Nota (opcional)</label>'
+    +   '<input type="text" id="svNota" placeholder="Ej. se cambió el empaque de la puerta" value="' + esc((det && det.nota) || '') + '">'
+    +   '<div class="pista">Lo que valga la pena recordar del servicio: un refacción cambiada, algo que quedó pendiente.</div>'
+    + '</div>';
+
+  /* Cancelar desde el calendario devuelve al calendario: si no, abrir un equipo
+     y arrepentirse te saca de la lista que venías recorriendo. Por eso el botón
+     lleva su propio id en ese caso — data-modal="cancelar" solo cierra. */
+  abrirModal((yaHecho ? 'Servicio de ' : 'Registrar servicio de ') + etiqueta, cuerpo,
+      (yaHecho ? '<button type="button" class="btn btn-peligro izq" id="btnDeshacerServicio">Deshacer registro</button>' : '')
+    + (vuelveAlCalendario
+        ? '<button type="button" class="btn btn-suave" id="btnVolverCalendario">Volver al calendario</button>'
+        : '<button type="button" class="btn btn-suave" data-modal="cancelar">Cancelar</button>')
+    + '<button type="button" class="btn btn-verde" data-modal="guardar">' + ICONO.cheque
+    + (yaHecho ? 'Guardar cambios' : 'Marcar como hecho') + '</button>');
+
+  const volver = ()=>{ if(vuelveAlCalendario) modalCalendario(polizaId); };
+  if(yaHecho){
+    $('btnDeshacerServicio').addEventListener('click',
+      ()=> deshacerServicio(polizaId, partidaId, mes, vuelveAlCalendario));
+  }
+  if(vuelveAlCalendario){
+    $('btnVolverCalendario').addEventListener('click', ()=>{ cerrarModal(); volver(); });
+  }
+  setTimeout(()=>{ const f = $('svCuando'); if(f) f.focus(); }, 70);
+  cerrarModalActual = ()=>{
+    /* Todo se lee ANTES de cerrar: cerrarModal reemplaza el contenedor por un
+       clon limpio y después los campos devuelven null. */
+    const cuando = $('svCuando').value.trim();
+    const quien  = $('svQuien').value.trim();
+    const nota   = $('svNota').value.trim();
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(cuando)){
+      $('svCuando').setAttribute('aria-invalid','true'); $('svCuando').focus();
+      aviso('Falta la fecha en que se hizo el servicio.', true); return;
+    }
+    if(diasEntre(cuando, hoyISO()) < 0){
+      $('svCuando').setAttribute('aria-invalid','true'); $('svCuando').focus();
+      aviso('Esa fecha todavía no llega: un servicio no se puede marcar por adelantado.', true); return;
+    }
+    if(!quien){
+      $('svQuien').setAttribute('aria-invalid','true'); $('svQuien').focus();
+      aviso('Falta el nombre de quien captura.', true); return;
+    }
+
+    marcarServicio(p, partidaId, mes, { cuando, quien, nota });
+    if(!conCuenta) recordarCapturador(quien);
+
+    guardarPoliza(p, yaHecho ? 'corrigió el servicio de' : 'registró el servicio de',
+      x.concepto + ' · ' + etiqueta + ' · hecho el ' + fmtFecha(cuando) + ' · capturó ' + quien
+      + (nota ? ' · ' + nota : ''));
+    cerrarModal();
+    render();
+    aviso('Servicio de ' + x.concepto + ' en ' + etiqueta + (yaHecho ? ' actualizado' : ' registrado') + '.');
+    volver();
+  };
+}
+
+function deshacerServicio(polizaId, partidaId, mes, vuelveAlCalendario){
+  const p = polizaPorId(polizaId);
+  if(!p) return;
+  const x = p.partidas.find(q => q.id === partidaId);
+  if(!x) return;
+  const det = servicioDetalle(p, x, mes);
+  if(!det) return;
+  const etiqueta = etiquetaMesServicio(p.fechaInicio, mes);
+  cerrarModal();
+  confirmar('Deshacer el servicio de ' + etiqueta,
+    'Se va a marcar <b>' + esc(x.concepto) + '</b> como <b>pendiente</b> en ' + esc(etiqueta)
+    + ', y se borra la fecha (<b>' + fmtFecha(det.cuando) + '</b>), quién lo capturó y la nota. '
+    + 'El calendario y los precios no se tocan.',
+    'Sí, deshacer', ()=>{
+      marcarServicio(p, partidaId, mes, null);
+      guardarPoliza(p, 'deshizo el servicio de', x.concepto + ' · ' + etiqueta);
+      render();
+      aviso('Servicio de ' + x.concepto + ' en ' + etiqueta + ' deshecho.');
+      /* Con un tick de retraso a propósito: confirmar() corre este callback y
+         DESPUÉS cierra el modal, así que abrir el calendario aquí mismo lo
+         abriría para cerrarlo en la misma línea. */
+      if(vuelveAlCalendario) setTimeout(()=> modalCalendario(polizaId), 0);
+    });
+}
+
 /* ------------------------- Modal: calendario de la póliza -------------------
    Mes por mes, qué equipos toca atender. Es la pregunta operativa del módulo —
    "qué hay que hacer este mes"— y en la tabla de captura no se contesta: ahí se
@@ -4295,13 +4523,15 @@ function modalCalendario(id){
   const mesActual = diasEntre(p.fechaInicio, hoy) < 0 ? -1
     : Math.min(MESES_POLIZA - 1, mesesTranscurridos(p.fechaInicio, hoy));
 
+  const marcable = puedeEditar();
   const meses = Array.from({length:MESES_POLIZA}, (_,m)=>{
     const toca = [];
     p.partidas.forEach(x=>{
-      if(x.mesesServicio.includes(m)) toca.push({ x, hecho: servicioHecho(x, m), fuera:false });
-      else if(x.hechosDetalle[String(m)]) toca.push({ x, hecho:true, fuera:true });
+      if(x.mesesServicio.includes(m)) toca.push({ x, det: servicioDetalle(p, x, m), fuera:false });
+      else if(servicioHecho(p, x, m)) toca.push({ x, det: servicioDetalle(p, x, m), fuera:true });
     });
-    return { m, toca, equipos: toca.reduce((t,r)=> t + r.x.cantidad, 0) };
+    return { m, toca, equipos: toca.reduce((t,r)=> t + r.x.cantidad, 0),
+             pendientes: toca.filter(r => !r.det).length };
   });
   const pico = Math.max(...meses.map(z=>z.equipos));
 
@@ -4310,9 +4540,24 @@ function modalCalendario(id){
     + '<div class="c-fila"><span>Servicios en el año</span><b>' + numero(c.programados)
     +   ' · ' + c.hechos + ' ' + plural(c.hechos,'hecho','hechos') + '</b></div>'
     + '<div class="c-fila"><span>Mes más cargado</span><b>' + pico + ' ' + plural(pico,'equipo','equipos') + '</b></div>'
+    + (marcable ? '<div class="pista" style="margin:10px 0 0">Pica un equipo para registrar que su mantenimiento ya se hizo.</div>' : '')
     + '<div class="cal-meses">'
     + meses.map(z=>{
         const esAhora = z.m === mesActual;
+        const renglon = r => {
+          const marca = r.det ? ICONO.cheque : '';
+          const texto = esc(r.x.concepto) + (r.x.cantidad > 1 ? ' <b>×' + r.x.cantidad + '</b>' : '')
+              + (r.fuera ? ' <span class="pista" style="display:inline">(fuera de calendario)</span>' : '')
+              + (r.det && r.det.cuando ? ' <span class="pista" style="display:inline">' + fmtFecha(r.det.cuando) + '</span>' : '');
+          return '<li' + (r.det ? ' class="hecho"' : '') + '>'
+            + (marcable
+                ? '<button type="button" class="cal-marcar" data-servicio="' + esc(p.id) + '" '
+                  + 'data-partida="' + esc(r.x.id) + '" data-mes="' + z.m + '" data-vuelve="cal" '
+                  + 'title="' + (r.det ? 'Ya se hizo · pica para corregirlo' : 'Registrar que ya se hizo') + '">'
+                  + marca + texto + '</button>'
+                : marca + texto)
+            + '</li>';
+        };
         return '<div class="cal-mes' + (z.toca.length ? '' : ' vacio') + (esAhora ? ' ahora' : '') + '">'
           + '<div class="cal-cabeza">'
           +   '<b>' + esc(etiquetaMesServicio(p.fechaInicio, z.m)) + '</b>'
@@ -4321,14 +4566,7 @@ function modalCalendario(id){
           +   (z.toca.length ? '<span class="cal-cuenta">' + z.equipos + ' ' + plural(z.equipos,'equipo','equipos') + '</span>' : '<span class="cal-cuenta">—</span>')
           + '</div>'
           + (z.toca.length
-              ? '<ul class="cal-lista">' + z.toca.map(r =>
-                  '<li' + (r.hecho ? ' class="hecho"' : '') + '>'
-                  + (r.hecho ? ICONO.cheque : '')
-                  + esc(r.x.concepto) + (r.x.cantidad > 1 ? ' <b>×' + r.x.cantidad + '</b>' : '')
-                  + (r.fuera ? ' <span class="pista" style="display:inline">(fuera de calendario)</span>' : '')
-                  + (r.hecho && r.x.hechosDetalle[String(z.m)].cuando
-                      ? ' <span class="pista" style="display:inline">' + fmtFecha(r.x.hechosDetalle[String(z.m)].cuando) + '</span>' : '')
-                  + '</li>').join('') + '</ul>'
+              ? '<ul class="cal-lista">' + z.toca.map(renglon).join('') + '</ul>'
               : '<div class="pista">Sin servicios programados.</div>')
           + '</div>';
       }).join('')
@@ -4337,6 +4575,17 @@ function modalCalendario(id){
   abrirModal('Calendario · ' + (p.sitioNombre || 'Póliza'), cuerpo,
     '<button type="button" class="btn btn-suave" data-modal="cancelar">Cerrar</button>');
   $('modal').classList.add('ancho');
+
+  /* Delegado y colgado aquí, no fuera: #modalCuerpo lo reemplaza cerrarModal()
+     por un clon limpio en cada cierre, así que este listener se va con él y no
+     se acumula. Colgarlo una vez fuera no serviría — apuntaría al nodo viejo. */
+  if(marcable){
+    $('modalCuerpo').addEventListener('click', ev=>{
+      const b = ev.target.closest('[data-servicio]');
+      if(!b) return;
+      modalServicioPoliza(b.dataset.servicio, b.dataset.partida, +b.dataset.mes, true);
+    });
+  }
 }
 
 /* --------------------------- Modal: póliza ---------------------------
@@ -4703,9 +4952,13 @@ function modalPoliza(id){
     const dup = ev.target.closest('[data-duplicar]');
     if(dup){
       const i = +dup.dataset.duplicar;
-      /* Copia sin el historial de servicios: el duplicado es otro equipo, no el
-         mismo con dos vidas. */
-      const copia = Object.assign({}, partidasTmp[i], { mesesServicio: partidasTmp[i].mesesServicio.slice(), hechosDetalle:{} });
+      /* Copia con id EN BLANCO: el duplicado es otro equipo, no el mismo con dos
+         vidas. Como el historial de servicios se llavea por el id de la partida,
+         dejarle el mismo id le heredaría los servicios del original — y borrar
+         uno de los dos borraría los del otro. normalizarPartida le pone uno
+         nuevo. */
+      const copia = Object.assign({}, partidasTmp[i],
+        { id:'', mesesServicio: partidasTmp[i].mesesServicio.slice() });
       partidasTmp.splice(i + 1, 0, normalizarPartida(copia));
       partidasTmp[i + 1]._tocada = true;
       pintarPartidas();
@@ -4717,8 +4970,10 @@ function modalPoliza(id){
       const i = +quitar.dataset.quitar;
       const x = partidasTmp[i];
       /* Un renglón con servicios ya registrados no se va sin avisar: eso borra
-         trabajo hecho, no solo una línea de precio. */
-      const hechos = Object.keys(x.hechosDetalle || {}).length;
+         trabajo hecho, no solo una línea de precio. El historial vive en la
+         póliza, llaveado por el id de este renglón — y normalizarPoliza tira las
+         llaves cuyo renglón ya no existe, así que quitarlo sí se lo lleva. */
+      const hechos = Object.keys((p && p.hechos && p.hechos[x.id]) || {}).length;
       /* Mismo motivo que arriba: confirmar() reemplazaría #modalCuerpo y se
          perdería la captura. Diálogo del navegador. */
       if(hechos && !window.confirm(
@@ -4878,10 +5133,13 @@ function modalPoliza(id){
       }
     }
 
-    /* El formulario no trae la cobranza: se administra aparte. Hay que arrastrarla
-       o normalizarPoliza la deja en blanco y editar borra las OC capturadas.
-       hechosDetalle no va aquí porque viaja dentro de cada partida. */
-    const conservado = p ? { cobros:p.cobros, cobrosDetalle:p.cobrosDetalle } : {};
+    /* El formulario no trae ni la cobranza ni los servicios ejecutados: los dos
+       se capturan aparte. Hay que arrastrarlos EXPLÍCITAMENTE o normalizarPoliza
+       los deja en blanco y editar una póliza le borra sus OC y su historial de
+       mantenimientos. Es la misma trampa de leerForm() con los sitios, y `hechos`
+       cayó en ella en cuanto se subió al nivel de la póliza: mientras vivía
+       dentro de cada partida viajaba solo. */
+    const conservado = p ? { cobros:p.cobros, cobrosDetalle:p.cobrosDetalle, hechos:p.hechos } : {};
     const limpio = normalizarPoliza(Object.assign({}, conservado, f, {
       partidas: partidasTmp, id: p ? p.id : nuevoId()
     }));
@@ -5949,6 +6207,11 @@ $('vista').addEventListener('click', ev=>{
 
   const cob = t.closest('[data-cobro]');
   if(cob){ modalCobroPoliza(cob.dataset.cobro, +cob.dataset.idx); return; }
+
+  /* Los chips de meses del detalle. El gemelo dentro del calendario cuelga de
+     #modalCuerpo, que está fuera de #vista y lleva su propio listener. */
+  const serv = t.closest('[data-servicio]');
+  if(serv){ modalServicioPoliza(serv.dataset.servicio, serv.dataset.partida, +serv.dataset.mes, false); return; }
 
   const calP = t.closest('[data-calendario]');
   if(calP){ modalCalendario(calP.dataset.calendario); return; }

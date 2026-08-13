@@ -195,11 +195,38 @@ Verificado intacto en cada bloque de esta sesión:
 1. ~~Botón "Importar póliza desde JSON"~~ **hecho**, con vista previa.
 2. ~~Precios dobles de MXNL02~~ **dos equipos distintos**, confirmado.
 3. ~~¿MXGT01 con el anual limpio?~~ **sí**, $1,884,480.40.
-4. **Registrar servicios ejecutados** — lo único que queda de esta fase. El esquema
-   lo aguanta (`hechosDetalle`) y el calendario ya los pinta, pero no hay dónde
-   marcar "este ya se hizo". Es el gemelo exacto de la cobranza y va en el mismo
-   molde: `modalCobroPoliza` es el patrón a copiar.
+4. ~~Registrar servicios ejecutados~~ **hecho** — y obligó a mover el esquema, ver
+   abajo.
 5. Cargar **Nexxus** cuando Santiago diga.
+
+**Fase 3B cerrada.**
+
+### El registro de servicios movió el esquema (y por poco sale roto)
+
+`hechosDetalle` vivía **dentro de cada partida**, y la regla de Firestore congela
+`partidas` en cuanto la póliza deja de ser cotización. O sea que marcar un servicio
+cambiaba `partidas` y **un Analyst habría recibido un 403 al marcar un
+mantenimiento en una póliza activa** — el único momento en que se marcan. Se midió
+antes de escribir la pantalla, comparando el `partidas` que se reenvía.
+
+Lo ejecutado vive ahora en **`hechos`, al nivel de la póliza**, llaveado por **id
+de partida → mes**, igual que `cobrosDetalle` vive arriba. Cada partida ganó un
+**`id` estable**: llavear por posición se rompería al duplicar o borrar un renglón.
+No hubo migración que hacer —no hay ni una póliza en el servidor— pero
+`normalizarPoliza` **sí sube el formato viejo solo** por si aparece en un respaldo.
+
+`docs/POLIZAS.md` afirmaba *"capturar cobranza y servicios pasa"*. La mitad de
+servicios era falsa desde que se escribió; ya está corregido, con la nota de por
+qué nadie lo cachó.
+
+**Probado ejecutando: 29 pruebas.** Que marcar servicios no toca `partidas`,
+idempotencia (2×, 3× y viaje por Firestore), orden de llaves estable, que
+normalizar no muta su entrada, migración del formato viejo incluso con renglones
+basura de por medio, que se tiran los servicios sin fecha y los de renglones
+borrados, los dos caminos de la interfaz (chips y calendario), validaciones,
+corregir, deshacer, que duplicar no hereda servicios, que borrar un renglón avisa y
+se lleva los suyos, que **editar la póliza no borra el historial**, permisos en tres
+niveles y Forpass intacto.
 
 ### Fase 4 — tablero
 

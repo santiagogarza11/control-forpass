@@ -146,7 +146,8 @@ tocar cualquier cosa del módulo. Lo mínimo que hay que saber:
 
 | Decisión | Por qué |
 |---|---|
-| `hechosDetalle` es un **mapa por mes**, `{"0":{…}}`, no arreglo paralelo | mover el calendario recorría los registros de mes en silencio |
+| Lo ejecutado va en **`hechos`, al nivel de la póliza**, llaveado por id de partida → mes | dentro de `partidas` la regla de congelado impedía que un Analyst marcara un servicio en una póliza activa: 403 justo en el único momento en que se marcan |
+| Cada partida trae **`id` estable**, y nada se llavea por posición | mover el calendario recorría los registros de mes en silencio; duplicar o borrar un renglón haría lo mismo un nivel arriba |
 | **Plazo fijo en 12** (`MESES_POLIZA`), sin campo `meses` | la cláusula impresa dice "doce (12) meses" y el calendario del documento tiene 12 columnas clavadas |
 | **Cinco estatus**: `cotizacion → enviada → activa`, más `perdida` y `cancelada` | "terminada" y "por vencer" se derivan de las fechas, como los sitios no guardan "Contrato cubierto" |
 | **Congelado de precios por regla de servidor**, no por convención | la interfaz sola no es seguridad; la regla exige que `partidas` salga idéntica |
@@ -288,12 +289,26 @@ tapado y nadie lo vio, así que sí hay que animar el siguiente.
   estrecha: **solo donde el documento se contradice a sí mismo** (la columna de
   servicios dice una cosa y el calendario otra). Que el mismo equipo cueste
   distinto en dos clientes **no** es un error, es un precio: el renglón manda.
-- **Un arreglo paralelo se desalinea cuando el otro cambia.** `hechosDetalle`
-  empezó como arreglo paralelo a `mesesServicio` y mover el calendario recorría
-  los registros de mes sin error y sin aviso. Si lo que indexa puede cambiar,
-  **llavea por el dato, no por la posición**. (`pagos[]` de sitios tiene la misma
-  limitación: cambiar `meses` trunca por posición. Ahí duele menos porque es una
-  casilla, no historial de trabajo.)
+- **Un arreglo paralelo se desalinea cuando el otro cambia.** El registro de
+  servicios empezó como arreglo paralelo a `mesesServicio` y mover el calendario
+  recorría los registros de mes sin error y sin aviso. Si lo que indexa puede
+  cambiar, **llavea por el dato, no por la posición**. (`pagos[]` de sitios tiene
+  la misma limitación: cambiar `meses` trunca por posición. Ahí duele menos porque
+  es una casilla, no historial de trabajo.)
+- **Lo que se capture sobre una póliza viva tiene que ir FUERA de `partidas`.** La
+  regla de congelado exige que `partidas` salga idéntica, así que cualquier cosa
+  guardada ahí adentro deja de poder escribirse en cuanto la póliza se activa —y
+  solo para quien no es Admin, que es el peor de los modos de fallar—. El registro
+  de servicios vivía adentro y habría dado 403 al Analyst justo en el único momento
+  en que se marcan servicios. Se subió a `hechos`, al nivel de la póliza, como ya
+  estaba `cobrosDetalle`. **`docs/POLIZAS.md` afirmaba lo contrario durante toda
+  una fase** y nadie lo cachó porque la pantalla no existía: la única forma de
+  saberlo fue medir si el `partidas` que se reenvía cambiaba, antes de escribirla.
+- **Al subir un campo fuera de `partidas`, `leerForm()` deja de arrastrarlo.**
+  Mientras el historial de servicios vivió dentro de cada partida viajaba solo;
+  arriba hay que sumarlo a mano al objeto `conservado` de `modalPoliza`, junto a
+  `cobros` y `cobrosDetalle`, o editar una póliza le borra el historial. Es la
+  misma trampa que ya documentada para los sitios, un nivel más arriba.
 - **Doce sumas de flotantes no dan el total.** Ver la sección de pólizas: el
   dinero que se reparte va en centavos enteros.
 - **Un `<h1>` deja de ser cierto cuando la app crece.** Decía "Control de
@@ -371,9 +386,6 @@ clientes serían ~125 ms. Nunca va a ser el cuello de botella.
 
 ### Módulo de pólizas — Fase 3B en adelante
 
-- **Registrar servicios ejecutados.** El esquema ya lo soporta (`hechosDetalle`) y
-  el calendario ya los pinta, pero no hay dónde marcar "este ya se hizo". Es el
-  gemelo de la cobranza y va en el mismo molde.
 - **Cargar la quinta cotización, Mercado Libre Nexxus.** Extraída y verificada
   ($1,952,850.40 limpio, mismo 5% escondido que MXGT01); Santiago dijo todavía no.
 - **Revisar la licuadora industrial de INOAC**: $7,280 contra ~$919 en MXNL02 y NGK.

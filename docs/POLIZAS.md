@@ -69,13 +69,30 @@ documento tiene que decir lo mismo dentro de un año aunque esa persona ya no es
 Por eso se agregó `telefono` a `usuarios/{uid}`, y cada quien puede editar el
 suyo (la regla lo permite junto a `ultimoAcceso`).
 
-**`hechosDetalle` es un mapa llaveado por mes**, `{"0":{cuando,quien,nota}}`, no
-un arreglo paralelo. La presencia de la llave ya dice que se hizo. Iba como
-arreglos en paralelo a `mesesServicio` y estaba **mal**: si el cliente mete un
-equipo y el calendario pasa de `[0,4,8]` a `[0,2,4,8]`, el registro del mes 4 se
-recorría al mes 2, sin error y sin aviso. Y mover el calendario de una póliza viva
-no es raro: es la cláusula de actualización funcionando. Un servicio real en un mes
-que ya salió del calendario **no se borra** — ver `serviciosFueraDeCalendario()`.
+**Lo ejecutado vive en `hechos`, al nivel de la póliza** —no dentro de cada
+partida— y llaveado por **id de partida → mes**:
+`{"<idPartida>": {"0": {cuando, quien, nota}}}`. La presencia de la llave ya dice
+que se hizo.
+
+Que viva arriba **no es cosmético, es lo que lo hace funcionar**. La regla de
+Firestore congela `partidas` en cuanto la póliza deja de ser cotización: exige que
+salga idéntica a como entró. Guardado adentro de la partida, marcar un
+mantenimiento cambiaba `partidas`, así que un Analyst **no podría marcar un
+servicio en una póliza activa** — justo el único momento en que se marcan. Un 403
+sin explicación, en manos de quien más lo necesita. Es exactamente por lo que
+`cobrosDetalle` vive arriba: la simetría era la pista, y se descubrió midiendo
+antes de escribir la pantalla.
+
+Cada partida trae por eso un **`id` estable**. Llavear por la posición en el
+arreglo se rompería en cuanto alguien duplica o borra un renglón — que es la misma
+lección que ya costó una vez: esto empezó como arreglos en paralelo a
+`mesesServicio`, y si el cliente metía un equipo y el calendario pasaba de
+`[0,4,8]` a `[0,2,4,8]`, el registro del mes 4 se recorría al mes 2, sin error y
+sin aviso. **Llavear por el dato, nunca por la posición**, en los dos niveles.
+
+Un servicio real en un mes que ya salió del calendario **no se borra** — ver
+`serviciosFueraDeCalendario()`. Uno cuyo renglón se borró sí: `normalizarPoliza`
+tira las llaves huérfanas, y quitar un renglón con servicios avisa antes.
 
 ### La lista de precios
 
@@ -150,6 +167,39 @@ facturada—, que es lo que se cuadra contra el cliente.
 Capturar cobranza en una póliza activa **pasa el congelado de precios** porque no
 toca `partidas`. Eso depende de que `normalizarPoliza` sea idempotente; si dejara
 de serlo, un analyst no podría capturar ni una OC.
+
+### Servicios ejecutados
+
+El gemelo de la cobranza: registrar que un mantenimiento **ya se hizo**. Se llega
+por dos lados, y los dos importan:
+
+- **Los chips de meses del detalle** son botones: uno por renglón y por mes. Sirve
+  cuando ya sabes qué equipo vas a marcar.
+- **El calendario** (`modalCalendario`), donde cada equipo del mes es un botón. Es
+  el que se usa de verdad —el técnico va un mes y atiende varios equipos— así que
+  al guardar **se vuelve a abrir el calendario** para seguir marcando sin salir y
+  entrar. Cancelar desde ahí también regresa: abrir un equipo y arrepentirse no te
+  puede sacar de la lista que venías recorriendo.
+
+Dos diferencias con el cobro:
+
+- **La fecha se captura**, no es la del momento. Un cobro se registra cuando llega
+  la OC, pero un mantenimiento se marca el lunes y se hizo el viernes: poner la del
+  sistema sería mentir en el papel que se le enseña al cliente. Se propone una
+  fecha **dentro del mes de la vigencia** (hoy si estamos en ese mes, si no el
+  día 1), y no se acepta una futura: un servicio no se marca por adelantado.
+- **Un renglón con cantidad > 1 se marca completo.** El modal lo dice: marcar
+  «Refrigerador Doble ×4» da por atendidos los cuatro. Si se atendieron por
+  separado, se separan en dos renglones — para eso está *Duplicar*.
+
+Deshacer usa `confirmar()` y **reabre el calendario con un tick de retraso**:
+`confirmar()` corre su callback y *después* cierra el modal, así que abrirlo ahí
+mismo lo abriría para cerrarlo en la misma línea.
+
+El listener de los botones del calendario se cuelga **dentro** de
+`modalCalendario`, no fuera: `cerrarModal()` reemplaza `#modalCuerpo` por un clon,
+así que el listener se va con él y no se acumula. Colgarlo una vez al arrancar
+apuntaría al nodo viejo.
 
 ### Lo que se quitó, y por qué no vuelve
 
@@ -234,6 +284,12 @@ no está en `cotizacion` ni `enviada`, `partidas` salga **idéntica** a como ent
 Capturar cobranza y servicios pasa; tocar un precio no. Cerrar y reabrir es de
 Owner/Admin, y `fechaCierre` es la marca visible (se limpia al reabrir, y eso
 descongela).
+
+> Que **los servicios** pasen no salió gratis: costó sacar `hechos` de dentro de
+> `partidas` y subirlo al nivel de la póliza. Mientras vivió adentro, esta línea
+> era mentira —marcar un mantenimiento cambiaba `partidas`— y nadie lo notó porque
+> la pantalla para marcarlos no existía todavía. **Cualquier cosa que se capture
+> sobre una póliza viva tiene que ir FUERA de `partidas`.**
 
 **La bitácora es la evidencia**: ya era inmutable por regla (`allow update,
 delete: if false`), así que el `precioAnual` del momento de cierre queda ahí y
