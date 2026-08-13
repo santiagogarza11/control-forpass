@@ -9,6 +9,21 @@ Traspaso para la sesión siguiente. Rama **`modulo-polizas`**, sin desplegar.
 > con lo que realmente pasó, no con la lista de memoria, para que nadie los
 > vuelva a "arreglar".
 
+## ⛔ Dos cosas que NO son bugs y ya se re-verificaron dos veces
+
+Han vuelto a aparecer como "bloqueadores" en dos listas de pendientes distintas.
+**No lo son, y no hay que tocarlas.** Verificado ejecutando el código el
+14-ago-2026, no leyéndolo:
+
+| «Bug» | Qué pasa de verdad |
+|---|---|
+| **Frecuencia 5** — *«`intervalo = 12/frecuencia` solo sirve para divisores»* | Ya está arreglado. El código dice literalmente `(a + Math.round(i * MESES_POLIZA / f)) % MESES_POLIZA`, que es exactamente el arreglo que la lista pide. Probadas las **144 combinaciones** de frecuencia × arranque: **0 rotas**. Frecuencia 5 desde el arranque 0 da `[0,2,5,7,10]` |
+| **Descuadre de cobros** — *«el resumen dice 11 de $30,326.15»* | Ya está arreglado. Con el caso exacto de la queja —anual $363,913.80, facturación mensual— el resumen dice **«12 de $30,326.15»**. El `11` estaba escrito a mano y se cambió por un conteo de los cobros iguales |
+
+Si vuelven a aparecer en una lista, es que la lista viene de notas viejas. **Correr
+la verificación antes de "arreglar" algo que ya funciona**, porque el arreglo
+correcto ya está puesto y volver a tocarlo solo puede romperlo.
+
 ---
 
 ## Terminado y verificado

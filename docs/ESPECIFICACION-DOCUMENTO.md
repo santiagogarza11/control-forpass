@@ -183,6 +183,37 @@ Frecuencia en 485.0, Total Mtto en 542.0; Concepto a la izquierda.
 > dónde arranca el *texto del encabezado*, que en Concepto está 63 pt a la derecha
 > de sus propios datos. Cuadrar el CSS a esas `x` deja la columna corrida.
 
+### ¿Cabe el concepto más ancho? Sí, por 1.2 pt
+
+Medido con las **métricas reales de Poppins**, no de Helvetica: Poppins es
+**9.6 – 12.2 % más ancha**, así que la duda estaba bien puesta.
+
+Los **70 conceptos distintos** de las cuatro cotizaciones, a 7.2 pt Regular contra
+los 126.6 pt de la columna:
+
+| | |
+|---|---|
+| Se pasan | **0 de 70** |
+| El más ancho | `Barra Caliente De Servicio Eléctrica` = **125.4 pt** |
+| Holgura | **1.2 pt · la columna queda al 99 %** |
+| Tope práctico | **~36 caracteres**. Con 38 ya se pasa |
+| Marcas (5.8 pt) | la más ancha `HELVEX/FAB. ESPEC` = 53.1 pt, sin problema |
+
+> **Cabe solo con padding horizontal CERO.** Con 1 pt por lado se pasa uno, con
+> 3 pt se pasan tres. Si el CSS le pone aire a la celda, se rompe de inmediato.
+
+| Padding por lado | Ancho útil | Conceptos que se pasan |
+|---|---|---|
+| 0 pt | 126.6 | **0** |
+| 1 pt | 124.6 | 1 |
+| 2 pt | 122.6 | 2 |
+| 3 pt | 120.6 | 3 |
+
+Salida si se quiere aire: **a 7.0 pt caben todos con 2 pt de padding por lado**.
+Son 2.8 % más chico, invisible al ojo, y compra el margen que a 7.2 no existe.
+
+**El aviso de captura es más necesario, no menos**: el umbral es **36 caracteres**.
+
 ### La cadena aritmética de NGK — confirmada
 
 Los 17 renglones, sin una sola excepción:
