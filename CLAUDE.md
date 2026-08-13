@@ -280,6 +280,16 @@ tapado y nadie lo vio, así que sí hay que animar el siguiente.
 - **Los meses del calendario de un PDF de Canva no son texto**: son trazados
   `m`/`l`/`h f` con color de relleno, y la posición viene del CTM (`cm`) con su
   pila `q`/`Q`, no de `Tm`. Ver el lector de la Fase 3B en el traspaso.
+- **Los PDF de referencia son reimpresiones de macOS, no exportaciones de Canva**
+  (el productor lo dice). Tres de los cuatro **perdieron la tipografía** y quedaron
+  en Helvetica; solo INOAC conserva Poppins. Y la página declara **1275×1650**, que
+  es **Carta a 150 DPI**: todo el archivo está a escala 2.0833×, así que el cuerpo
+  de la tabla parece de 15 pt y es de **7.2 pt**. Medir sin dividir da un CSS al
+  doble de tamaño. Ver `docs/ESPECIFICACION-DOCUMENTO.md`.
+- **Las cuatro cotizaciones no comparten columnas.** MXNL02 y MXGT01 traen Marca y
+  no Cantidad, INOAC al revés, NGK tiene siete columnas. **"El formato actual" no
+  existe**: el documento nuevo imprime la unión (Concepto · Marca · Cantidad ·
+  Precio · Frecuencia · Total), decidido el 14-ago-2026.
 - **Las cotizaciones en PDF traen errores humanos, y la portada miente.** La de
   Nexxus dice «MXGT01» porque la copiaron de la anterior: un script que le crea al
   PDF habría machacado `docs/poliza-MXGT01.json` en silencio. El lector no
@@ -391,12 +401,19 @@ clientes serían ~125 ms. Nunca va a ser el cuello de botella.
 - **Revisar la licuadora industrial de INOAC**: $7,280 contra ~$919 en MXNL02 y NGK.
   No se tocó porque INOAC cuadra exacto con su total impreso — no es contradicción
   interna, y ahí la regla es que el renglón manda.
-- **Documento imprimible (Fase 5).** `docs/plantilla_poliza_forguard.html` se abre
-  en pestaña nueva y recibe los datos por `sessionStorage`. Tres cosas antes:
-  embeber Poppins en base64 (hoy la carga por CDN y rompe la regla de "sin
-  internet"), cambiar su navy `#08194B` por el de marca `#002369`, y verificar que
-  Pages sirva el archivo en `docs/`. **La pestaña se debe abrir SIN `noopener`** o
-  no hereda el `sessionStorage` y llega vacía.
+- **Documento imprimible (Fase 5), en curso.** `docs/plantilla_poliza_forguard.html`
+  se abre en pestaña nueva y recibe los datos por `sessionStorage`.
+  - **Hecho:** fuentes embebidas en base64 (Inter variable + Poppins 700, 73 KB,
+    subconjunto latin) y navy corregido a `#002369`. Verificado: cero peticiones a
+    la red al abrirla.
+  - **Falta:** el puente de datos (`armarPayloadPoliza`), el fallback de "sin
+    datos" —hoy la plantilla trae un caso demo—, el botón, y verificar que Pages
+    sirva el archivo en `docs/`.
+  - **La pestaña se debe abrir SIN `noopener`** o no hereda el `sessionStorage` y
+    llega vacía.
+  - Las medidas reales del documento están en
+    [docs/ESPECIFICACION-DOCUMENTO.md](docs/ESPECIFICACION-DOCUMENTO.md): sacadas
+    de los cuatro PDF, con lo no extraíble marcado como tal.
 - **Decidir qué mensual imprime el documento.** El nominal no cuadra por doce; o
   lleva nota al pie, o imprime la última mensualidad aparte. Es decisión comercial.
 - **El 403 del congelado no se ha visto de verdad.** Un Owner pasa por la primera
