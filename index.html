@@ -5245,12 +5245,24 @@ function polizaDesdeJSON(j, archivo){
 
   /* inicioCalendario manda la vigencia, y con ella el calendario entero:
      mesesServicio son corrimientos DESDE esta fecha. Día 1 porque el PDF solo
-     dice el mes. */
+     dice el mes.
+
+     `mes` viene 0-INDEXADO: 0 = enero, 11 = diciembre. Así lo escribe el lector
+     de PDF (`MESN` de generar.py se arma con enumerate sobre ['ene',…]) y así lo
+     documenta la plantilla. Esto se leyó como 1-indexado y las cuatro pólizas
+     entraron con la vigencia UN MES ANTES: MXNL02 arrancaba en julio cuando su
+     calendario impreso empieza en agosto. Como los meses de servicio son
+     corrimientos desde aquí, no se movía un dato: se movían TODOS los servicios
+     de TODOS los renglones, un mes, sin error y sin aviso.
+
+     El `+ 1` es la conversión a mes de calendario. Y el rango es 0..11, no 1..12:
+     con el de antes, una póliza que arrancara en enero (mes 0) reprobaba la
+     validación y se iba callada a la fecha de la cotización. */
   const ic = j.inicioCalendario || {};
   const mes = parseInt(ic.mes, 10), anio = parseInt(ic.anio, 10);
   let fechaInicio = '';
-  if(mes >= 1 && mes <= 12 && anio >= 2000 && anio <= 2999){
-    fechaInicio = anio + '-' + String(mes).padStart(2,'0') + '-01';
+  if(mes >= 0 && mes <= 11 && anio >= 2000 && anio <= 2999){
+    fechaInicio = anio + '-' + String(mes + 1).padStart(2,'0') + '-01';
   }else{
     avisos.push('Sin «inicioCalendario» válido: la vigencia arranca en la fecha de la cotización.');
   }
