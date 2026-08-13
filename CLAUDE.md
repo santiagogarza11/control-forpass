@@ -280,6 +280,18 @@ tapado y nadie lo vio, así que sí hay que animar el siguiente.
 - **Los meses del calendario de un PDF de Canva no son texto**: son trazados
   `m`/`l`/`h f` con color de relleno, y la posición viene del CTM (`cm`) con su
   pila `q`/`Q`, no de `Tm`. Ver el lector de la Fase 3B en el traspaso.
+- **El color que un PDF DECLARA no es el que PINTA.** La marca de agua de la
+  portada declara relleno `#002369` y lo pinta aplanado a `#021449` — hay una
+  transparencia encima que las herramientas de extracción no reportan. Para
+  replicar, el color se toma del **píxel renderizado**, no del vector declarado;
+  el vector da la geometría, el render da el color. (Es el primo del JPEG que
+  desplazó el navy: ninguna fuente única dice toda la verdad.)
+- **La portada es réplica medida y va en Helvetica del sistema** — la única
+  excepción a Poppins, a propósito: replica el documento descargado tal cual y
+  con Helvetica Neue el acento de la ó se dibuja distinto (lo cachó un panel de
+  jueces). Sus medidas viven en `docs/ESPECIFICACION-DOCUMENTO.md` §Portada; la
+  calibración vertical del título (−5.2) se midió tinta contra tinta y se
+  recalibra midiendo, no calculando.
 - **Los PDF de referencia son reimpresiones de macOS, no exportaciones de Canva**
   (el productor lo dice). Tres de los cuatro **perdieron la tipografía** y quedaron
   en Helvetica; solo INOAC conserva Poppins. Y la página declara **1275×1650**, que

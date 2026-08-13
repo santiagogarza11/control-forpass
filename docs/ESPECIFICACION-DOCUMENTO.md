@@ -284,6 +284,39 @@ Lo único común a las cuatro es `#`@132 y que *Total Mtto* cierra a la derecha.
 
 ---
 
+## Portada — medida del vector y replicada (14-ago-2026)
+
+Extraída de la portada real de MXNL02 (exportación de una hoja que subió
+Santiago) más la de MXGT01 para la variante de tres líneas. Todo del vector con
+MuPDF; la réplica quedó verificada **tinta contra tinta a ±0.5 pt** y los seis
+cruces del escudo con los bordes a **±0.3 pt**.
+
+| Elemento | Medida |
+|---|---|
+| Fondo | **`#031649` plano** — sin degradados. `#002369` NO es el fondo |
+| Marca de agua | El escudo gigante: **tres trazos propios** (no es el logo escalado — se midió y difiere), caja −384 → 988 pt de alto. Relleno `#021449` (el PDF declara `#002369` pero lo aplana una transparencia), contorno `#1B2B59` a 2.71 pt (blanco ~9.5% ya aplanado) |
+| Isotipo | blanco, x=52, y=53.3, 59.9 pt de alto |
+| Wordmark | blanco, x=154, y=196.8, 107.9 pt de ancho |
+| Título | **Helvetica** (así lo trae el documento descargado; único lugar donde no va Poppins), 72 pt, `#E8E8E8`, x=145.6 |
+| Título · 3 líneas | tope y=280.6 · hueco 89.4 pt tras «Cotización», 60.4 pt entre las otras — son DOS cajas de texto de Canva, se replica el hueco |
+| Título · 2 líneas | tope y=338.8 · paso 60.4 pt |
+| Meta (Cliente/Fecha/Proyecto) | 6.7 pt `#5FAFF9`, etiquetas itálicas, x=153.3 / 256.3 / 365.7, y=529 |
+| Separadores de la meta | crema **`#F6F1D8`**, x=237.4 y 351.3, 8.4 pt de alto |
+| Cinta izquierda | tres polígonos con corte diagonal, x −7.1 → 14.3: `#6492B5` (y 547.4), `#8BB4D8` (y 622.7), `#49BA79` (y 697.6 → sangra abajo) — pintados verde primero, acero al final |
+| Tagline | 8.2 pt blanco, termina en x=561.4, y=747 |
+| Contacto del vendedor | **NO va en la portada** — la referencia no lo trae; vive en el pie de las hojas interiores |
+
+Título por estatus (actualiza al §7 de la v2): cotización/enviada/perdida/
+cancelada → **«Cotización / Póliza de / Mtto Prev.»** (tres líneas, como tres de
+los cuatro documentos reales); activa → **«Póliza de / Mtto Prev.»** (dos —
+quitar «Cotización» es exactamente lo que distingue a la póliza cerrada).
+
+> El folio sigue sin imprimirse en ninguna hoja (la v2 §7 dice «folio impreso
+> siempre», pero los documentos reales no lo traen y la portada es réplica).
+> **Pendiente de decidir dónde va.**
+
+---
+
 ## Calendario
 
 | | Valor |

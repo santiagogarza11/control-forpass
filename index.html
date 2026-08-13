@@ -2588,10 +2588,13 @@ function armarPayloadPoliza(p){
     meta: { generado: new Date().toISOString(), origen: 'control-forpass', version: 1 },
 
     /* Resuelto aquí, no en la plantilla: solo una póliza VIVA se imprime como
-       póliza; todo lo demás —incluidas perdida y cancelada— es una cotización. */
+       póliza; todo lo demás —incluidas perdida y cancelada— es una cotización.
+       Las líneas son las del documento real: tres de las cuatro cotizaciones
+       de referencia titulan «Cotización / Póliza de / Mtto Prev.», y quitarle
+       «Cotización» es exactamente lo que distingue a la póliza cerrada. */
     titulo: { lineas: p.estatus === 'activa'
                 ? ['Póliza de', 'Mtto Prev.']
-                : ['Cotización'] },
+                : ['Cotización', 'Póliza de', 'Mtto Prev.'] },
 
     /* sitioNombre es lo que se imprime, SIEMPRE: es texto guardado y sobrevive a
        que el sitio se borre del módulo de Forpass. */

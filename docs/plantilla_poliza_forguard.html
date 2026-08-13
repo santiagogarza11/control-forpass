@@ -71,23 +71,17 @@
     --font-body:"Poppins","Helvetica Neue",Helvetica,Arial,sans-serif;
 
     /* ---- COLORES ------------------------------------------------------
-       Los tres navies y el azul del calendario están MEDIDOS del relleno
-       vectorial de las cuatro cotizaciones reales, no muestreados de una
-       imagen. Un JPEG desplaza el color: la primera versión de esta plantilla
-       decía #08194B por eso, y el navy de verdad —el mismo que la marca— es
-       #002369. Ver docs/ESPECIFICACION-DOCUMENTO.md.
+       Todos MEDIDOS del relleno vectorial de las cotizaciones reales, no
+       muestreados de una imagen. Un JPEG desplaza el color: la primera versión
+       de esta plantilla decía #08194B por eso, y el navy de verdad —el mismo de
+       la marca— es #002369. Ver docs/ESPECIFICACION-DOCUMENTO.md.
 
-       Se fueron --navy-deep, --navy-glow y --deco: los tres estaban declarados
-       y ninguno se usaba en el documento. */
-    --navy:#002369;         /* fondo de portada y bloques navy — dominante en las 4 */
-    --navy-hondo:#031649;   /* la capa navy más profunda */
-
-    --ink:#D7D9DD;          /* título de portada */
-    --white:#FFFFFF;
-    --meta:#8FA2C6;         /* etiquetas sobre navy */
-    --meta-val:#B3C2DD;     /* valores sobre navy */
-    --tagline-cover:#C2CEE2;
-
+       Los colores de la PORTADA viven en su propio bloque de CSS, tecleados
+       ahí a propósito: la portada es una réplica medida y sus colores no se
+       comparten con ninguna otra hoja. Aquí quedan solo los de las hojas
+       interiores. (Se podó toda la familia que la portada vieja declaraba y ya
+       nadie usa: --navy, --navy-hondo, --ink, --white, --meta, --meta-val,
+       --tagline-cover y los tres --chip.) */
     --title:#14181D;        /* títulos grandes en hoja blanca */
     --brand-navy:#002369;   /* logotipo en hoja blanca — el navy de marca */
     --label-blue:#3C63A8;   /* "Concepto Cotizado:" / "Cliente" */
@@ -97,10 +91,6 @@
     --rule-strong:#C9CFD6;
     --zebra:#F5F7F9;
     --shade:#8BB4D8;        /* celda marcada del calendario — medido del vector */
-
-    --chip-1:#8CA0B8;
-    --chip-2:#4FA0A6;
-    --chip-3:#46A85A;
   }
 
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -119,30 +109,45 @@
     box-shadow:0 4px 24px rgba(8,25,75,.15);
   }
 
-  /* ============================ PORTADA ============================ */
-  .cover{background:var(--navy);color:var(--ink);}
-  .cover .bg{position:absolute;top:0;right:0;bottom:0;left:0;}
-  .cover .inner{position:absolute;top:0;right:0;bottom:0;left:0;padding:.78in .8in .58in .82in;}
+  /* ============================ PORTADA ============================
+     Réplica MEDIDA de la portada real (la exportada de MXNL02, extraída del
+     vector con MuPDF el 13-ago-2026, no muestreada de una imagen):
 
-  .chip{position:absolute;left:0;top:6.55in;width:11px;height:1.75in;
-        background:linear-gradient(180deg,var(--chip-1) 0%,var(--chip-2) 52%,var(--chip-3) 100%);}
+     · El fondo plano es #031649 — el navy de marca #002369 NO es el fondo, es
+       el RELLENO de la marca de agua. Sin degradados: el PDF real no trae uno.
+     · La marca de agua es el escudo de Forguard GIGANTE (1372 pt de alto, casi
+       dos hojas), anclado a la derecha y recortado por los cuatro bordes.
+       Contorno #1B2B59: es blanco al ~9.5% ya aplanado sobre el navy — se usa
+       el color plano para que imprima idéntico en cualquier motor.
+     · El título va en Helvetica A PROPÓSITO, no en Poppins: la portada replica
+       el documento descargado tal cual, y los cuatro PDF reales la traen en
+       Helvetica (72 pt, #E8E8E8, paso de 60.4 pt entre líneas).
+     · Cliente/Fecha/Proyecto: 6.7 pt #5FAFF9, etiquetas en itálica, DOS
+       separadores crema #F6F1D8 en x=237.4 y x=351.3.
+     · La cinta izquierda son tres polígonos con corte diagonal (#6492B5,
+       #8BB4D8, #49BA79), medio fuera de la hoja (arrancan en x=-7.1).
 
-  .wordmark-cover{position:absolute;left:.82in;top:2.5in;color:var(--white);line-height:0;}
-  .cover-title{line-height:.96;
-    position:absolute;left:.8in;top:3.35in;right:.6in;
-    font-family:var(--font-display);font-weight:700;
-    font-size:70px;line-height:.96;letter-spacing:-1.6px;color:var(--ink);
-  }
-  .cover-meta{position:absolute;left:.84in;top:6.35in;font-size:10.5px;line-height:1.45;}
-  .cover-meta td{padding-right:20px;vertical-align:top;color:var(--meta);}
-  .cover-meta .sep{border-left:1px solid rgba(143,162,198,.45);padding-left:20px;}
-  .cover-meta i{font-style:italic;}
-  .cover-meta b{font-weight:400;color:var(--meta-val);}
-
-  .cover-contact{position:absolute;left:.84in;bottom:.62in;font-size:9px;color:var(--meta);line-height:1.5;}
-  .cover-contact .k{font-weight:700;color:#CBD6E8;display:block;}
-  .cover-contact .blk{margin-bottom:9px;}
-  .tagline-cover{position:absolute;right:.72in;bottom:.62in;font-size:10.5px;color:var(--tagline-cover);}
+     overflow:hidden va SOLO aquí y no vuelve a las demás hojas: la marca de
+     agua y la cinta se salen de la hoja a propósito, y la portada no tiene
+     renglones de datos que un recorte pueda comerse — la prohibición general
+     es para las tablas. */
+  /* Helvetica PRIMERO, no Helvetica Neue: la reimpresión de macOS que es la
+     referencia usa la Helvetica del sistema, y el panel de jueces cachó que el
+     acento de la ó de Neue se dibuja más alto y más separado. Con la misma
+     fuente, el glifo empata. */
+  .cover{background:#031649;overflow:hidden;
+    font-family:Helvetica,"Helvetica Neue",Arial,sans-serif;}
+  .cv-marca{position:absolute;left:0;top:0;width:612pt;height:792pt;}
+  .cv-iso{position:absolute;left:52pt;top:53.3pt;color:#fff;line-height:0;}
+  .cv-logo{position:absolute;left:154pt;top:196.8pt;color:#fff;line-height:0;}
+  .cv-titulo{position:absolute;left:145.6pt;color:#E8E8E8;font-size:72pt;font-weight:400;}
+  .cv-titulo div{line-height:72pt;white-space:nowrap;}
+  .cv-meta{position:absolute;top:528.2pt;left:0;font-size:6.7pt;color:#5FAFF9;line-height:1.26;}
+  .cv-meta span{position:absolute;white-space:nowrap;}
+  .cv-meta i{font-style:italic;}
+  .cv-sep{width:.55pt;height:8.4pt;background:#F6F1D8;}
+  .cv-cinta{position:absolute;left:-7.1pt;top:547.4pt;width:21.4pt;height:252.8pt;}
+  .cv-tagline{position:absolute;right:50.6pt;top:745.6pt;font-size:8.2pt;color:#fff;}
 
   /* ======================= HOJAS DE CONTENIDO ======================= */
   .sheet{position:absolute;top:0;right:0;bottom:0;left:0;padding:.62in .72in;}
@@ -314,45 +319,70 @@ function sheetFoot(nota){
   </tr></table></div>`;
 }
 
-/* ============================ PORTADA ============================ */
+/* ============================ PORTADA ============================
+   Cada posición de aquí está MEDIDA del PDF real — ver el bloque de CSS de la
+   portada para el porqué de cada color. Lo que se decide aquí:
+
+   · El título baja del payload (2 o 3 líneas según el estatus). El paso entre
+     líneas es 60.4 pt SALVO el hueco después de «Cotización» cuando hay tres:
+     89.4 pt, porque en los documentos reales ese título son DOS cajas de texto
+     puestas a mano en Canva, no un párrafo. Se replica el hueco, no se
+     "corrige".
+   · La vigencia YA NO va en la portada: la portada real trae Proyecto, y la
+     vigencia se imprime en las notas de la tabla. El teléfono y correo del
+     vendedor tampoco: la portada de referencia no los trae (van en el pie de
+     las hojas interiores, como en el documento real).
+   · La marca de agua reutiliza ISOTIPO_PATHS con preserveAspectRatio="none"
+     para clavar la caja medida (275.2,-384 → 786.4×1372.5): fuerza ~5% de
+     estirón horizontal, invisible en contornos abstractos, y a cambio cada
+     cruce del escudo con los bordes de la hoja cae donde en el papel real. */
 function pageCover(){
+  const L = POLIZA.titulo.lineas;
+  /* Caja del título anclada por dónde arranca la primera línea en el papel:
+     con 3 líneas (cotización) arranca en y=280.6; con 2 (póliza) en y=338.8.
+     El -5.2 es CALIBRADO contra el papel con la Helvetica del sistema — la
+     misma del PDF de referencia, así que ápice del acento, mayúsculas y ancho
+     de tinta empatan en cero. Si algún día la fuente de la portada cambia,
+     este número se recalibra midiendo tinta contra tinta, no se calcula. */
+  const topTitulo = (L.length >= 3 ? 280.6 : 338.8) - 5.2;
+  const lineas = L.map((t, i) => {
+    const margen = i === 0 ? 0 : (L.length === 3 && i === 1 ? 17.4 : -11.6);
+    return `<div style="margin-top:${margen}pt">${esc(t)}</div>`;
+  }).join('');
+
   return `<section class="page cover">
-    <svg class="bg" viewBox="0 0 816 1056" preserveAspectRatio="none">
-      <defs>
-        <!-- Los tonos salen de las variables, no tecleados: el navy ya se
-             equivocó una vez por venir de un JPEG y no quiero dos fuentes de
-             verdad para el mismo color. #103580 es el navy medio de la marca. -->
-        <radialGradient id="g1" cx="72%" cy="14%" r="62%">
-          <stop offset="0%" stop-color="#103580"/><stop offset="100%" stop-color="var(--navy)"/>
-        </radialGradient>
-        <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="var(--navy)" stop-opacity="0"/>
-          <stop offset="100%" stop-color="var(--navy-hondo)" stop-opacity=".85"/>
-        </linearGradient>
-      </defs>
-      <rect width="816" height="1056" fill="url(#g1)"/>
-      <rect width="816" height="1056" fill="url(#g2)"/>
-      <g stroke="#14265A" stroke-width="1.1" fill="none" opacity=".85">
-        <path d="M404 -60 L404 236 Q404 300 460 300 L648 300 Q712 300 712 364 L712 700 Q712 764 656 764 L472 764 Q408 764 408 828 L408 1116"/>
-        <path d="M470 -60 L470 196 Q470 258 526 258 L700 258 Q762 258 762 320 L762 736 Q762 798 706 798 L520 798 Q458 798 458 860 L458 1116"/>
+    <!-- Los TRES trazos del escudo gigante, extraídos del vector del PDF real
+         tal cual, en coordenadas de la hoja (pt). No es ISOTIPO_PATHS escalado:
+         el arte de la marca de agua difiere del logo y aproximarlo movía los
+         cruces con los bordes hasta 20 pt — se midió. El relleno va en #021449,
+         el color YA APLANADO que pinta el PDF (declara #002369 pero lo tapa una
+         transparencia): el escudo se lee por su contorno, no por su relleno. -->
+    <svg class="cv-marca" viewBox="0 0 612 792" aria-hidden="true">
+      <g fill="#021449" stroke="#1B2B59" stroke-width="2.71" stroke-linejoin="round">
+        <path d="M1060.47 132.68 L1060.47 132.67 C1060.47 126.88 1057.28 121.63 1052.15 118.95 C1046.98 116.26 1040.81 116.65 1036.02 120.0 L480.14 507.13 L480.14 609.54 C480.14 614.32 482.77 618.67 487.01 620.88 C491.23 623.1 496.31 622.79 500.26 620.07 L950.81 307.84 C950.82 336.58 950.88 364.39 950.93 391.69 C951.1 478.02 951.25 559.57 950.2 649.21 C949.81 682.43 928.64 702.78 910.94 714.01 C848.85 753.4 786.89 792.99 724.97 832.63 C694.51 852.13 664.11 871.74 633.28 891.64 L594.16 916.87 C591.06 918.86 589.17 922.26 589.11 925.95 L589.72 932.38 L665.2 984.44 C669.14 987.15 673.71 988.52 678.28 988.52 C682.59 988.52 686.9 987.31 690.7 984.88 C715.7 968.91 740.62 952.9 765.51 936.89 C827.6 896.97 891.83 855.69 955.59 816.39 C1026.43 772.71 1060.73 709.25 1060.48 622.39 C1060.06 474.54 1060.39 195.08 1060.47 132.68 Z"/>
+        <path d="M836.43 646.36 C843.15 641.94 851.51 636.44 851.76 627.81 C852.55 601.63 852.47 575.65 852.39 548.13 L852.35 523.93 L851.89 517.58 L841.1 512.29 L814.46 529.89 C799.52 539.75 785.74 548.85 771.99 558.0 L718.74 593.47 C646.96 641.25 575.17 689.03 503.65 737.2 C495.88 742.45 493.09 742.44 486.17 737.23 C475.32 729.06 463.82 721.66 452.7 714.5 C443.81 708.78 434.91 703.06 426.31 696.92 C396.88 675.94 382.61 648.04 382.66 611.64 C382.85 495.02 382.82 386.54 382.79 274.51 L382.77 188.16 L1044.71 -261.25 L1049.52 -265.31 L1048.21 -372.0 C1048.14 -376.01 1045.9 -379.64 1042.34 -381.48 L1035.86 -383.96 L284.21 128.33 C275.6 134.18 275.6 143.99 275.6 148.16 C275.6 148.16 275.25 476.47 275.6 619.07 C275.77 688.48 305.54 744.66 364.07 786.03 C381.23 798.17 398.74 809.82 416.25 821.47 C434.79 833.8 453.33 846.14 471.46 859.07 C479.72 864.96 487.04 867.88 494.42 867.88 C501.45 867.88 508.53 865.21 516.46 859.86 C588.51 811.33 660.83 763.22 733.16 715.11 L836.43 646.36 Z"/>
+        <path d="M1044.68 -137.1 L484.2 249.07 C481.66 250.83 480.14 253.72 480.14 256.81 L480.14 359.62 C480.14 363.1 482.41 366.87 485.49 368.5 C486.85 369.22 488.47 369.57 490.1 369.57 C492.16 369.57 494.24 369.01 495.85 367.91 L1057.49 -17.1 C1060.07 -18.88 1061.61 -21.82 1061.57 -24.97 L1060.29 -129.02 C1060.25 -132.48 1057.85 -135.88 1054.77 -137.47 L1054.35 -137.69 C1051.28 -139.28 1047.55 -139.07 1044.68 -137.1 Z"/>
       </g>
     </svg>
-    <div class="chip"></div>
-    <div class="inner">
-      ${isotipo(70)}
-      <div class="wordmark-cover">${logotipo(152)}</div>
-      <div class="cover-title">${POLIZA.titulo.lineas.map(esc).join("<br>")}</div>
-      <table class="cover-meta"><tr>
-        <td><i>Cliente:</i> <b>${esc(POLIZA.cliente.nombre)}${POLIZA.cliente.sitio?`<br>${esc(POLIZA.cliente.sitio)}`:""}</b></td>
-        <td class="sep"><i>Fecha:</i> <b>${esc(POLIZA.fechas.cotizacion)}</b></td>
-        <td class="sep"><i>Vigencia:</i> <b>${esc(POLIZA.fechas.vigenciaInicio)}<br>al ${esc(POLIZA.fechas.vigenciaFin)}</b></td>
-      </tr></table>
-      <div class="cover-contact">
-        <div class="blk"><span class="k">Teléfono</span>${esc(POLIZA.vendedor.telefono)}</div>
-        <div class="blk"><span class="k">Correo:</span>${esc(POLIZA.vendedor.correo)}</div>
-      </div>
-      <div class="tagline-cover">Sostenemos a los que sostienen todo.</div>
+    <svg class="cv-cinta" viewBox="0 0 21.4 252.8" preserveAspectRatio="none" aria-hidden="true">
+      <!-- Pintados en el MISMO orden que el PDF: verde abajo, azul claro
+           encima, azul acero al final. Los cortes diagonales son el borde
+           inferior de cada uno tapando al de abajo. -->
+      <rect x="0" y="150.2" width="21.4" height="102.6" fill="#49BA79"/>
+      <polygon points="0,75.3 0,190.8 21.4,172.1 21.4,75.3" fill="#8BB4D8"/>
+      <polygon points="0,0 0,104.8 21.4,87.6 21.4,0" fill="#6492B5"/>
+    </svg>
+    <div class="cv-iso">${isotipo(79.9)}</div>
+    <div class="cv-logo">${logotipo(143.9)}</div>
+    <div class="cv-titulo" style="top:${topTitulo}pt">${lineas}</div>
+    <div class="cv-meta">
+      <span style="left:153.3pt"><i>Cliente</i>: ${esc(POLIZA.cliente.nombre)}${POLIZA.cliente.sitio ? `<br>${esc(POLIZA.cliente.sitio)}` : ''}</span>
+      <span class="cv-sep" style="left:237.4pt"></span>
+      <span style="left:256.3pt"><i>Fecha</i>:&nbsp; ${esc(POLIZA.fechas.cotizacion)}</span><!-- doble espacio: así lo trae la referencia, en las dos variantes -->
+      <span class="cv-sep" style="left:351.3pt"></span>
+      <span style="left:365.7pt"><i>Proyecto:</i> Póliza de Mantenimiento Preventivo</span>
     </div>
+    <div class="cv-tagline">Sostenemos a los que sostienen todo.</div>
   </section>`;
 }
 

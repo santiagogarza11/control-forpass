@@ -276,15 +276,18 @@ las colecciones a mano y es el lugar que se olvida.
 gh api repos/santiagogarza11/control-forpass-backups/contents/backups/ultimo.json --jq '.content' | base64 -d | python3 -c "import json,sys; d=json.load(sys.stdin); print({k: (len(v) if isinstance(v,list) else type(v).__name__) for k,v in d.items()})"
 ```
 
-### Hay una quinta póliza en el servidor: «Prolec»
+### Hay una quinta póliza en el servidor: «Prolec» — **es una prueba**
 
-$106,461, cliente NGK, con **2 de 15 servicios ya marcados**. **No salió del
-importador** —no existe ningún `poliza-Prolec.json`— y la aritmética lo confirma:
-el indicador de portada da $3,390,434, y `3,390,434 − 3,283,973 = 106,461`, o sea
-exactamente Prolec. Las cuatro importadas están intactas.
+$106,461, cliente NGK, con 2 de 15 servicios marcados. **No salió del importador**
+—no existe ningún `poliza-Prolec.json`— y la aritmética lo confirma: el indicador
+de portada da $3,390,434, y `3,390,434 − 3,283,973 = 106,461`, exactamente Prolec.
+Las cuatro importadas están intactas.
 
-Falta saber si es captura real o una prueba. **No se toca hasta confirmarlo**: esos
-dos servicios marcados son trabajo capturado y borrarla se los lleva.
+Santiago confirmó el 14-ago-2026 que **es una prueba suya**. Se deja en el servidor;
+no estorba. Si algún día se limpia, se borra desde su tarjeta.
+
+**Al verificar totales hay que filtrar por sitio**, no sumar todo: el indicador de
+la portada cuenta las cinco.
 
 ### El registro de servicios movió el esquema (y por poco sale roto)
 
