@@ -44,6 +44,72 @@ service cloud.firestore {
       allow write: if puedeEditar();
     }
 
+    /* --- Pólizas de mantenimiento preventivo ---
+       La cotización y la póliza activa son el MISMO documento en distintos
+       momentos, separados por su campo 'estatus':
+
+         cotizacion → enviada → activa
+                          ↘ perdida        (el cliente no la tomó)
+                             activa → cancelada
+
+       Aquí sí hay reglas por campo, y no por gusto: el precio con el que se
+       cerró una póliza NO se puede tocar después. Sin esto el congelado sería
+       una convención de la interfaz, y una convención no es un candado.
+
+       Quién puede qué:
+         · Todos con acceso    → leer
+         · Analyst  → capturar y mover cotizaciones entre 'cotizacion' y
+                      'enviada'. Sobre una póliza ya cerrada puede seguir
+                      capturando cobranza y servicios ejecutados, pero NO puede
+                      cambiar el estatus ni tocar las partidas.
+         · Owner/Admin → todo, incluido cerrar, reabrir y corregir precios.
+
+       Las tres cláusulas del update, en orden:
+         1. Admin y Owner pasan siempre.
+         2. Mientras la póliza entra Y sale en 'cotizacion' o 'enviada', se
+            edita libre. Exigir las dos puntas es lo que impide cerrarla.
+         3. Para cualquier otro estatus: se puede guardar SI el estatus no
+            cambió Y las partidas salieron idénticas a como entraron.
+
+       Por qué la cláusula 3 compara también el estatus y no solo las partidas:
+       comparando solo partidas, el candado se brincaba en dos pasos —el analyst
+       pasaba 'activa' a 'cotizacion' dejando partidas igual (le pasaba la 3), y
+       ya en 'cotizacion' la 2 le dejaba editar precios a gusto. --- */
+    match /polizas/{id} {
+      allow read: if conAcceso();
+
+      /* Una póliza nace como cotización. Nadie estrena uno de estos ya cerrado:
+         si no, el candado del update se brinca borrando y volviendo a crear. */
+      allow create: if esAdmin()
+                    || (puedeEditar()
+                        && request.resource.data.estatus in ['cotizacion', 'enviada']);
+
+      allow update: if esAdmin()
+                    || (puedeEditar()
+                        && resource.data.estatus in ['cotizacion', 'enviada']
+                        && request.resource.data.estatus in ['cotizacion', 'enviada'])
+                    || (puedeEditar()
+                        && request.resource.data.estatus == resource.data.estatus
+                        && request.resource.data.partidas == resource.data.partidas);
+
+      /* Borrar una póliza cerrada es la forma más burda de saltarse todo lo de
+         arriba, así que también es de Owner y Admin. */
+      allow delete: if esAdmin();
+    }
+
+    /* --- Lista de precios de equipos ---
+       Un solo documento, catalogo/lista, con el arreglo de equipos adentro. Va
+       en un documento y no en uno por equipo para que sean 48 equipos por UNA
+       lectura y no por 48: se lee en cada carga de página y se edita muy poco.
+
+       Cualquiera con acceso la lee —el vendedor la necesita para cotizar— y solo
+       Owner o Admin la cambia. Este candado SÍ es de servidor, no como el de
+       cerrar pólizas: aquí basta el rol, sin comparar campos. --- */
+    match /catalogo/{doc} {
+      allow read:  if conAcceso();
+      allow write: if esAdmin();
+    }
+
     /* --- Historial: cualquiera con acceso lo escribe, solo admin lo lee,
            y nadie lo puede modificar ni borrar. --- */
     match /bitacora/{id} {
@@ -57,7 +123,11 @@ service cloud.firestore {
        · Solo admin y owner ven todas.
        · Un admin NO puede crear, modificar ni borrar a un owner: eso es
          exclusivo del owner. Así nadie te puede degradar ni bloquear.
-       · Cada quien puede actualizar únicamente su propio 'ultimoAcceso'. --- */
+       · Cada quien puede actualizar únicamente su propio 'ultimoAcceso' y su
+         propio 'telefono'. El teléfono se agregó porque las cotizaciones de
+         póliza imprimen el celular del vendedor, y ese dato lo tiene que poder
+         poner cada quien sin molestar a un administrador. Sigue sin poder
+         tocarse 'rol' ni 'activo': nadie se puede ascender ni desbloquear. --- */
     match /usuarios/{uid} {
       allow read: if esAdmin() || (request.auth != null && request.auth.uid == uid);
 
@@ -69,7 +139,7 @@ service cloud.firestore {
                         && resource.data.rol != 'owner'
                         && request.resource.data.rol != 'owner')
                     || (request.auth != null && request.auth.uid == uid
-                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ultimoAcceso']));
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ultimoAcceso', 'telefono']));
 
       allow delete: if esOwner() || (esAdmin() && resource.data.rol != 'owner');
     }
