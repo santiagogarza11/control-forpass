@@ -58,7 +58,24 @@ header.app .logo-header{height:22px; width:auto; display:block;}
 header.app .bar{width:4px; height:26px; border-radius:2px; background:linear-gradient(180deg,var(--navy),var(--accent));}
 header.app h1{font-size:15px; font-weight:600; color:var(--navy);}
 header.app .sub{font-size:12px; color:var(--gray); margin-left:auto;}
-@media (max-width:700px){ header.app{padding:12px 16px; gap:10px;} header.app .sub{display:none;} }
+
+/* Selector de módulo: control segmentado, del tamaño de un título porque ocupa
+   su lugar. La pestaña encendida va en blanco sobre el fondo gris para que se
+   lea como una pestaña de verdad y no como dos botones sueltos. */
+.modulos{display:flex; gap:2px; background:var(--bg); border:1px solid var(--line);
+         border-radius:9px; padding:3px;}
+.modulos .mod{appearance:none; border:none; background:none; font:inherit; font-size:13px;
+              font-weight:600; color:var(--gray); padding:5px 13px; border-radius:6px;
+              cursor:pointer; white-space:nowrap; transition:color .15s var(--ease), background .15s var(--ease);}
+.modulos .mod:hover{color:var(--navy);}
+.modulos .mod[aria-selected="true"]{background:#fff; color:var(--navy); box-shadow:var(--sombra-suave); cursor:default;}
+.modulos .mod:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+@media (max-width:700px){
+  header.app{padding:12px 16px; gap:10px;}
+  header.app .sub{display:none;}
+  .modulos .mod{padding:5px 9px; font-size:12px;}
+}
 
 /* ---------- Contenedor ---------- */
 .wrap{max-width:1180px; margin:0 auto; padding:26px 24px 90px;}
@@ -353,6 +370,9 @@ button.encargado:focus-visible{outline:2px solid var(--accent); outline-offset:2
   animation:sube .24s cubic-bezier(.22,1,.36,1) both; overflow:hidden;
 }
 .modal.ancho{max-width:860px;}
+/* La cotización de una póliza llega a 34 renglones de ocho columnas: 860 px no
+   alcanzan y la tabla se volvía ilegible a fuerza de comprimir. */
+.modal.enorme{max-width:1180px;}
 @keyframes sube{ from{opacity:0; transform:translateY(16px) scale(.99);} to{opacity:1; transform:none;} }
 .modal-cabeza{padding:19px 22px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:12px; position:sticky; top:0; background:#fff; z-index:2;}
 .modal-cabeza h3{font-size:16px; font-weight:700; color:var(--navy); flex:1;}
@@ -394,6 +414,119 @@ button.encargado:focus-visible{outline:2px solid var(--accent); outline-offset:2
 /* Rejilla de casillas de mes en el modal */
 .meses-modal{display:flex; gap:6px; flex-wrap:wrap;}
 .meses-modal .mes{width:34px; height:34px; font-size:11.5px;}
+/* Los meses de servicio llevan el mes escrito, no un número: "¿en qué mes le
+   toca a la campana?" no se contesta con un 3. */
+.meses-modal.con-mes .mes{width:auto; min-width:50px; padding:0 8px; height:32px; font-size:11px;}
+.mes.serv{background:var(--navy); border-color:var(--navy); color:#fff;}
+.mes.serv:hover{background:var(--navy-2); border-color:var(--navy-2); color:#fff;}
+
+/* ---- Tabla de captura de la cotización ----
+   Una fila por equipo, con los campos editables dentro de la celda. Antes era una
+   tarjeta por renglón y no escalaba: MXGT01 tiene 34 equipos y eran 34 tarjetas
+   de scroll infinito. Aquí caben de un vistazo y se recorren con Tab. */
+/* El min-width es a propósito: sin él las columnas fijas se comían el ancho y la
+   de "Equipo" quedaba en 40 px mostrando "Cám…". Mejor que la tabla se recorra a
+   lo ancho dentro de .rodillo que leer el nombre del equipo cortado. */
+.tabla-renglones{width:100%; min-width:940px; border-collapse:collapse;}
+.tabla-renglones .equipo{min-width:190px;}
+.tabla-renglones .marca{width:96px;}
+.tabla-renglones th{font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--gray);
+  font-weight:700; text-align:left; padding:7px 5px; border-bottom:1.5px solid var(--line); white-space:nowrap;}
+.tabla-renglones td{padding:3px 4px; border-bottom:1px solid var(--line); vertical-align:middle;}
+.tabla-renglones input, .tabla-renglones select{width:100%; padding:6px 7px; border:1px solid #d4d9e6;
+  border-radius:7px; font-family:inherit; font-size:12px; color:var(--ink); background:#fbfcfe; outline:none;}
+.tabla-renglones input:focus, .tabla-renglones select:focus{border-color:var(--accent); background:#fff;}
+/* El total va gris y de solo lectura porque NO se captura: se calcula. */
+.tabla-renglones input[readonly]{background:#f1f3f8; color:var(--navy); font-weight:700; text-align:right; cursor:default;}
+.tabla-renglones input[aria-invalid="true"]{border-color:var(--error); background:#fffafa;}
+.tabla-renglones .num{width:24px; color:var(--gray-claro); font-size:11px; text-align:right; padding-right:6px;}
+.tabla-renglones .mini{width:62px;}
+.tabla-renglones .med{width:106px;}
+.tabla-renglones .arr{width:132px;}
+.tabla-renglones td.acc{white-space:nowrap; text-align:right; width:1%;}
+.tabla-renglones tfoot td{border-bottom:none; padding-top:12px; font-size:13px; font-weight:700; color:var(--navy);}
+.tabla-renglones tfoot .lbl{text-align:right; font-weight:500; color:var(--gray);}
+/* Renglón con meses que no siguen el intervalo: se marca para que no se pierda. */
+.tabla-renglones tr.irregular > td{background:#fffdf6;}
+.fila-meses > td{background:var(--bg); padding:10px 12px 13px; border-bottom:1px solid var(--line);}
+.icono-mini{background:none; border:1px solid var(--line); border-radius:6px; cursor:pointer;
+  padding:5px 6px; color:var(--gray); line-height:0; margin-left:3px;}
+.icono-mini:hover{border-color:var(--navy); color:var(--navy); background:#fff;}
+.icono-mini svg{width:13px; height:13px; display:block;}
+.icono-mini.on{border-color:var(--navy); color:var(--navy); background:var(--bg);}
+/* Globito al pasar el mouse. El title nativo tarda casi un segundo y con tres
+   iconos seguidos nadie adivina cuál es cuál mientras espera. */
+/* El avatar de la tarjeta de póliza es un botón: lleva al cliente para subirle la
+   foto. Se ve idéntico al avatar normal — la única pista es el cursor. */
+.avatar-btn{background:none; border:none; padding:0; cursor:pointer; position:relative; line-height:0; border-radius:12px;}
+.avatar-btn:hover{opacity:.82;}
+.avatar-btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+.icono-mini[data-tip], .avatar-btn[data-tip]{position:relative;}
+.icono-mini[data-tip]::after, .avatar-btn[data-tip]::after{
+  content:attr(data-tip); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%);
+  background:var(--navy-oscuro); color:#fff; font-size:10.5px; font-weight:600; letter-spacing:.01em;
+  padding:4px 8px; border-radius:6px; white-space:nowrap; pointer-events:none;
+  opacity:0; transition:opacity .13s var(--ease); z-index:5;
+}
+.icono-mini[data-tip]:hover::after, .icono-mini[data-tip]:focus-visible::after,
+.avatar-btn[data-tip]:hover::after, .avatar-btn[data-tip]:focus-visible::after{opacity:1;}
+.busca-equipo{display:flex; gap:9px; align-items:center; margin-bottom:13px; flex-wrap:wrap;}
+.busca-equipo input{flex:1; min-width:220px; padding:9px 11px; border:1px solid #d4d9e6; border-radius:9px;
+  font-family:inherit; font-size:13px; color:var(--ink); background:#fbfcfe; outline:none;}
+.busca-equipo input:focus{border-color:var(--accent); background:#fff;}
+.cuantos-zona{display:flex; align-items:stretch; gap:6px;}
+.cliente-zona{display:flex; gap:7px; align-items:stretch;}
+.cliente-zona select{flex:1; min-width:0;}
+.cliente-zona .btn{flex:0 0 auto; white-space:nowrap;}
+
+/* Chips de acceso rápido a los equipos que más se cotizan. Con el buscador solo,
+   agregar los de siempre era teclear el nombre completo cada vez. */
+.chips-equipo{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;}
+.chip-eq{display:inline-flex; align-items:center; gap:6px; background:var(--bg);
+  border:1px solid var(--line); border-radius:999px; padding:5px 9px 5px 11px;
+  font-family:inherit; font-size:12px; font-weight:600; color:var(--navy); cursor:pointer;
+  transition:background .14s var(--ease), border-color .14s var(--ease), transform .14s var(--ease);}
+.chip-eq:hover{background:#fff; border-color:var(--navy); transform:translateY(-1px);}
+.chip-eq:active{transform:none;}
+.chip-eq:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+.chip-eq .mas{display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px;
+  border-radius:50%; background:var(--navy); color:#fff; font-size:12px; line-height:1; font-weight:700;}
+.chip-eq:hover .mas{background:var(--accent);}
+/* Calendario de la póliza: una tarjeta por mes. */
+.cal-meses{display:grid; grid-template-columns:repeat(auto-fill,minmax(215px,1fr)); gap:11px; margin-top:15px;}
+.cal-mes{border:1px solid var(--line); border-radius:11px; padding:11px 12px; background:#fff;}
+.cal-mes.vacio{background:var(--bg); border-style:dashed;}
+.cal-mes.ahora{border-color:var(--alerta); box-shadow:0 0 0 2px var(--alerta-suave);}
+.cal-cabeza{display:flex; align-items:center; gap:7px; margin-bottom:8px;}
+.cal-cabeza b{font-size:13px; color:var(--navy); text-transform:capitalize;}
+.cal-cuenta{font-size:10.5px; font-weight:700; color:var(--gray); white-space:nowrap;}
+.cal-lista{list-style:none; display:flex; flex-direction:column; gap:5px;}
+.cal-lista li{font-size:12px; color:var(--ink); line-height:1.4; display:flex; align-items:baseline; gap:5px;}
+.cal-lista li.hecho{color:var(--ok);}
+.cal-lista li svg{width:12px; height:12px; flex:0 0 auto; position:relative; top:2px;}
+.busca-equipo .cuantos{flex:0 0 auto; width:58px; min-width:0; text-align:center; padding:6px 4px; font-size:12px;}
+/* Pie de la tabla de renglones. Fuera del scroll horizontal a propósito. */
+.pie-renglones{display:flex; gap:26px; justify-content:flex-end; flex-wrap:wrap;
+  border-top:1.5px solid var(--line); margin-top:2px; padding:11px 4px 2px;}
+.pie-renglones div{display:flex; align-items:baseline; gap:9px;}
+.pie-renglones span{font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--gray); font-weight:700;}
+.pie-renglones b{font-size:16px; font-weight:700; color:var(--navy);}
+
+/* Renglones de la cotización dentro del modal (tarjeta, ya no se usa en pólizas) */
+.partida{border:1px solid var(--line); border-radius:12px; padding:14px 14px 4px; margin-bottom:12px; background:#fcfdff;}
+.partida .p-cabeza{display:flex; align-items:center; gap:9px; margin-bottom:12px;}
+.partida .p-num{width:22px; height:22px; border-radius:50%; background:var(--navy); color:#fff;
+                font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:0 0 auto;}
+.partida .p-cabeza select{flex:1; min-width:0; padding:7px 9px; border:1px solid #d4d9e6; border-radius:8px;
+                          font-family:inherit; font-size:12px; color:var(--ink); background:#fff; outline:none;}
+.partida .p-cabeza select:focus{border-color:var(--accent);}
+.partida .fila3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:11px;}
+@media (max-width:560px){ .partida .fila3{grid-template-columns:1fr;} }
+/* El total va en gris y de solo lectura porque NO se captura: se calcula. Que se
+   vea distinto a los campos editables es parte del mensaje. */
+.partida .p-total input{font-weight:700; color:var(--navy);}
+.partida .aviso-cuadre{font-size:11px; color:var(--error); margin-top:5px; font-weight:600;}
 
 /* ---------- Aviso flotante ---------- */
 .toast{
@@ -620,7 +753,16 @@ table.tabla .yo{font-size:10.5px; color:var(--accent); font-weight:600;}
     </svg>
   </button>
   <div class="bar"></div>
-  <h1>Control de Forpass</h1>
+  <!-- Selector de módulo. Va aquí, en el encabezado y siempre visible, en vez de
+       una portada con dos botones: esa portada sería un clic extra al entrar,
+       todos los días, para siempre.
+       Ocupa el lugar del <h1> que decía "Control de Forpass". Con dos módulos ese
+       título ya era mentira en la mitad de la app, y la pestaña encendida dice lo
+       mismo que decía el título. -->
+  <nav class="modulos" id="selectorModulo" role="tablist" aria-label="Módulo">
+    <button type="button" class="mod" data-modulo="forpass" role="tab" aria-selected="true">Forpass</button>
+    <button type="button" class="mod" data-modulo="polizas" role="tab" aria-selected="false">Pólizas</button>
+  </nav>
   <div class="nube-zona">
     <span class="correo-sesion" id="nombreSesion"></span>
     <span id="rolSesion"></span>
@@ -854,9 +996,196 @@ const COLORES = [
 ];
 const IDS_COLOR = COLORES.map(c => c.id);
 
+/* ===================== PÓLIZAS DE MANTENIMIENTO =====================
+   Otro producto de Forguard: mantenimiento preventivo a cafeterías
+   industriales. Se cotiza listando equipos, y cuando el cliente acepta esa
+   misma cotización se vuelve póliza activa — es el MISMO documento en otro
+   momento, distinguido por su 'estatus', igual que un sitio usa 'estado'.
+   ==================================================================== */
+
+/* La póliza es anual y punto. No hay campo "meses" en el documento a propósito:
+   la cláusula que se imprime dice "un periodo anual de doce (12) meses" y el
+   calendario del documento tiene 12 columnas clavadas. Un plazo configurable
+   sería un dato que solo puede valer 12 y que alguien podría desincronizar del
+   papel. Si algún día se vende una a 24 meses, es función nueva y toca también
+   la plantilla — que lo exija es honesto. */
+const MESES_POLIZA = 12;
+
+/* Tope de renglones por cotización. La más grande de verdad es MXGT01 con 79 sin
+   consolidar y ~40 consolidada, así que 150 sobra de largo. El número no es
+   estético: la tabla se redibuja completa al agregar o quitar, y a partir de
+   cierto punto eso se siente en el dedo. Medido antes de fijarlo. */
+const MAX_RENGLONES = 150;
+
+/* Cinco estatus guardados. Lo demás se DERIVA en calcularPoliza(): "Terminada"
+   y "Por vencer" salen de comparar fechas, igual que los sitios no guardan
+   "Contrato cubierto". Guardar un estatus que se puede calcular es un dato más
+   que se desincroniza. */
+const ESTATUS_POLIZA = ['cotizacion', 'enviada', 'activa', 'perdida', 'cancelada'];
+const ETIQUETA_ESTATUS = {
+  cotizacion:'Borrador', enviada:'En la calle', activa:'Activa',
+  perdida:'No se cerró', cancelada:'Cancelada'
+};
+
+/* Catálogo de equipos, con los textos tal cual salen en las cotizaciones.
+
+   Es CONSTANTE y no colección de Firestore por dos razones: las reglas se pegan
+   a mano y cada colección nueva es un pegado más que alguien puede olvidar, y
+   estas descripciones son texto fijo que no cambia de un cliente a otro.
+
+   Es una SEMILLA, no una consulta: al capturar un renglón se copian el precio y
+   la frecuencia al documento, y de ahí en adelante mandan los del documento.
+   Por eso subir un precio aquí NO mueve ni un peso de una póliza ya cerrada.
+   La descripción es la excepción y va al revés a propósito — ver descripcionDe(). */
+/* ---------------------------- Catálogo de equipos ----------------------------
+   SEMILLA, no fuente de verdad. Los precios los administra el equipo desde
+   Pólizas → Lista de precios, y viven en Firestore (catalogo/lista). Esta lista
+   solo se sube la PRIMERA vez, cuando el servidor todavía no tiene ninguna.
+
+   Salió de las cuatro cotizaciones reales (MXGT01, MXNL02, INOAC, NGK): 48
+   equipos distintos de los 106 renglones que traían entre todas. La MARCA no va
+   aquí a propósito —cambia de sitio en sitio y la pone el vendedor— y 22 equipos
+   quedaron sin descripción porque MXGT01 y MXNL02 no traen esa página y no se
+   inventa el texto de un mantenimiento.
+
+   Los precios son los de MXGT01, la cotización más reciente (29-jul-2026), y son
+   una SUGERENCIA: el mismo equipo se cotizó a distinto precio en distintos
+   clientes (campana de extracción a 16,000 y a 8,000), así que el renglón de la
+   cotización siempre manda sobre esto. Cortinas de aire y mini split entran en
+   cero porque aparecen en las descripciones pero en ningún renglón con precio.
+   --------------------------------------------------------------------------- */
+const CATALOGO_SEMILLA = [
+  { id:'amasadora-industrial', concepto:'Amasadora industrial', precio:1512, frecuencia:3,
+    descripcion:'' },
+  { id:'banda-transportadora-charola', concepto:'Banda transportadora de charola', precio:2700, frecuencia:3,
+    descripcion:'' },
+  { id:'barra-caliente-electrica', concepto:'Barra caliente de servicio eléctrica', precio:5625, frecuencia:3,
+    descripcion:'Revisión de voltaje y amperaje del equipo y contacto, revisión de componentes eléctricos, verificación de funcionamiento y temperatura adecuada y revisión de empaques de puerta.' },
+  { id:'barra-caliente-gas', concepto:'Barra caliente de servicio de gas', precio:7200, frecuencia:3,
+    descripcion:'Revisión de tubería, válvulas, estado de tanques de carga y descarga de agua y limpieza de quemadores y del equipo en general con ice machine.' },
+  { id:'barra-fria', concepto:'Barra fría', precio:5625, frecuencia:3,
+    descripcion:'Revisión de tubería, válvulas, estado de tanques de carga y descarga de agua y limpieza de quemadores y del equipo en general con ice machine.' },
+  { id:'barra-fria-4-insertos', concepto:'Barra fría 4 insertos', precio:6800, frecuencia:3,
+    descripcion:'Revisión de tubería, válvulas, estado de tanques de carga y descarga de agua y limpieza de quemadores y del equipo en general con ice machine.' },
+  { id:'bascula-cocina', concepto:'Báscula de cocina', precio:540, frecuencia:3,
+    descripcion:'Inspección del estado y funcionamiento de tarjeta y componentes, limpieza de componentes mecánicos.' },
+  { id:'bascula-recibo', concepto:'Báscula de recibo', precio:982.8, frecuencia:3,
+    descripcion:'Inspección del estado y funcionamiento de tarjeta y componentes, limpieza de componentes mecánicos.' },
+  { id:'batidora-industrial', concepto:'Batidora industrial', precio:940, frecuencia:3,
+    descripcion:'' },
+  { id:'calenton-doble', concepto:'Calentón doble', precio:7200, frecuencia:3,
+    descripcion:'Revisión de voltaje y amperaje del equipo y contacto, revisión de componentes eléctricos, verificación de funcionamiento y temperatura adecuada y revisión de empaques de puerta.' },
+  { id:'camara-congelacion', concepto:'Cámara de congelación', precio:7000, frecuencia:3,
+    descripcion:'Lavado de condensador y evaporador, inspección del funcionamiento correcto de motores y ventiladores, revisión de voltaje y amperaje así como verificación de presión de gas. Limpieza y ajuste de contactores y reapriete de terminales y tornillería.' },
+  { id:'camara-refrigeracion', concepto:'Cámara de refrigeración', precio:7000, frecuencia:3,
+    descripcion:'Lavado de condensador y evaporador, inspección del funcionamiento correcto de motores y ventiladores, revisión de voltaje y amperaje así como verificación de presión de gas. Limpieza y ajuste de contactores y reapriete de terminales y tornillería.' },
+  { id:'campana-extraccion', concepto:'Campana de extracción', precio:16000, frecuencia:3,
+    descripcion:'Limpieza a campana de extracción de humo con desengrasante y alta presión, incluye lavado de filtros.' },
+  { id:'congelador-horizontal', concepto:'Congelador horizontal', precio:4104, frecuencia:3,
+    descripcion:'Inspección visual del estado y funcionamiento de empaques de puertas, lámparas, ventiladores y motores, así como la revisión de temperatura adecuada, medición del voltaje y amperaje y la limpieza de evaporador.' },
+  { id:'cortinas-aire', concepto:'Cortinas de aire', precio:0, frecuencia:3,
+    descripcion:'Limpieza de turbina, verificación eléctrica, limpieza eléctrica, lavado de carcasa y engrase de partes móviles.' },
+  { id:'estufa', concepto:'Estufa', precio:3024, frecuencia:3,
+    descripcion:'' },
+  { id:'estufon', concepto:'Estufón', precio:8500, frecuencia:3,
+    descripcion:'Revisión de válvulas de gas, perillas, quemadores (flautas), manguera de gas y regulador. Limpieza con desengrasante.' },
+  { id:'estufon-doble', concepto:'Estufón doble', precio:3000, frecuencia:3,
+    descripcion:'Revisión de válvulas de gas, perillas, quemadores (flautas), manguera de gas y regulador. Limpieza con desengrasante.' },
+  { id:'extraccion', concepto:'Extracción', precio:22000, frecuencia:3,
+    descripcion:'Medición de amperaje y voltaje del equipo, así como la revisión de las condiciones y funcionamiento de bandas y componentes del equipo, lubricación de chumaceras y limpieza del equipo con desengrasante.' },
+  { id:'fermentadora', concepto:'Fermentadora', precio:3024, frecuencia:3,
+    descripcion:'' },
+  { id:'freidora', concepto:'Freidora', precio:1200, frecuencia:3,
+    descripcion:'Revisión de válvulas de gas, perillas, quemadores (flautas), manguera de gas y regulador. Limpieza con desengrasante.' },
+  { id:'horno-convencional-doble', concepto:'Horno convencional doble', precio:4428, frecuencia:3,
+    descripcion:'' },
+  { id:'horno-rational', concepto:'Horno Rational', precio:7000, frecuencia:3,
+    descripcion:'Revisión de voltaje, amperaje y conexiones, ajuste y reapriete de conexiones, limpieza mecánica, lubricación de componentes y revisión de funcionamiento de componentes.' },
+  { id:'licuadora-chica', concepto:'Licuadora chica', precio:450, frecuencia:3,
+    descripcion:'' },
+  { id:'licuadora-industrial', concepto:'Licuadora industrial', precio:920, frecuencia:3,
+    descripcion:'Revisión del voltaje y amperaje del equipo, inspección del estado físico de los componentes y comprobación del funcionamiento adecuado del equipo.' },
+  { id:'maquina-agua-doble', concepto:'Máquina de agua doble', precio:1296, frecuencia:3,
+    descripcion:'' },
+  { id:'maquina-hielo', concepto:'Máquina de hielo', precio:7000, frecuencia:3,
+    descripcion:'Limpieza del motor y abanico, y limpieza con ice machine del evaporador y condensador, así como la inspección del cableado eléctrico y ajuste de terminales.' },
+  { id:'maquina-lavaloza', concepto:'Máquina lavaloza', precio:7000, frecuencia:3,
+    descripcion:'Inspección visual de los componentes físicos del equipo, así como la revisión de mangueras y componentes hidráulicos, limpieza en general con desincrustante.' },
+  { id:'marmita', concepto:'Marmita', precio:8400, frecuencia:3,
+    descripcion:'' },
+  { id:'mesa-fria', concepto:'Mesa fría', precio:4800, frecuencia:3,
+    descripcion:'' },
+  { id:'mini-split', concepto:'Mini split', precio:0, frecuencia:3,
+    descripcion:'Limpieza de turbina, verificación eléctrica, limpieza eléctrica, lavado de carcasa y engrase de partes móviles.' },
+  { id:'pasarela-caliente-doble', concepto:'Pasarela caliente doble', precio:5625, frecuencia:3,
+    descripcion:'Revisión de voltaje y amperaje del equipo y contacto, revisión de componentes eléctricos, verificación de funcionamiento y temperatura adecuada y revisión de empaques de puerta.' },
+  { id:'pasarela-fria-doble', concepto:'Pasarela fría doble', precio:5625, frecuencia:3,
+    descripcion:'' },
+  { id:'plancha-industrial', concepto:'Plancha industrial', precio:7500, frecuencia:3,
+    descripcion:'Revisión de válvulas de gas, perillas, quemadores (flautas), manguera de gas y regulador. Limpieza con desengrasante.' },
+  { id:'procesador-alimentos', concepto:'Procesador de alimentos', precio:918, frecuencia:3,
+    descripcion:'' },
+  { id:'rebanadora', concepto:'Rebanadora', precio:650, frecuencia:3,
+    descripcion:'' },
+  { id:'refrigerador-doble', concepto:'Refrigerador doble', precio:4800, frecuencia:3,
+    descripcion:'Inspección visual del estado y funcionamiento de empaques de puertas, lámparas, ventiladores y motores, así como la revisión de temperatura adecuada, medición del voltaje y amperaje y la limpieza de evaporador.' },
+  { id:'refrigerador-sencillo', concepto:'Refrigerador sencillo', precio:4800, frecuencia:3,
+    descripcion:'Inspección visual del estado y funcionamiento de empaques de puertas, lámparas, ventiladores y motores, así como la revisión de temperatura adecuada, medición del voltaje y amperaje y la limpieza de evaporador.' },
+  { id:'sarteneta', concepto:'Sarteneta', precio:4750, frecuencia:3,
+    descripcion:'' },
+  { id:'trampa-grasa', concepto:'Trampa de grasa', precio:3500, frecuencia:12,
+    descripcion:'Limpieza de trampa de grasa, raspado de paredes, deflectores y filtros para eliminar residuos, retiro de sólidos y revisión de tapa.' },
+  { id:'turbo-licuador', concepto:'Turbo licuador', precio:920, frecuencia:3,
+    descripcion:'' },
+  { id:'ultracongelador', concepto:'Ultracongelador', precio:4800, frecuencia:3,
+    descripcion:'' },
+  { id:'recoleccion-basura', concepto:'Recolección de basura', precio:21495, frecuencia:12,
+    descripcion:'' },
+  { id:'segurista', concepto:'Segurista', precio:25000, frecuencia:12,
+    descripcion:'' },
+  { id:'sistema-climatizacion', concepto:'Sistema de climatización', precio:17300, frecuencia:2,
+    descripcion:'' },
+  { id:'sistema-extraccion-mayor', concepto:'Sistema de extracción mayor', precio:52245, frecuencia:2,
+    descripcion:'' },
+  { id:'sistema-filtrado', concepto:'Sistema de filtrado', precio:10400, frecuencia:2,
+    descripcion:'' },
+  { id:'trabajos-inmueble', concepto:'Trabajos de inmueble', precio:28300, frecuencia:2,
+    descripcion:'' }
+];
+/* El catálogo vivo. Sale del servidor; si todavía no hay nada, se usa la semilla
+   para que la app nunca se quede sin lista con qué trabajar. */
+function catalogo(){ return datos.catalogo.length ? datos.catalogo : CATALOGO_SEMILLA.map(normalizarEquipo); }
+const equipoDeCatalogo = id => catalogo().find(e => e.id === id) || null;
+
+/* Un renglón de la lista de precios. Mismo tono que los otros normalizadores:
+   esta función es el contrato. El precio se limita al centavo por la misma razón
+   que en las partidas — un precio con milésimas no se puede facturar. */
+function normalizarEquipo(e){
+  return {
+    id: (e.id || '').trim() || nuevoId(),
+    concepto: (e.concepto || '').trim(),
+    precio: Math.max(0, Math.round((Number(e.precio) || 0) * 100) / 100),
+    frecuencia: Math.max(1, Math.min(MESES_POLIZA, parseInt(e.frecuencia,10) || 1)),
+    descripcion: (e.descripcion || '').trim(),
+    /* Un equipo que ya no se vende se apaga en vez de borrarse: las pólizas
+       viejas siguen apuntando a su id y tienen que poder resolver su texto. */
+    activo: e.activo !== false
+  };
+}
+
+/* La descripción va al revés que el precio: NO se copia al documento salvo que
+   alguien la edite a mano. Describe el trabajo, no el contrato, así que si
+   mañana mejoramos el texto conviene que todas las pólizas lo tomen. Y de paso
+   una cotización de 79 renglones no carga ~20 KB de texto repetido. */
+function descripcionDe(x){
+  if(x.descripcion) return x.descripcion;
+  const e = equipoDeCatalogo(x.catalogoId);
+  return e ? e.descripcion : '';
+}
+
 /* =============================== ALMACÉN =============================== */
 const LLAVE = 'forguard_control_forpass_v1';
-let datos = { v:1, clientes:[], sitios:[] };
+let datos = { v:1, clientes:[], sitios:[], polizas:[], catalogo:[] };
 
 function cargar(){
   try{
@@ -864,7 +1193,14 @@ function cargar(){
     if(!cruda) return;
     const d = JSON.parse(cruda);
     if(d && Array.isArray(d.clientes) && Array.isArray(d.sitios)){
-      datos = { v:1, clientes:d.clientes.map(normalizarCliente), sitios:d.sitios.map(normalizarSitio) };
+      datos = { v:1,
+        clientes: d.clientes.map(normalizarCliente),
+        sitios:   d.sitios.map(normalizarSitio),
+        /* Un respaldo anterior al módulo de pólizas no trae esta llave. No es un
+           archivo roto, es un archivo viejo: se abre con la lista vacía y sigue.
+           Por eso la condición de arriba tampoco la exige. */
+        polizas:  (Array.isArray(d.polizas) ? d.polizas : []).map(normalizarPoliza),
+        catalogo: (Array.isArray(d.catalogo) ? d.catalogo : []).map(normalizarEquipo) };
     }
   }catch(e){ console.warn('No se pudo leer el respaldo local:', e); }
 }
@@ -975,6 +1311,11 @@ function guardarSitio(s, accion, detalle){
   encolar({ tipo:'poner', coleccion:'sitios', id:s.id, obj:s });
   anotar(accion || 'editó', 'sitio', s.nombre, detalle);
 }
+function guardarPoliza(p, accion, detalle){
+  guardarLocal();
+  encolar({ tipo:'poner', coleccion:'polizas', id:p.id, obj:p });
+  anotar(accion || 'editó', 'póliza', p.sitioNombre || p.folio || 'sin nombre', detalle);
+}
 function borrarRegistro(coleccion, id){
   guardarLocal();
   encolar({ tipo:'borrar', coleccion, id });
@@ -1021,7 +1362,7 @@ function etiquetaRol(rol){
   return '<span class="rol c-' + r + '">' + esc(ROLES[r].nombre) + '</span>';
 }
 
-const sesion = { correo:null, uid:null, idToken:null, refreshToken:null, expira:0, rol:null, nombre:'' };
+const sesion = { correo:null, uid:null, idToken:null, refreshToken:null, expira:0, rol:null, nombre:'', telefono:'' };
 
 function guardarSesion(){ try{ localStorage.setItem(LLAVE_SESION, JSON.stringify(sesion)); }catch(e){} }
 function cargarSesion(){
@@ -1122,11 +1463,13 @@ function pintarPuntoClave(){
 
 function limpiarSesionYDatos(){
   detenerVigilancia();
-  Object.assign(sesion, { correo:null, uid:null, idToken:null, refreshToken:null, expira:0, rol:null, nombre:'' });
+  Object.assign(sesion, { correo:null, uid:null, idToken:null, refreshToken:null, expira:0, rol:null, nombre:'', telefono:'' });
   try{ localStorage.removeItem(LLAVE_SESION); }catch(e){}
-  datos = { v:1, clientes:[], sitios:[] };
+  /* Las tres colecciones. Si aquí faltara una, al salir quedaría en undefined y
+     lo primero que la recorriera tronaría. */
+  datos = { v:1, clientes:[], sitios:[], polizas:[], catalogo:[] };
   try{ localStorage.removeItem(LLAVE); }catch(e){}
-  estado.vista = 'clientes'; estado.clienteId = null;
+  estado.vista = inicioDelModulo(); estado.clienteId = null; estado.polizaId = null;
   sincronizado = false;
 }
 function salir(porVencimiento){
@@ -1143,6 +1486,10 @@ async function cargarPerfil(){
   if(p.activo === false) throw new Error('BLOQUEADO');
   sesion.rol = normalizarRol(p.rol);
   sesion.nombre = p.nombre || '';
+  /* El celular del vendedor sale impreso en las cotizaciones de póliza. Se trae
+     aquí para poder prellenarlo; que falte nunca detiene nada, porque la póliza
+     guarda su propia copia y ahí se puede teclear. */
+  sesion.telefono = p.telefono || '';
   guardarSesion();
   /* Deja constancia del acceso, sin frenar el arranque si falla. */
   pedirNube('/usuarios/' + encodeURIComponent(sesion.uid) + '?updateMask.fieldPaths=ultimoAcceso', {
@@ -1284,11 +1631,15 @@ async function pedirNube(ruta, opciones, permitirVacio, esReintento){
   return r.json().catch(()=>null);
 }
 
-async function listarNube(coleccion){
+/* El tamaño de página se puede bajar para colecciones de documentos gordos:
+   300 pólizas de 25 KB serían una respuesta de 7 MB. Por omisión, 300, que es
+   como venía para clientes y sitios. */
+async function listarNube(coleccion, porPagina){
   const salida = [];
   let pagina = '';
+  const tam = Math.max(1, Math.min(300, parseInt(porPagina, 10) || 300));
   do{
-    const d = await pedirNube('/' + coleccion + '?pageSize=300' + (pagina ? '&pageToken=' + encodeURIComponent(pagina) : ''), { method:'GET' });
+    const d = await pedirNube('/' + coleccion + '?pageSize=' + tam + (pagina ? '&pageToken=' + encodeURIComponent(pagina) : ''), { method:'GET' });
     ((d && d.documents) || []).forEach(doc=>{
       const o = deCampos(doc.fields || {});
       o.id = doc.name.split('/').pop();
@@ -1344,8 +1695,27 @@ async function vaciarCola(){
   try{
     while(cola.length){
       const op = cola[0];
-      if(op.tipo === 'borrar') await borrarNube(op.coleccion, op.id);
-      else                     await escribirNube(op.coleccion, op.id, op.obj);
+      try{
+        if(op.tipo === 'borrar') await borrarNube(op.coleccion, op.id);
+        else                     await escribirNube(op.coleccion, op.id, op.obj);
+      }catch(e){
+        /* Un 403 de escritura NO es pasajero: el servidor no la va a aceptar
+           nunca, ni en el reintento número mil. Dejarla en la cola la atoraba
+           para siempre —el tablero decía "cambios pendientes" a perpetuidad y
+           hasta estorbaba al cerrar sesión— y el aviso genérico echaba la culpa a
+           la cuenta cuando lo que faltaba era publicar una regla. Se saca, se
+           dice CUÁL fue, y se sigue con las demás. */
+        if(/SIN_PERMISO/.test(String(e.message || ''))){
+          cola.shift();
+          guardarCola();
+          aviso('El servidor rechazó un cambio en «' + op.coleccion + '». Se quedó guardado aquí, pero no subió. '
+              + (op.coleccion === 'catalogo'
+                  ? 'Falta publicar la regla de /catalogo en Firebase.'
+                  : 'Puede faltar la regla de esa colección, o tu permiso no alcanza.'), true);
+          continue;
+        }
+        throw e;
+      }
       cola.shift();
       guardarCola();
       pintarEstadoNube();
@@ -1354,12 +1724,6 @@ async function vaciarCola(){
   }catch(e){
     const m = String(e.message || '');
     if(/SIN_SESION|SESION_VENCIDA/.test(m)){ vaciando = false; salir(true); return; }
-    if(/SIN_PERMISO/.test(m)){
-      vaciando = false;
-      aviso('Tu cuenta no tiene permiso para guardar cambios. Los dejé pendientes.', true);
-      pintarEstadoNube();
-      return;
-    }
     intentosFallidos = Math.min(intentosFallidos + 1, 6);
     temporizadorCola = setTimeout(vaciarCola, 1500 * Math.pow(2, intentosFallidos - 1));
     console.warn('Reintentando guardar en la nube:', m);
@@ -1374,11 +1738,64 @@ async function vaciarCola(){
    borra: devuelve 'vacia' para que quien arranca decida subirla. Así nadie
    pierde lo que ya había capturado antes de conectar la nube. */
 async function bajarDeLaNube(){
-  const [cl, si] = await Promise.all([listarNube('clientes'), listarNube('sitios')]);
-  if(!cl.length && !si.length && (datos.clientes.length || datos.sitios.length)) return 'vacia';
-  datos = { v:1, clientes: cl.map(normalizarCliente), sitios: si.map(normalizarSitio) };
+  /* Una póliza pesa ~25 KB contra ~1.1 KB de un sitio, así que se piden de 60 en
+     60 y no de 300: una página de 300 pólizas serían ~7 MB en una sola respuesta.
+     listarNube pagina igual, nada más que en más viajes y más chicos. */
+  /* La lista de precios va en UN documento con un arreglo adentro, no en un
+     documento por equipo: así son 48 equipos por 1 lectura en vez de 48. Se
+     edita poco y se lee en cada carga, así que el ahorro es todo. El costo es
+     que dos admins editándola a la vez se pisan, y eso está anotado en la vista. */
+  const [cl, si, po, eq] = await Promise.all([
+    listarNube('clientes'), listarNube('sitios'), listarNube('polizas', 60), leerCatalogo()
+  ]);
+  if(!cl.length && !si.length && !po.length
+     && (datos.clientes.length || datos.sitios.length || datos.polizas.length)) return 'vacia';
+  datos = { v:1, clientes: cl.map(normalizarCliente), sitios: si.map(normalizarSitio),
+            polizas: po.map(normalizarPoliza), catalogo: eq.map(normalizarEquipo) };
   guardarLocal();
   return 'ok';
+}
+
+/* La lista de precios NUNCA puede impedir entrar al tablero.
+
+   Se lee aparte y se traga cualquier error a propósito. La primera versión no lo
+   hacía y el resultado fue no poder entrar: sin la regla de /catalogo pegada, el
+   catch-all responde 403 —no 404—, pedirNube lanzaba SIN_PERMISO, y
+   manejarFalloDeArranque lee SIN_PERMISO como "esta cuenta perdió el acceso" y
+   saca al usuario. Un dato de comodidad tumbando el login entero.
+
+   Si falla, se trabaja con la semilla en memoria y ya. */
+async function leerCatalogo(){
+  try{
+    const d = await pedirNube('/catalogo/lista', { method:'GET' }, true);
+    return (d && d.fields) ? (deCampos(d.fields).equipos || []) : [];
+  }catch(e){
+    console.warn('No se pudo leer la lista de precios; se usa la de arranque:', String(e.message || e));
+    return [];
+  }
+}
+
+/* Guarda la lista de precios completa. Local primero, como todo lo demás.
+   No se guarda equipo por equipo porque el documento es uno solo. */
+function guardarCatalogo(detalle){
+  guardarLocal();
+  encolar({ tipo:'poner', coleccion:'catalogo', id:'lista', obj:{ equipos: datos.catalogo } });
+  anotar('actualizó', 'lista de precios', datos.catalogo.length + ' equipos', detalle);
+}
+
+/* La semilla se sube cuando alguien lo pide, NO sola al arrancar.
+
+   Automático era peor: si la regla de /catalogo no está pegada, la escritura
+   rebota con 403, se queda atorada en la cola, y a partir de ahí el tablero dice
+   "hay cambios pendientes" para siempre y hasta estorba al cerrar sesión. Un
+   botón no puede envenenar la cola de nadie sin que se haya pedido. */
+function sembrarCatalogo(){
+  if(!exigirAdmin('guardar la lista de precios')) return;
+  if(datos.catalogo.length){ aviso('La lista ya está guardada en el servidor.'); return; }
+  datos.catalogo = CATALOGO_SEMILLA.map(normalizarEquipo);
+  guardarCatalogo('siembra inicial de las cotizaciones de MXGT01, MXNL02, INOAC y NGK');
+  render();
+  aviso('Lista de precios guardada con ' + datos.catalogo.length + ' equipos.');
 }
 /* ===================== VIGILANCIA DEL RESPALDO =====================
    El respaldo automático deja en sistema/respaldo la fecha de la última copia.
@@ -1445,6 +1862,8 @@ function avisoRespaldo(){
 function subirTodo(){
   datos.clientes.forEach(c => encolar({ tipo:'poner', coleccion:'clientes', id:c.id, obj:c }));
   datos.sitios.forEach(s => encolar({ tipo:'poner', coleccion:'sitios', id:s.id, obj:s }));
+  datos.polizas.forEach(p => encolar({ tipo:'poner', coleccion:'polizas', id:p.id, obj:p }));
+  if(datos.catalogo.length) encolar({ tipo:'poner', coleccion:'catalogo', id:'lista', obj:{ equipos: datos.catalogo } });
 }
 
 /* ============================== BITÁCORA ==============================
@@ -1547,6 +1966,158 @@ function normalizarSitio(s){
   };
 }
 
+/* Rellena valores faltantes para que una póliza vieja o importada no rompa la
+   vista. Igual que normalizarSitio, ESTA función es el contrato de datos: el
+   proyecto no tiene TypeScript, así que un campo que no esté aquí no existe.
+   Todo campo nuevo se agrega aquí primero y después en el formulario.
+
+   Tiene que ser IDEMPOTENTE: normalizar dos veces debe dar exactamente lo mismo,
+   llave por llave y tipo por tipo. No es cosmético — la regla de Firestore que
+   congela los precios compara `request.resource.data.partidas` contra
+   `resource.data.partidas`, y si al releer se reordena algo o cambia un tipo, la
+   comparación falla y un analyst no puede ni capturar una OC. Sale un 403 sin
+   explicación. Por eso las llaves se emiten siempre en el mismo orden. */
+function normalizarPoliza(p){
+  /* Cobranza: UNA casilla si se factura al año, doce si es mensual. Se deriva de
+     "facturacion" y no se guarda un contador aparte — dos datos que dicen lo
+     mismo acaban desincronizados, que es lo que ya nos pasó con respaldoInfo. */
+  const facturacion = p.facturacion === 'mensual' ? 'mensual' : 'anual';
+  const nCobros = facturacion === 'mensual' ? MESES_POLIZA : 1;
+  const cobros = Array.from({length:nCobros}, (_,i)=> !!(Array.isArray(p.cobros) && p.cobros[i]));
+  /* Mismo molde que pagosDetalle. Se llama distinto a propósito: si se llamara
+     "pagos", pasarle una póliza a calcular() no tronaría — devolvería un
+     semáforo verde sobre NaN. Con este nombre truena en la primera línea. */
+  const cobrosDetalle = Array.from({length:nCobros}, (_,i)=>{
+    const d = (Array.isArray(p.cobrosDetalle) && p.cobrosDetalle[i]) || null;
+    return {
+      oc:     d && d.oc     ? String(d.oc)     : '',
+      quien:  d && d.quien  ? String(d.quien)  : '',
+      cuando: d && d.cuando ? String(d.cuando) : '',
+      facturado: !!(d && d.facturado)
+    };
+  });
+
+  /* Quién cotizó. Se guarda COPIADO, no por referencia al usuario: el documento
+     impreso lleva su nombre y su celular, y tiene que seguir diciendo lo mismo
+     dentro de un año aunque esa persona ya no esté en el equipo. Mismo molde que
+     el encargado del sitio, más el teléfono, que es lo que se imprime. */
+  const v = p.vendedor || {};
+  const vendedor = {
+    uid:      v.uid      ? String(v.uid)      : '',
+    nombre:   v.nombre   ? String(v.nombre)   : '',
+    correo:   v.correo   ? String(v.correo)   : '',
+    telefono: v.telefono ? String(v.telefono) : ''
+  };
+
+  /* Un renglón sin concepto es basura de una captura a medias: se tira. */
+  const partidas = (Array.isArray(p.partidas) ? p.partidas : [])
+    .map(normalizarPartida).filter(x => x.concepto);
+
+  return {
+    partidas, cobros, cobrosDetalle, vendedor,
+    id: p.id || nuevoId(),
+    clienteId: p.clienteId || '',
+    /* El sitio es OPCIONAL: hay pólizas en cafeterías sin kiosco Forpass. El
+       nombre en cambio nunca falta, porque es lo que sale impreso y tiene que
+       sobrevivir aunque ese sitio no exista en el módulo de Forpass o se borre. */
+    sitioId: p.sitioId || '',
+    sitioNombre: (p.sitioNombre || '').trim(),
+    folio: (p.folio || '').trim(),
+    estatus: ESTATUS_POLIZA.includes(p.estatus) ? p.estatus : 'cotizacion',
+    facturacion,
+    /* La que sale en la portada del documento. */
+    fechaCotizacion: /^\d{4}-\d{2}-\d{2}$/.test(p.fechaCotizacion||'') ? p.fechaCotizacion : hoyISO(),
+    /* Cuándo se mandó al cliente. De aquí sale "cuántos días lleva esperando",
+       que es el número comercial que de verdad se mira. */
+    fechaEnvio:  /^\d{4}-\d{2}-\d{2}$/.test(p.fechaEnvio||'')  ? p.fechaEnvio  : '',
+    /* Arranque de la vigencia. Manda también el calendario: los meses de
+       servicio son corrimientos DESDE AQUÍ, no meses del año, así que mover esta
+       fecha mueve el calendario completo sin tocar ni una partida. */
+    fechaInicio: /^\d{4}-\d{2}-\d{2}$/.test(p.fechaInicio||'') ? p.fechaInicio : hoyISO(),
+    /* Cuándo aceptó el cliente. Vacía mientras siga siendo cotización; con fecha
+       significa que los precios ya quedaron congelados. */
+    fechaCierre: /^\d{4}-\d{2}-\d{2}$/.test(p.fechaCierre||'') ? p.fechaCierre : '',
+    notas: p.notas || ''
+  };
+}
+
+/* Un renglón de la cotización.
+
+   El total NUNCA se guarda: se calcula con precioUnitario × cantidad ×
+   frecuencia. Si se guardara volveríamos exactamente al problema que nos trajo
+   aquí — cotizaciones con totales tecleados que dejaron de cuadrar, una con
+   cantidades escondidas sin columna y otra con un factor que nadie documentó.
+   Tampoco hay campo de descuento: un ajuste se refleja en el precioUnitario. */
+function normalizarPartida(x){
+  /* CUÁNTOS mantenimientos al año. En QUÉ meses es mesesServicio, aparte.
+     A propósito NO se fuerza que frecuencia === mesesServicio.length: si no
+     cuadran lo tiene que avisar el formulario con aria-invalid + aviso(). Si se
+     "arreglara" aquí en silencio, nadie sabría que capturó 3 con 2 meses
+     marcados. Ver cuadraFrecuencia(). */
+  const frecuencia = Math.max(1, Math.min(MESES_POLIZA, parseInt(x.frecuencia,10) || 1));
+
+  /* Corrimientos 0..11 desde el inicio de la vigencia, ordenados y sin
+     repetidos. Ordenar aquí es parte de la idempotencia: si el formulario los
+     entrega en otro orden, el documento igual queda siempre igual. */
+  const mesesServicio = [...new Set(
+      (Array.isArray(x.mesesServicio) ? x.mesesServicio : [])
+        .map(m => parseInt(m, 10))
+        .filter(m => Number.isInteger(m) && m >= 0 && m < MESES_POLIZA)
+    )].sort((a,b)=> a - b);
+
+  /* Lo ejecutado, LLAVEADO POR MES: {"0":{…}, "4":{…}}.
+
+     Iba como arreglos en paralelo a mesesServicio y estaba mal: si el cliente
+     mete un equipo y el calendario pasa de [0,4,8] a [0,2,4,8], el registro del
+     mes 4 se recorría al mes 2. Sin error y sin aviso. Y mover el calendario de
+     una póliza viva no es raro: es justo lo que dice la cláusula de
+     actualización cuando entran o salen equipos.
+
+     Con la llave, el mes ES el dato y no la posición. La llave presente ya
+     significa "se hizo": no hay un hechos[] aparte que pueda contradecir esto.
+
+     Las llaves se recorren ordenadas por número —no en el orden que vengan— para
+     que el objeto salga siempre idéntico. Es lo que la regla de congelado
+     compara. */
+  const hechosDetalle = {};
+  const previos = (x.hechosDetalle && typeof x.hechosDetalle === 'object' && !Array.isArray(x.hechosDetalle))
+    ? x.hechosDetalle : {};
+  Object.keys(previos).map(Number).filter(m => Number.isInteger(m) && m >= 0)
+    .sort((a,b)=> a - b)
+    .forEach(m => {
+      const d = previos[String(m)];
+      /* Sin fecha no hubo servicio: es una casilla que alguien abrió y no llenó.
+         Se tira para que no se acumule basura invisible. */
+      if(!d || !d.cuando) return;
+      /* Un mes que ya NO está en el calendario no se borra si el servicio de
+         verdad se hizo: significa que se retiró un equipo después de haberle
+         dado mantenimiento, y borrarlo sería negar trabajo hecho y cobrado. La
+         vista lo marca aparte — ver serviciosFueraDeCalendario(). */
+      hechosDetalle[String(m)] = {
+        cuando: String(d.cuando),
+        quien:  d.quien ? String(d.quien) : '',
+        nota:   d.nota  ? String(d.nota)  : ''
+      };
+    });
+
+  return {
+    mesesServicio, hechosDetalle,
+    concepto: (x.concepto || '').trim(),
+    marca: (x.marca || '').trim(),
+    /* Llave del catálogo, para rellenar la descripción sin guardarla. */
+    catalogoId: (x.catalogoId || '').trim(),
+    /* Solo se guarda si alguien la editó a mano. Vacía = se usa la del catálogo. */
+    descripcion: (x.descripcion || '').trim(),
+    cantidad: Math.max(1, parseInt(x.cantidad,10) || 1),
+    /* Al centavo. Un precio con más decimales no se puede facturar, y además
+       rompería la promesa de que la suma de las casillas de cobro da el anual
+       exacto: si el precio trae milésimas, el anual las trae y el reparto en
+       centavos ya no le cuadra. Redondear aquí es idempotente. */
+    precioUnitario: Math.max(0, Math.round((Number(x.precioUnitario) || 0) * 100) / 100),
+    frecuencia
+  };
+}
+
 /* ============================ FECHAS Y FORMATOS ============================ */
 /* Se trabaja con textos 'AAAA-MM-DD' para no pelear con zonas horarias. */
 function hoyISO(){
@@ -1639,6 +2210,18 @@ const ETIQUETA_TIPO = { hw:'Software + Hardware', sw:'Solo Software' };
 const ETIQUETA_ESTADO = { activo:'Activo', pausado:'Pausado', baja:'Baja' };
 
 function sitiosDe(clienteId){ return datos.sitios.filter(s => s.clienteId === clienteId); }
+function polizasDeCliente(id){ return datos.polizas.filter(q => q.clienteId === id); }
+
+/* La colección de clientes es UNA sola —así una empresa con kioscos Y pólizas es
+   un solo registro—, pero cada módulo lista solo los que le tocan: un cliente que
+   existe nada más porque se le cotizó una póliza no tiene por qué ensuciar la
+   lista de Forpass con "0 sitios".
+
+   El que no tiene NADA sí aparece en Forpass: ahí es donde se crean, y esconderlo
+   mientras le capturas el primer sitio sería peor. */
+function clientesDeForpass(){
+  return datos.clientes.filter(c => sitiosDe(c.id).length || !polizasDeCliente(c.id).length);
+}
 function clientePorId(id){ return datos.clientes.find(c => c.id === id); }
 function sitioPorId(id){ return datos.sitios.find(s => s.id === id); }
 
@@ -1663,8 +2246,247 @@ function resumir(sitios){
   return r;
 }
 
+/* ======================= CÁLCULOS DE LA PÓLIZA =======================
+   Función APARTE de calcular(). No comparten nada y no deben: una póliza no
+   tiene mensualidad ni módulos, y un sitio no tiene partidas. Mezclarlas
+   habría dado semáforos verdes sobre NaN.
+   ==================================================================== */
+
+/* LA regla de oro, en un solo lugar. El total de un renglón jamás se captura.
+   Está aquí y nada más aquí para que no pueda haber dos versiones. */
+const totalRenglon = x => x.precioUnitario * x.cantidad * x.frecuencia;
+
+/* ---------------------------- Centavos ----------------------------
+   El dinero de las pólizas se reparte en CENTAVOS ENTEROS, no en pesos con
+   decimales flotantes.
+
+   Por qué: 683,134 ÷ 12 = 56,927.8333… Si cada casilla guardara ese número y se
+   mostrara redondeado, doce casillas de $56,927.83 sumarían $683,133.96 — cuatro
+   centavos menos que el anual. Y si se mostrara en pesos cerrados, doce de
+   $56,928 darían $683,136: dos pesos DE MÁS. Es exactamente el "los totales no
+   cuadran" que este módulo existe para matar, nada más que en chiquito y
+   acumulándose casilla por casilla.
+
+   La regla: se reparte en enteros de centavo y el residuo se le carga a la
+   ÚLTIMA casilla. Así la suma da el anual al centavo, siempre. Se escoge la
+   última y no la primera porque la primera es la que se negocia y se cita; unos
+   centavos en el mes 12 no los mira nadie. */
+const aCentavos  = n => Math.round((Number(n) || 0) * 100);
+const deCentavos = c => c / 100;
+
+/* Igual que dinero(), pero con centavos siempre. Las mensualidades de póliza
+   casi nunca son redondas, y el documento impreso también las trae con dos
+   decimales. dinero() se queda como está: es el de Forpass. */
+function dineroCent(n){
+  return '$' + (Number(n) || 0).toLocaleString('en-US',
+    { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+
+/* Reparte un total en n casillas de centavos enteros. La suma de lo que
+   devuelve es SIEMPRE exactamente el total: es la única forma de que la
+   cobranza cuadre contra el precio anual. */
+function repartirCentavos(totalCent, n){
+  if(n <= 0) return [];
+  const cuota = Math.floor(totalCent / n);
+  const partes = Array.from({length:n}, ()=> cuota);
+  partes[n - 1] += totalCent - cuota * n;   /* el residuo, a la última */
+  return partes;
+}
+
+const servicioHecho = (x, mes) => !!x.hechosDetalle[String(mes)];
+const serviciosHechos = x => x.mesesServicio.filter(m => servicioHecho(x, m)).length;
+/* Servicios reales en meses que ya salieron del calendario: la huella de un
+   equipo que se retiró a media vigencia después de habérsele dado servicio. */
+function serviciosFueraDeCalendario(x){
+  return Object.keys(x.hechosDetalle).map(Number)
+    .filter(m => !x.mesesServicio.includes(m)).sort((a,b)=> a - b);
+}
+/* Se avisa, no se bloquea: una cotización a medias se puede guardar, pero no
+   cerrarse como activa. */
+const cuadraFrecuencia = x => x.mesesServicio.length === x.frecuencia;
+
+/* ---------------------- Los meses se calculan, no se pican ----------------------
+   En las cotizaciones reales la frecuencia manda el intervalo: 3 servicios al año
+   es cada 4 meses, 2 es cada 6, 12 es todos, 1 es una vez. Así que con la
+   frecuencia y el MES DE ARRANQUE los meses salen solos.
+
+   Sin esto, capturar MXNL02 eran 102 clics —tres casillas de doce por cada uno de
+   34 renglones—. Con esto es escoger un mes por renglón.
+   ------------------------------------------------------------------------------ */
+/* Los meses que le tocan a un renglón que arranca en "arranque".
+
+   El reparto es parejo SIN exigir intervalo entero. La primera versión hacía
+   `intervalo = 12 / frecuencia`, y eso solo funciona con los divisores de 12
+   (1, 2, 3, 4, 6, 12). Con frecuencia 5 daba 2.4, al redondear salían meses
+   repetidos, el Set los colapsaba y el renglón quedaba con 4 meses en vez de 5 —
+   marcado en rojo por no cuadrar con su propia frecuencia.
+
+   Con `round(i * 12 / frecuencia)` salen siempre "frecuencia" meses distintos, y
+   para los divisores da exactamente lo mismo que la fórmula vieja. */
+function mesesRegulares(arranque, frecuencia){
+  const f = Math.max(1, Math.min(MESES_POLIZA, parseInt(frecuencia,10) || 1));
+  const a = ((parseInt(arranque,10) || 0) % MESES_POLIZA + MESES_POLIZA) % MESES_POLIZA;
+  const m = [];
+  for(let i = 0; i < f; i++) m.push((a + Math.round(i * MESES_POLIZA / f)) % MESES_POLIZA);
+  return [...new Set(m)].sort((x,y)=> x - y);
+}
+
+/* Los arranques que dan calendarios DISTINTOS. Con frecuencia 3 son 4 y no 12,
+   porque arrancar en el mes 0 y en el 4 dan el mismo [0,4,8]. Con frecuencia 5
+   son los 12, porque el patrón no se repite antes. Se calcula en vez de
+   derivarse de una división: así vale para cualquier frecuencia. */
+function arranquesDe(frecuencia){
+  const vistos = new Set(), salida = [];
+  for(let a = 0; a < MESES_POLIZA; a++){
+    const llave = JSON.stringify(mesesRegulares(a, frecuencia));
+    if(vistos.has(llave)) continue;
+    vistos.add(llave); salida.push(a);
+  }
+  return salida;
+}
+
+/* En qué mes arranca un renglón, deducido de sus meses. null = a mano.
+
+   Se DEDUCE en vez de guardarse: un campo más sería un dato que se puede
+   desincronizar de los meses reales, y los meses son los que alimentan el
+   calendario y el seguimiento. */
+function mesArranqueDe(x){
+  const suyos = JSON.stringify(x.mesesServicio);
+  for(const a of arranquesDe(x.frecuencia)){
+    if(JSON.stringify(mesesRegulares(a, x.frecuencia)) === suyos) return a;
+  }
+  return null;
+}
+
+function calcularPoliza(p){
+  const hoy = hoyISO();
+  const fin = sumarMeses(p.fechaInicio, MESES_POLIZA);
+
+  const totales = p.partidas.map(totalRenglon);
+  const precioAnual = totales.reduce((t,n)=> t + n, 0);
+  const precioAnualCent = aCentavos(precioAnual);
+  /* Entre 12 fijo, no entre una variable: la póliza es anual por contrato.
+     Este es el mensual NOMINAL, el que se imprime en el documento. Ojo: por
+     doce no siempre da el anual —683,134 ÷ 12 son 56,927.83 y por doce son
+     683,133.96—. El calendario de cobro real vive en montos[], que sí cuadra
+     al centavo. Un solo número mensual nunca puede cuadrar; doce casillas sí. */
+  const cuotaCent = Math.floor(precioAnualCent / MESES_POLIZA);
+  const precioMensual = deCentavos(cuotaCent);
+
+  const arranco = diasEntre(p.fechaInicio, hoy) >= 0;
+  const mesesCumplidos = arranco ? mesesTranscurridos(p.fechaInicio, hoy) : 0;
+  const mesActual = arranco ? Math.min(mesesCumplidos, MESES_POLIZA - 1) : -1;
+
+  /* Cobranza. Una casilla al año o doce mensuales; el monto se deriva, nunca
+     se guarda, igual que los montos[] de calcular(). */
+  const nCobros = p.cobros.length;
+  /* Se reparte en centavos enteros para que la suma de las casillas dé
+     EXACTAMENTE el precio anual. Con facturación anual es una sola casilla y el
+     reparto es trivial; con mensual son doce y la última se lleva el residuo. */
+  const montosCent = repartirCentavos(precioAnualCent, nCobros);
+  const montos = montosCent.map(deCentavos);
+  const cobrados = p.cobros.filter(Boolean).length;
+  const debidos = arranco ? Math.min(nCobros, mesesCumplidos + 1) : 0;
+  const cobrosAtrasados = Math.max(0, debidos - cobrados);
+  /* Las sumas también en centavos: doce sumas de flotantes con decimales
+     terminan en 683,133.9999999999 y eso se vería como un peso faltante. */
+  let adeudoCent = 0;
+  for(let i = 0; i < debidos; i++) if(!p.cobros[i]) adeudoCent += montosCent[i];
+  const cobradoCent = p.cobros.reduce((t,c,i)=> t + (c ? montosCent[i] : 0), 0);
+  const adeudo  = deCentavos(adeudoCent);
+  const cobrado = deCentavos(cobradoCent);
+  const iSigCobro = p.cobros.findIndex(c => !c);
+  const proximoCobro = iSigCobro === -1 ? null
+    : (p.facturacion === 'mensual' ? sumarMeses(p.fechaInicio, iSigCobro) : p.fechaInicio);
+
+  /* Ejecución. Un servicio está atrasado cuando su mes ya se cumplió completo y
+     nadie lo marcó; el del mes en curso todavía no lo está, solo "toca". */
+  let programados = 0, hechos = 0, atrasados = 0, tocanEsteMes = 0, huerfanos = 0;
+  p.partidas.forEach(x=>{
+    programados += x.mesesServicio.length;
+    hechos      += serviciosHechos(x);
+    huerfanos   += serviciosFueraDeCalendario(x).length;
+    x.mesesServicio.forEach(m=>{
+      if(servicioHecho(x, m)) return;
+      if(m < mesesCumplidos) atrasados++;
+      else if(m === mesActual) tocanEsteMes++;
+    });
+  });
+  const pendientes = programados - hechos;
+
+  const vigente = diasEntre(hoy, fin) >= 0;
+  const diasVigencia = diasEntre(hoy, fin);
+  /* Cuántos días lleva en la calle sin respuesta. */
+  const diasEsperando = p.fechaEnvio ? diasEntre(p.fechaEnvio, hoy) : null;
+  const noCuadran = p.partidas.filter(x => !cuadraFrecuencia(x)).length;
+  /* Una póliza vacía o con renglones chuecos no se puede cerrar como activa. */
+  const cerrable = p.partidas.length > 0 && noCuadran === 0;
+
+  /* Semáforo. Los estatus que no son 'activa' hablan por sí solos; solo una
+     póliza viva se juzga por servicios, cobranza y vigencia. */
+  let estado, tono;
+  if(p.estatus === 'cancelada'){ estado = 'Cancelada'; tono = 'neutro'; }
+  else if(p.estatus === 'perdida'){ estado = 'No se cerró'; tono = 'neutro'; }
+  else if(p.estatus === 'cotizacion'){ estado = 'Borrador'; tono = 'neutro'; }
+  else if(p.estatus === 'enviada'){ estado = 'En la calle'; tono = 'alerta'; }
+  else if(!vigente){ estado = 'Terminada'; tono = 'neutro'; }
+  else if(atrasados > 0){ estado = 'Servicios atrasados'; tono = 'error'; }
+  else if(cobrosAtrasados > 0){ estado = 'Cobro atrasado'; tono = 'error'; }
+  else if(tocanEsteMes > 0){ estado = 'Toca este mes'; tono = 'alerta'; }
+  else if(diasVigencia <= 45){ estado = 'Por vencer'; tono = 'alerta'; }
+  else{ estado = 'Al día'; tono = 'ok'; }
+
+  const activa = p.estatus === 'activa' && vigente;
+
+  return { hoy, fin, precioAnual, precioAnualCent, precioMensual, totales,
+           montos, montosCent, cobrados, debidos, cobrosAtrasados, adeudo, cobrado, proximoCobro,
+           programados, hechos, pendientes, atrasados, tocanEsteMes, huerfanos,
+           mesesCumplidos, mesActual, vigente, diasVigencia, diasEsperando,
+           noCuadran, cerrable, estado, tono, activa };
+}
+
+/* Gemelos de sitiosDe() / sitioPorId(): join en memoria, sin consulta. */
+function polizasDe(clienteId){ return datos.polizas.filter(p => p.clienteId === clienteId); }
+function polizaPorId(id){ return datos.polizas.find(p => p.id === id); }
+
 /* =============================== VISTAS =============================== */
-const estado = { vista:'clientes', clienteId:null, busca:'', filtro:'todos', sitioFiltro:'', encargadoFiltro:'' };
+/* "modulo" decide QUÉ producto se está viendo; "vista" decide en qué pantalla de
+   ese producto se está. Son dos ejes distintos a propósito: el panel de admin es
+   de la app entera y vive fuera de los dos módulos. */
+const estado = { modulo:'forpass', vista:'clientes', clienteId:null, polizaId:null,
+                 busca:'', filtro:'todos', sitioFiltro:'', encargadoFiltro:'' };
+
+/* Se recuerda el último módulo para abrir donde te quedaste. Es preferencia de
+   pantalla, no información: va en localStorage y no viaja al servidor. */
+const LLAVE_MODULO = 'forguard_forpass_modulo_v1';
+const MODULOS = ['forpass', 'polizas'];
+function cargarModulo(){
+  try{
+    const m = localStorage.getItem(LLAVE_MODULO);
+    if(MODULOS.includes(m)) estado.modulo = m;
+  }catch(e){}
+  estado.vista = inicioDelModulo();
+}
+function guardarModulo(){ try{ localStorage.setItem(LLAVE_MODULO, estado.modulo); }catch(e){} }
+
+/* La pantalla de arranque de cada módulo. Una sola función para que el logo, el
+   selector y el arranque no se desincronicen. */
+function inicioDelModulo(){ return estado.modulo === 'polizas' ? 'polizas' : 'clientes'; }
+
+function irAModulo(m){
+  if(!MODULOS.includes(m) || m === estado.modulo) return;   /* clic en la que ya está: nada */
+  estado.modulo = m;
+  guardarModulo();
+  /* Se limpia lo del módulo anterior: una búsqueda de sitios no tiene por qué
+     seguir filtrando pólizas. */
+  estado.vista = inicioDelModulo();
+  estado.clienteId = null; estado.polizaId = null;
+  estado.busca = ''; estado.filtro = 'todos';
+  estado.sitioFiltro = ''; estado.encargadoFiltro = '';
+  animarTarjetas = true;      /* lista nueva: sí anima */
+  render();                   /* UN render, no dos */
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
 
 const ICONO = {
   mas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
@@ -1680,6 +2502,7 @@ const ICONO = {
   atras:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>',
   persona:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
   sobre:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>',
+  calendario:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><path d="M7.5 13h2M11 13h2M14.5 13h2M7.5 16.5h2M11 16.5h2"/></svg>',
   tel:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8.1 9.6a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.7 2z"/></svg>'
 };
 
@@ -1722,12 +2545,17 @@ function barraHerramientas(){
 /* ------------------------------ Vista: clientes ------------------------------ */
 function vistaClientes(){
   const r = resumir(datos.sitios);
+  /* Solo los de este módulo: los que existen nada más por una póliza se quedan
+     en Pólizas. Ver clientesDeForpass(). */
+  const mios = clientesDeForpass();
+  const soloPoliza = datos.clientes.length - mios.length;
   let h = '';
 
   h += '<div class="titulo-zona"><div>'
      +   '<h2>Clientes</h2>'
-     +   '<p>' + numero(datos.clientes.length) + ' ' + plural(datos.clientes.length,'cliente','clientes')
-     +   ' · ' + numero(r.sitios) + ' ' + plural(r.sitios,'sitio','sitios') + ' registrados</p>'
+     +   '<p>' + numero(mios.length) + ' ' + plural(mios.length,'cliente','clientes')
+     +   ' · ' + numero(r.sitios) + ' ' + plural(r.sitios,'sitio','sitios') + ' registrados'
+     +   (soloPoliza ? ' · ' + numero(soloPoliza) + ' más solo con póliza' : '') + '</p>'
      + '</div><div class="acciones">'
      +   barraHerramientas()
      +   '<button type="button" class="btn btn-primario" data-accion="nuevo-cliente">' + ICONO.mas + 'Agregar cliente</button>'
@@ -1748,7 +2576,7 @@ function vistaClientes(){
   h += avisoRespaldo();
   h += avisoLocal();
 
-  if(!datos.clientes.length){
+  if(!mios.length){
     h += vistaVacia('edificio','Todavía no hay clientes','Agrega tu primer cliente y después registra los sitios con sus Forpass, mensualidad y vigencia.','nuevo-cliente','Agregar cliente');
     return h;
   }
@@ -1763,7 +2591,7 @@ function vistaClientes(){
      + '</div>';
 
   const q = estado.busca.trim().toLowerCase();
-  const lista = datos.clientes.filter(c=>{
+  const lista = mios.filter(c=>{
     const ss = sitiosDe(c.id);
     if(q){
       const enSitios = ss.some(s => s.nombre.toLowerCase().includes(q));
@@ -2018,6 +2846,455 @@ function tarjetaSitio(s, i){
        + '</div>';
 }
 
+/* ------------------------------ Vista: pólizas ------------------------------
+   Pinta RESÚMENES y nada más. Las partidas se ven solo en el detalle: cuarenta
+   pólizas de setenta y nueve renglones serían ~3,000 renglones de HTML en CADA
+   render(), y render() corre completo también en el refresco de 30 s.
+   --------------------------------------------------------------------------- */
+
+/* Suma de un conjunto de pólizas, para los indicadores de arriba. Gemelo de
+   resumir(), pero aparte: una póliza no tiene módulos ni mensualidad. */
+function resumirPolizas(lista){
+  const r = { total:lista.length, activas:0, valorActivo:0, enLaCalle:0, montoEnLaCalle:0,
+              esperaLarga:0, tocanEsteMes:0, atrasados:0, cobroAtrasado:0, porVencer:0, borradores:0 };
+  lista.forEach(p=>{
+    const c = calcularPoliza(p);
+    if(c.activa){
+      r.activas++; r.valorActivo += c.precioAnual;
+      r.tocanEsteMes += c.tocanEsteMes; r.atrasados += c.atrasados;
+      if(c.cobrosAtrasados) r.cobroAtrasado++;
+      if(c.diasVigencia >= 0 && c.diasVigencia <= 45) r.porVencer++;
+    }
+    if(p.estatus === 'enviada'){
+      r.enLaCalle++; r.montoEnLaCalle += c.precioAnual;
+      /* Más de tres semanas sin respuesta: eso es lo accionable, no el conteo. */
+      if(c.diasEsperando !== null && c.diasEsperando > 21) r.esperaLarga++;
+    }
+    if(p.estatus === 'cotizacion') r.borradores++;
+  });
+  return r;
+}
+
+/* Nombre presentable de una póliza: el sitio manda porque es lo que se imprime. */
+function tituloPoliza(p){
+  const cli = clientePorId(p.clienteId);
+  return (p.sitioNombre || p.folio || 'Póliza') + (cli ? ' · ' + cli.nombre : '');
+}
+
+function vistaPolizas(){
+  const r = resumirPolizas(datos.polizas);
+  let h = '';
+
+  h += '<div class="titulo-zona"><div>'
+     +   '<h2>Pólizas de mantenimiento</h2>'
+     +   '<p>' + numero(r.total) + ' ' + plural(r.total,'póliza','pólizas')
+     +   ' · ' + numero(r.activas) + ' ' + plural(r.activas,'activa','activas') + '</p>'
+     + '</div><div class="acciones">'
+     /* Mientras no haya pólizas, el único botón es el del estado vacío: dos
+        "Nueva cotización" en la misma pantalla es preguntar lo mismo dos veces. */
+     +   '<button type="button" class="btn btn-suave btn-mini" data-accion="ver-precios">' + ICONO.credencial + 'Lista de precios</button>'
+     +   (datos.polizas.length
+          ? '<button type="button" class="btn btn-primario" data-accion="nueva-poliza">' + ICONO.mas + 'Nueva cotización</button>'
+          : '')
+     + '</div></div>';
+
+  h += '<div class="kpis">'
+     + tarjetaKpi('Pólizas activas', numero(r.activas), dinero(r.valorActivo) + ' al año', r.activas ? 'k-ok' : '')
+     + tarjetaKpi('En la calle', numero(r.enLaCalle),
+         r.enLaCalle ? dinero(r.montoEnLaCalle) + ' esperando respuesta' : 'Nada enviado sin contestar',
+         r.esperaLarga ? 'k-alerta' : '')
+     + tarjetaKpi('Servicios este mes', numero(r.tocanEsteMes), 'Mantenimientos que tocan y siguen sin hacerse',
+         r.tocanEsteMes ? 'k-alerta' : '')
+     + tarjetaKpi('Servicios atrasados', numero(r.atrasados), 'Meses ya cumplidos sin registrar',
+         r.atrasados ? 'k-error' : '')
+     + '</div>';
+
+  h += avisoLocal();
+
+  if(!datos.polizas.length){
+    h += vistaVacia('edificio', 'Todavía no hay pólizas',
+          'Cotiza una póliza de mantenimiento: agrega los equipos con su cantidad, precio y cuántos servicios al año lleva cada uno.',
+          'nueva-poliza', 'Nueva cotización');
+    return h;
+  }
+
+  h += '<div class="barra-busca">'
+     +   '<input type="search" id="buscaPoliza" placeholder="Buscar por sitio, cliente o folio…" value="' + esc(estado.busca) + '">'
+     +   '<select id="filtroPoliza">'
+     +     '<option value="todos">Todas</option>'
+     +     '<option value="activas">Solo activas</option>'
+     +     '<option value="calle">Solo en la calle</option>'
+     +     '<option value="pendientes">Con servicios pendientes</option>'
+     +   '</select>'
+     + '</div>';
+
+  const q = estado.busca.trim().toLowerCase();
+  const lista = datos.polizas.filter(p=>{
+    if(q && !tituloPoliza(p).toLowerCase().includes(q) && !p.folio.toLowerCase().includes(q)) return false;
+    const c = calcularPoliza(p);
+    if(estado.filtro === 'activas' && !c.activa) return false;
+    if(estado.filtro === 'calle' && p.estatus !== 'enviada') return false;
+    if(estado.filtro === 'pendientes' && !(c.tocanEsteMes || c.atrasados)) return false;
+    return true;
+  });
+
+  if(!lista.length){
+    h += '<div class="vacio"><h3>Sin resultados</h3><p>Ninguna póliza coincide con la búsqueda o el filtro.</p></div>';
+    return h;
+  }
+
+  h += '<div class="grid' + (animarTarjetas ? '' : ' sin-entrada') + '">' + lista.map((p,i)=>{
+    const c = calcularPoliza(p);
+    const cli = clientePorId(p.clienteId);
+
+    /* La insignia principal es el estado. Cuando hay una cuenta detrás, el número
+       va DENTRO de ella: "Servicios atrasados" seguido de "8 servicios atrasados"
+       es decir dos veces lo mismo, y ocupa el doble. */
+    let principal = c.estado;
+    if(c.estado === 'Servicios atrasados') principal = c.atrasados + ' ' + plural(c.atrasados,'servicio atrasado','servicios atrasados');
+    else if(c.estado === 'Toca este mes')  principal = c.tocanEsteMes + ' ' + plural(c.tocanEsteMes,'servicio este mes','servicios este mes');
+
+    let chips = '<span class="insignia i-' + c.tono + '">'
+              + '<span class="punto p-' + c.tono + '"></span>' + esc(principal) + '</span>';
+
+    /* Las secundarias solo agregan lo que la principal NO alcanzó a decir: el
+       semáforo se queda con un motivo y los demás se perderían. */
+    if(p.estatus === 'enviada' && c.diasEsperando !== null){
+      chips += '<span class="insignia ' + (c.diasEsperando > 21 ? 'i-alerta' : 'i-info') + '">'
+             + c.diasEsperando + ' ' + plural(c.diasEsperando,'día','días') + ' esperando</span>';
+    }
+    if(c.activa && c.cobrosAtrasados && c.estado !== 'Cobro atrasado') chips += '<span class="insignia i-error">Cobro atrasado</span>';
+    if(c.activa && c.tocanEsteMes && c.estado !== 'Toca este mes') chips += '<span class="insignia i-alerta">' + c.tocanEsteMes + ' este mes</span>';
+    if(c.huerfanos) chips += '<span class="insignia i-info">' + c.huerfanos + ' fuera de calendario</span>';
+    /* Una cotización que no cuadra no se puede cerrar; si ya se mandó, peor. */
+    if(!c.cerrable && (p.estatus === 'cotizacion' || p.estatus === 'enviada')) chips += '<span class="insignia i-alerta">Renglones sin cuadrar</span>';
+
+    return '<div class="tarjeta tarjeta-clic t-' + c.tono + '" data-poliza="' + esc(p.id) + '" style="--d:' + (i*45) + 'ms" tabindex="0" role="button">'
+         +   '<div class="t-cabeza">'
+         +     (cli
+                 ? (puedeEditar()
+                     /* El avatar es el atajo a la foto: es donde el ojo la busca. */
+                     ? '<button type="button" class="avatar-btn" data-editar-cliente="' + esc(cli.id) + '" '
+                       + 'data-tip="' + (cli.logo ? 'Cambiar logo' : 'Subir logo') + '">' + avatarCliente(cli) + '</button>'
+                     : avatarCliente(cli))
+                 : '<div class="t-avatar">' + esc(iniciales(p.sitioNombre)) + '</div>')
+         +     '<div style="flex:1; min-width:0">'
+         +       '<div class="t-nombre">' + esc(p.sitioNombre || p.folio || 'Póliza') + '</div>'
+         +       '<div class="t-sub">' + esc(cli ? cli.nombre : 'Sin cliente ligado')
+         +         (p.folio ? ' · ' + esc(p.folio) : '') + '</div>'
+         +     '</div>'
+         +   '</div>'
+         +   '<div class="t-chips">' + chips + '</div>'
+         +   '<div class="t-datos">'
+         +     '<div class="t-dato"><div class="d-label">Precio anual</div><div class="d-valor">' + dinero(c.precioAnual) + '</div></div>'
+         +     '<div class="t-dato"><div class="d-label">Servicios</div><div class="d-valor">' + c.hechos + ' de ' + c.programados + '</div></div>'
+         +   '</div>'
+         +   '<div class="t-pie">'
+         +     '<button type="button" class="btn btn-suave btn-mini" data-ver-poliza="' + esc(p.id) + '">Ver detalle →</button>'
+         +     '<button type="button" class="btn btn-suave btn-mini" data-calendario="' + esc(p.id) + '" '
+         +       'title="Qué equipos se atienden cada mes">' + ICONO.calendario + '</button>'
+         +     '<span class="espacio"></span>'
+         +     '<button type="button" class="btn btn-suave btn-mini" data-editar-poliza="' + esc(p.id) + '" title="Editar póliza">' + ICONO.lapiz + '</button>'
+         +     '<button type="button" class="btn btn-peligro btn-mini" data-borrar-poliza="' + esc(p.id) + '" title="Eliminar póliza">' + ICONO.basura + '</button>'
+         +   '</div>'
+         + '</div>';
+  }).join('') + '</div>';
+
+  return h;
+}
+
+/* Detalle de una póliza. ESTE es el único lugar donde se pintan las partidas:
+   en la lista serían miles de renglones de HTML en cada render(). */
+function vistaPoliza(){
+  const p = polizaPorId(estado.polizaId);
+  if(!p){ estado.vista = 'polizas'; return vistaPolizas(); }
+  const c = calcularPoliza(p);
+  const cli = clientePorId(p.clienteId);
+  const sitio = p.sitioId ? sitioPorId(p.sitioId) : null;
+
+  let h = botonRegresarPolizas();
+
+  h += '<div class="titulo-zona"><div>'
+     +   '<h2>' + esc(p.sitioNombre || p.folio || 'Póliza') + '</h2>'
+     +   '<p>' + esc(cli ? cli.nombre : 'Sin cliente ligado')
+     +     (p.folio ? ' · ' + esc(p.folio) : '')
+     +     ' · <b>' + esc(ETIQUETA_ESTATUS[p.estatus]) + '</b>'
+     +     ' · ' + esc(c.estado) + '</p>'
+     + '</div><div class="acciones">'
+     +   '<button type="button" class="btn btn-suave btn-mini" data-accion="calendario-poliza">' + ICONO.calendario + 'Calendario</button>'
+     +   (puedeEditar() ? '<button type="button" class="btn btn-primario" data-accion="editar-poliza">' + ICONO.lapiz + 'Editar</button>' : '')
+     + '</div></div>';
+
+  h += '<div class="kpis">'
+     + tarjetaKpi('Precio anual', dineroCent(c.precioAnual), p.partidas.length + ' ' + plural(p.partidas.length,'equipo','equipos'))
+     + tarjetaKpi('Precio mensual', dineroCent(c.precioMensual), 'Anual ÷ ' + MESES_POLIZA)
+     + tarjetaKpi('Servicios', c.hechos + ' de ' + c.programados,
+         c.atrasados ? c.atrasados + ' ' + plural(c.atrasados,'atrasado','atrasados') : 'Sin atrasos', c.atrasados ? 'k-error' : '')
+     + tarjetaKpi('Vigencia', fmtFecha(p.fechaInicio) + ' → ' + fmtFecha(c.fin),
+         c.vigente ? 'Faltan ' + c.diasVigencia + ' ' + plural(c.diasVigencia,'día','días') : 'Terminada')
+     + '</div>';
+
+  if(c.noCuadran){
+    h += '<div class="aviso" style="border-left-color:var(--alerta)">' + ICONO.info
+       + '<div><b>' + c.noCuadran + ' ' + plural(c.noCuadran,'renglón no cuadra','renglones no cuadran') + '</b> entre '
+       + 'los meses marcados y los servicios al año. Se puede guardar así, pero no cerrar la póliza como activa.</div></div>';
+  }
+
+  /* --- Datos de la cotización --- */
+  h += '<div class="bloque"><div class="bloque-cabeza"><div><h3>Cotización</h3></div></div>'
+     /* El logo y el botón viven aquí porque es el único lugar del módulo donde se
+        puede abrir modalCliente sin destruir una captura en curso: el recortador
+        con zoom es el de Forpass, tal cual, sin duplicar nada. */
+     + '<div class="c-fila"><span>Cliente</span><b style="display:flex; align-items:center; gap:9px">'
+     +   (cli ? avatarCliente(cli, 28) : '')
+     +   esc(cli ? cli.nombre : '—')
+     +   (cli && puedeEditar()
+         ? '<button type="button" class="btn btn-suave btn-mini" data-editar-cliente="' + esc(cli.id) + '" '
+           + 'title="Editar el cliente y subir su logo">' + ICONO.lapiz + (cli.logo ? 'Cambiar logo' : 'Subir logo') + '</button>'
+         : '')
+     + '</b></div>'
+     + '<div class="c-fila"><span>Sitio</span><b>' + esc(p.sitioNombre || '—')
+     +   (sitio ? ' <span class="pista" style="display:inline">(con kiosco Forpass)</span>' : '') + '</b></div>'
+     + '<div class="c-fila"><span>Fecha de cotización</span><b>' + fmtFecha(p.fechaCotizacion) + '</b></div>'
+     + (p.fechaEnvio ? '<div class="c-fila"><span>Enviada</span><b>' + fmtFecha(p.fechaEnvio)
+         + (c.diasEsperando !== null && p.estatus === 'enviada' ? ' · ' + c.diasEsperando + ' ' + plural(c.diasEsperando,'día','días') + ' esperando' : '') + '</b></div>' : '')
+     + (p.fechaCierre ? '<div class="c-fila"><span>Cerrada</span><b>' + fmtFecha(p.fechaCierre)
+         + ' <span class="pista" style="display:inline">precios congelados</span></b></div>' : '')
+     + '<div class="c-fila"><span>Facturación</span><b>' + (p.facturacion === 'mensual' ? 'Mensual — doce cobros' : 'Anual — un solo cobro') + '</b></div>'
+     + '<div class="c-fila"><span>Vendedor</span><b>' + esc(p.vendedor.nombre || '—')
+     +   (p.vendedor.telefono ? ' · ' + esc(p.vendedor.telefono) : '') + '</b></div>'
+     + (p.notas ? '<div class="c-fila"><span>Notas</span><b style="font-weight:500; text-align:right">' + esc(p.notas) + '</b></div>' : '')
+     + '</div>';
+
+  /* --- Los renglones --- */
+  h += '<div class="bloque"><div class="bloque-cabeza"><div><h3>Equipos cotizados</h3>'
+     + '<p>El total de cada renglón se calcula: precio × cantidad × servicios al año. Nunca se captura.</p>'
+     + '</div></div><div class="rodillo"><table class="tabla">'
+     + '<thead><tr><th>#</th><th>Concepto</th><th>Marca</th><th>Cant.</th>'
+     + '<th>P. unitario</th><th>Serv./año</th><th>Meses</th><th>Total</th></tr></thead><tbody>'
+     + p.partidas.map((x,i)=>{
+         const fuera = serviciosFueraDeCalendario(x);
+         const meses = x.mesesServicio.map(m =>
+           '<span class="chip-zona ' + (servicioHecho(x,m) ? 'z-verde' : 'z-gris') + '" '
+           + 'title="' + esc(etiquetaMesServicio(p.fechaInicio, m) + (servicioHecho(x,m) ? ' · hecho el ' + fmtFecha(x.hechosDetalle[String(m)].cuando) : ' · pendiente')) + '">'
+           + esc(etiquetaMesServicio(p.fechaInicio, m)) + '</span>').join(' ')
+           + fuera.map(m => '<span class="chip-zona z-ambar" title="Servicio hecho en un mes que ya no está en el calendario">'
+               + esc(etiquetaMesServicio(p.fechaInicio, m)) + ' ⚠</span>').join(' ');
+         return '<tr>'
+           + '<td>' + (i+1) + '</td>'
+           + '<td><b>' + esc(x.concepto) + '</b>'
+           +   (descripcionDe(x) ? '<div class="pista">' + esc(descripcionDe(x)) + '</div>' : '') + '</td>'
+           + '<td>' + esc(x.marca || '—') + '</td>'
+           + '<td>' + numero(x.cantidad) + '</td>'
+           + '<td>' + dineroCent(x.precioUnitario) + '</td>'
+           + '<td>' + x.frecuencia + (cuadraFrecuencia(x) ? '' : ' <b style="color:var(--error)">≠' + x.mesesServicio.length + '</b>') + '</td>'
+           + '<td>' + meses + '</td>'
+           + '<td><b>' + dineroCent(c.totales[i]) + '</b></td>'
+           + '</tr>';
+       }).join('')
+     + '</tbody></table></div>'
+     + '<div class="c-fila" style="margin-top:12px"><span>Precio anual — suma de los renglones</span><b>' + dineroCent(c.precioAnual) + '</b></div>'
+     + '<div class="c-fila"><span>Precio mensual — anual ÷ ' + MESES_POLIZA + '</span><b>' + dineroCent(c.precioMensual) + '</b></div>'
+     + '</div>';
+
+  /* --- Cobranza --- */
+  h += '<div class="bloque"><div class="bloque-cabeza"><div><h3>Cobranza</h3>'
+     + '<p>' + (p.facturacion === 'mensual'
+         ? 'Doce cobros. El último lleva el residuo del reparto para que la suma dé el anual al centavo.'
+         : 'Un solo cobro al inicio de la vigencia.') + '</p></div></div>'
+     + '<div class="c-fila"><span>Cobrado</span><b>' + dineroCent(c.cobrado) + ' de ' + dineroCent(c.precioAnual) + '</b></div>'
+     + '<div class="c-fila"><span>Vencido sin cobrar</span><b' + (c.adeudo ? ' style="color:var(--error)"' : '') + '>' + dineroCent(c.adeudo) + '</b></div>'
+     + '<div class="c-fila"><span>Casillas</span><b>' + c.cobrados + ' de ' + p.cobros.length + ' pagadas</b></div>'
+     + '<div class="meses" style="margin-top:10px">'
+     + p.cobros.map((ok,i)=>'<button type="button" class="mes' + (ok ? ' pagado' : (i < c.debidos ? ' debido' : '')) + '" '
+         + 'data-cobro="' + esc(p.id) + '" data-idx="' + i + '" '
+         + 'title="' + esc('Cobro ' + (i+1) + ' · ' + dineroCent(c.montos[i])
+             + (p.facturacion === 'mensual' ? ' · ' + fmtFecha(sumarMeses(p.fechaInicio, i)) : '')
+             + (ok ? ' · pagado' + (p.cobrosDetalle[i].oc ? ' con OC ' + p.cobrosDetalle[i].oc : '')
+                   : (i < c.debidos ? ' · vencido' : ' · por venir'))
+             + ' — clic para capturar') + '">' + (i+1) + '</button>').join('')
+     + '</div>'
+     + '<div class="pista" style="margin-top:8px">Pícale a una casilla para capturar su OC. '
+     +   'Un cobro ya capturado se puede reabrir para corregirlo.</div>'
+     + (c.cobrados
+         ? '<div class="rodillo" style="margin-top:14px"><table class="tabla">'
+           + '<thead><tr><th>#</th><th>Monto</th><th>OC</th><th>Capturó</th><th>Cuándo</th><th>Factura</th></tr></thead><tbody>'
+           + p.cobros.map((ok,i)=>{
+               if(!ok) return '';
+               const d = p.cobrosDetalle[i];
+               return '<tr><td>' + (i+1) + '</td><td>' + dineroCent(c.montos[i]) + '</td>'
+                 + '<td><b>' + esc(d.oc || '—') + '</b></td><td>' + esc(d.quien || '—') + '</td>'
+                 + '<td>' + esc(d.cuando ? fechaHora(d.cuando) : '—') + '</td>'
+                 + '<td>' + (d.facturado ? '<span class="insignia i-ok">Facturada</span>' : '<span class="insignia i-alerta">Sin facturar</span>') + '</td></tr>';
+             }).join('')
+           + '</tbody></table></div>'
+         : '')
+     + '</div>';
+
+  return h;
+}
+
+/* --------------------------- Vista: lista de precios ---------------------------
+   La ve todo el equipo porque el vendedor la necesita para cotizar; solo Owner y
+   Admin la cambian, y eso sí lo exige el servidor por regla.
+   ----------------------------------------------------------------------------- */
+function vistaPrecios(){
+  const puede = esAdmin();
+  const lista = catalogo().slice().sort((a,b)=> a.concepto.localeCompare(b.concepto,'es'));
+  const q = estado.busca.trim().toLowerCase();
+  const vistos = q ? lista.filter(e => e.concepto.toLowerCase().includes(q)) : lista;
+  const sinPrecio = lista.filter(e => !e.precio).length;
+
+  let h = botonRegresarPolizas();
+
+  h += '<div class="titulo-zona"><div>'
+     +   '<h2>Lista de precios</h2>'
+     +   '<p>' + numero(lista.length) + ' ' + plural(lista.length,'equipo','equipos')
+     +   (puede ? ' · los precios de aquí se sugieren al cotizar y siempre se pueden cambiar en el renglón'
+              : ' · solo un Owner o un Admin puede cambiarlos') + '</p>'
+     + '</div><div class="acciones">'
+     +   (puede ? '<button type="button" class="btn btn-primario" data-accion="nuevo-equipo">' + ICONO.mas + 'Agregar equipo</button>' : '')
+     + '</div></div>';
+
+  if(sinPrecio){
+    h += '<div class="aviso" style="border-left-color:var(--alerta)">' + ICONO.info
+       + '<div><b>' + sinPrecio + ' ' + plural(sinPrecio,'equipo','equipos') + ' sin precio.</b> '
+       + 'Aparecen en las descripciones de las cotizaciones viejas pero en ningún renglón con importe, '
+       + 'así que quedaron en cero. Ponles precio antes de usarlos.</div></div>';
+  }
+  if(!datos.catalogo.length){
+    h += '<div class="aviso" style="border-left-color:var(--gray)">' + ICONO.info
+       + '<div>Esta lista todavía no está guardada en el servidor: es la de arranque, sacada de las '
+       + 'cotizaciones de MXGT01, MXNL02, INOAC y NGK. '
+       + (puede ? 'Guárdala para que la vea todo el equipo, o cambia cualquier precio y se guarda sola.' : 'Un Owner o Admin la va a guardar.')
+       + (puede ? '<div style="margin-top:9px"><button type="button" class="btn btn-verde btn-mini" data-accion="guardar-catalogo">'
+                  + ICONO.cheque + 'Guardar la lista en el servidor</button></div>' : '')
+       + '</div></div>';
+  }
+
+  h += '<div class="barra-busca">'
+     +   '<input type="search" id="buscaEquipo" placeholder="Buscar equipo…" value="' + esc(estado.busca) + '">'
+     + '</div>';
+
+  h += '<div class="bloque">'
+     + (puede
+         ? '<div class="bloque-cabeza"><div><h3>Qué hace cada botón</h3>'
+           + '<p><b>Editar precio</b> cambia el precio, los servicios al año y la descripción de ese equipo. '
+           + 'Es lo que se va a sugerir la próxima vez que alguien lo cotice; en la cotización siempre se puede poner otro.<br>'
+           + '<b>Ya no ofrecer</b> lo saca del buscador de equipos al cotizar, sin borrarlo. '
+           + 'Sirve para lo que dejaste de vender: las pólizas que ya lo tienen siguen mostrando su nombre y su descripción, '
+           + 'y se puede volver a ofrecer cuando quieras.</p></div></div>'
+         : '')
+     + '<div class="rodillo"><table class="tabla">'
+     + '<thead><tr><th>Equipo</th><th>Precio unitario</th><th>Servicios/año</th><th>Descripción del trabajo</th>'
+     + (puede ? '<th class="acciones">Acciones</th>' : '') + '</tr></thead><tbody>'
+     + (vistos.length ? vistos.map(e =>
+         '<tr' + (e.activo ? '' : ' style="opacity:.5"') + '>'
+       + '<td><b>' + esc(e.concepto) + '</b>' + (e.activo ? '' : ' <span class="pista" style="display:inline">(apagado)</span>') + '</td>'
+       + '<td' + (e.precio ? '' : ' style="color:var(--error)"') + '>' + (e.precio ? dineroCent(e.precio) : 'sin precio') + '</td>'
+       + '<td>' + e.frecuencia + ' · cada ' + (MESES_POLIZA / e.frecuencia % 1 === 0 ? (MESES_POLIZA/e.frecuencia) + ' ' + plural(MESES_POLIZA/e.frecuencia,'mes','meses') : 'irregular') + '</td>'
+       + '<td>' + (e.descripcion ? '<div class="pista">' + esc(e.descripcion) + '</div>' : '<span class="pista">— sin descripción —</span>') + '</td>'
+       + (puede
+           ? '<td class="acciones">'
+             + '<button type="button" class="btn btn-suave btn-mini" data-editar-equipo="' + esc(e.id) + '">' + ICONO.lapiz + 'Editar precio</button>'
+             + '<button type="button" class="btn btn-suave btn-mini" data-apagar-equipo="' + esc(e.id) + '" '
+               + 'title="' + (e.activo
+                   ? 'Deja de aparecer en el buscador al cotizar. No se borra: las pólizas que ya lo usan siguen viéndolo.'
+                   : 'Vuelve a aparecer en el buscador al cotizar.') + '">'
+               + (e.activo ? 'Ya no ofrecer' : 'Volver a ofrecer') + '</button>'
+             + '</td>'
+           : '')
+       + '</tr>').join('')
+       : '<tr><td colspan="5"><span class="pista">Ningún equipo coincide con la búsqueda.</span></td></tr>')
+     + '</tbody></table></div>'
+     + (puede ? '<div class="pista" style="margin-top:10px">La lista es un solo documento: si dos administradores la editan al mismo tiempo, gana el último que guarde.</div>' : '')
+     + '</div>';
+
+  return h;
+}
+
+/* Alta y edición de un equipo del catálogo. */
+function modalEquipo(id){
+  if(!exigirAdmin('cambiar la lista de precios')) return;
+  const e = id ? catalogo().find(x => x.id === id) : null;
+
+  const cuerpo =
+      '<div class="campo"><label>Equipo *</label>'
+    +   '<input type="text" id="eqConcepto" placeholder="Ej. Cámara de refrigeración" value="' + esc(e ? e.concepto : '') + '"></div>'
+    + '<div class="fila2">'
+    +   '<div class="campo"><label>Precio unitario</label>'
+    +     '<input type="text" inputmode="decimal" id="eqPrecio" value="' + (e && e.precio ? numero(e.precio) : '') + '">'
+    +     '<div class="pista">Es una sugerencia: al cotizar se puede cambiar en el renglón.</div></div>'
+    +   '<div class="campo"><label>Servicios al año</label>'
+    +     '<input type="number" min="1" max="' + MESES_POLIZA + '" id="eqFrecuencia" value="' + (e ? e.frecuencia : 3) + '">'
+    +     '<div class="pista" id="eqIntervalo"></div></div>'
+    + '</div>'
+    + '<div class="campo"><label>Descripción del trabajo (opcional)</label>'
+    +   '<textarea id="eqDescripcion" placeholder="Lo que se le hace al equipo en cada visita. Sale impreso en la cotización.">' + esc(e ? e.descripcion : '') + '</textarea></div>';
+
+  abrirModal(e ? 'Editar ' + e.concepto : 'Agregar equipo al catálogo', cuerpo,
+      '<button type="button" class="btn btn-suave" data-modal="cancelar">Cancelar</button>'
+    + '<button type="button" class="btn btn-primario" data-modal="guardar">' + (e ? 'Guardar cambios' : 'Agregar') + '</button>');
+
+  function pintarIntervalo(){
+    const f = Math.max(1, Math.min(MESES_POLIZA, parseInt($('eqFrecuencia').value,10) || 1));
+    $('eqIntervalo').textContent = MESES_POLIZA % f === 0
+      ? 'Cada ' + (MESES_POLIZA/f) + ' ' + plural(MESES_POLIZA/f,'mes','meses') + '.'
+      : 'Repartidos lo más parejo posible en el año: ' + mesesRegulares(0,f).map(m => m+1).join(', ') + '.';
+  }
+  $('eqFrecuencia').addEventListener('input', pintarIntervalo);
+  $('eqPrecio').addEventListener('input', ()=> formatearMiles($('eqPrecio')));
+  pintarIntervalo();
+
+  cerrarModalActual = ()=>{
+    const concepto = $('eqConcepto').value.trim();
+    if(!concepto){ $('eqConcepto').setAttribute('aria-invalid','true'); $('eqConcepto').focus(); aviso('El equipo necesita un nombre.', true); return; }
+    const nuevo = normalizarEquipo({
+      id: e ? e.id : concepto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''),
+      concepto, precio: aNumero($('eqPrecio').value),
+      frecuencia: $('eqFrecuencia').value, descripcion: $('eqDescripcion').value.trim(),
+      activo: e ? e.activo : true
+    });
+    /* Si la lista todavía era la semilla, al primer cambio se materializa completa:
+       guardar un solo equipo dejaría al servidor con una lista de uno. */
+    if(!datos.catalogo.length) datos.catalogo = CATALOGO_SEMILLA.map(normalizarEquipo);
+    const i = datos.catalogo.findIndex(x => x.id === nuevo.id);
+    if(i === -1) datos.catalogo.push(nuevo); else datos.catalogo[i] = nuevo;
+    guardarCatalogo((e ? 'editó ' : 'agregó ') + concepto + ' · ' + dineroCent(nuevo.precio));
+    cerrarModal(); render();
+    aviso(e ? 'Equipo actualizado.' : 'Equipo agregado.');
+  };
+}
+
+function botonRegresarPolizas(){
+  return '<div style="margin-bottom:14px">'
+       + '<button type="button" class="btn btn-suave btn-mini" data-accion="ir-polizas">'
+       + ICONO.atras + 'Regresar a pólizas</button></div>';
+}
+
+/* Gemelos de irAClientes() y entrarCliente(): prenden la animación de entrada.
+   Sin esto las tarjetas se verían desaparecer y reaparecer en cada refresco de
+   30 s, porque render() rehace el HTML completo. */
+function irAPrecios(){
+  animarTarjetas = false;          /* es una tabla, no una reja de tarjetas */
+  estado.vista = 'precios'; estado.polizaId = null; estado.busca = '';
+  render();
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+function irAPolizas(){
+  animarTarjetas = true;
+  estado.vista = 'polizas';
+  estado.polizaId = null;
+  estado.busca = '';        /* el buscador de equipos no debe seguir filtrando pólizas */
+  render();
+}
+function entrarPoliza(id){
+  animarTarjetas = true;
+  estado.vista = 'poliza'; estado.polizaId = id;
+  render();
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
 function vistaVacia(icono, titulo, texto, accion, textoBoton){
   return '<div class="vacio">'
        +   '<div class="v-icono">' + ICONO[icono] + '</div>'
@@ -2064,9 +3341,25 @@ let animarTarjetas = true;
 function render(){
   pintarEstadoNube();
   pintarCabecera();
-  $('vista').innerHTML = estado.vista === 'admin'  ? vistaAdmin()
-                       : estado.vista === 'cliente' ? vistaCliente()
-                       : vistaClientes();
+  /* Se despacha primero por módulo y luego por vista. El panel de admin va antes
+     que los dos: es de la app entera, no de un producto, y se llega a él desde
+     cualquiera de los dos módulos. */
+  $('vista').innerHTML =
+      estado.vista === 'admin'    ? vistaAdmin()
+    : estado.modulo === 'polizas' ? (estado.vista === 'poliza' ? vistaPoliza()
+                                    : estado.vista === 'precios' ? vistaPrecios()
+                                    : vistaPolizas())
+    : (estado.vista === 'cliente' ? vistaCliente() : vistaClientes());
+
+  const be = $('buscaEquipo');
+  if(be) be.addEventListener('input', ()=>{ estado.busca = be.value; renderConservandoFoco(be, 'buscaEquipo'); });
+  const bp = $('buscaPoliza');
+  if(bp){
+    bp.addEventListener('input', ()=>{ estado.busca = bp.value; renderConservandoFoco(bp, 'buscaPoliza'); });
+    const fp = $('filtroPoliza');
+    fp.value = estado.filtro;
+    fp.addEventListener('change', ()=>{ estado.filtro = fp.value; render(); });
+  }
   const b = $('buscaCliente');
   if(b){
     b.addEventListener('input', ()=>{ estado.busca = b.value; renderConservandoFoco(b); });
@@ -2095,14 +3388,22 @@ function pintarCabecera(){
   $('btnSalir').style.display = dentro ? '' : 'none';
   pintarPuntoClave();
 
+  /* Pestaña encendida. Se pinta aquí y no al hacer clic para que el selector diga
+     la verdad venga de donde venga el cambio: clic, arranque, o lo que se haya
+     recordado de la sesión pasada. */
+  $('selectorModulo').querySelectorAll('[data-modulo]').forEach(b=>{
+    b.setAttribute('aria-selected', b.dataset.modulo === estado.modulo ? 'true' : 'false');
+  });
+
   /* El logo solo funciona como atajo cuando hay a dónde volver. En la portada
-     queda deshabilitado: sin esto sería un botón que no hace nada y además
-     estorbaría en el recorrido del teclado. */
+     del módulo queda deshabilitado: sin esto sería un botón que no hace nada y
+     además estorbaría en el recorrido del teclado. */
   const inicio = $('btnInicio');
-  const enPortada = estado.vista === 'clientes';
+  const destino = estado.modulo === 'polizas' ? 'Pólizas' : 'Clientes';
+  const enPortada = estado.vista === inicioDelModulo();
   inicio.disabled = enPortada;
-  inicio.title = enPortada ? '' : 'Volver a Clientes';
-  inicio.setAttribute('aria-label', enPortada ? 'Forguard' : 'Volver a Clientes');
+  inicio.title = enPortada ? '' : 'Volver a ' + destino;
+  inicio.setAttribute('aria-label', enPortada ? 'Forguard' : 'Volver a ' + destino);
 }
 
 /* Una sola función para volver a la portada: la usan el botón "Clientes" de la
@@ -2126,11 +3427,12 @@ function exigirAdmin(quePasa){
   aviso('Solo un Owner o un Admin puede ' + quePasa + '.', true);
   return false;
 }
-/* Redibuja sin perder el cursor del buscador. */
-function renderConservandoFoco(input){
+/* Redibuja sin perder el cursor del buscador. El id se recibe para que sirva a
+   los dos módulos; por omisión es el de Forpass, que es como estaba. */
+function renderConservandoFoco(input, id){
   const pos = input.selectionStart;
   render();
-  const nuevo = $('buscaCliente');
+  const nuevo = $(id || 'buscaCliente');
   if(nuevo){ nuevo.focus(); try{ nuevo.setSelectionRange(pos,pos); }catch(e){} }
 }
 
@@ -2472,7 +3774,7 @@ function abrirModal(titulo, cuerpo, pie){
 }
 function cerrarModal(){
   $('telon').classList.remove('abierto');
-  $('modal').classList.remove('ancho');
+  $('modal').classList.remove('ancho', 'enorme');
   /* Se reemplaza el contenedor por uno limpio en vez de solo vaciarlo: así se
      van también los listeners que algún modal le haya colgado, y no se
      acumulan cada vez que se abre. */
@@ -2861,6 +4163,731 @@ function modalSitio(clienteId, sitioId){
     estado.vista = 'cliente'; estado.clienteId = limpio.clienteId;
     render();
     aviso(s ? 'Sitio actualizado.' : 'Sitio agregado.');
+  };
+}
+
+/* ---------------------- Cobranza de la póliza ----------------------
+   Mismo molde que la captura de mensualidades de Forpass: la OC es obligatoria,
+   queda quién la capturó y cuándo, y un cobro ya capturado se puede reabrir para
+   corregirlo. Lo único distinto es que el monto sale de montos[], que reparte el
+   anual en centavos enteros.
+   ------------------------------------------------------------------ */
+function deshacerCobro(polizaId, idx){
+  const p = polizaPorId(polizaId);
+  if(!p || !p.cobros[idx]) return;
+  const oc = p.cobrosDetalle[idx].oc;
+  cerrarModal();
+  confirmar('Deshacer el cobro ' + (idx+1),
+    'Se va a marcar como <b>no cobrado</b> y se borra su OC (<b>' + esc(oc || 'sin OC') + '</b>), '
+    + 'quién lo capturó y cuándo. La póliza no se toca.',
+    'Sí, deshacer', ()=>{
+      p.cobros[idx] = false;
+      p.cobrosDetalle[idx] = { oc:'', quien:'', cuando:'', facturado:false };
+      guardarPoliza(p, 'deshizo el cobro de', 'cobro ' + (idx+1) + (oc ? ' · OC ' + oc : ''));
+      render();
+      aviso('Cobro ' + (idx+1) + ' deshecho.');
+    });
+}
+
+function modalCobroPoliza(polizaId, idx){
+  const p = polizaPorId(polizaId);
+  if(!p || idx < 0 || idx >= p.cobros.length) return;
+  if(!exigirPermiso()) return;
+  const c = calcularPoliza(p);
+  const det = p.cobrosDetalle[idx] || { oc:'', quien:'', cuando:'', facturado:false };
+  const conCuenta = HAY_NUBE && haySesion();
+  const yaCobrado = !!p.cobros[idx];
+  const cli = clientePorId(p.clienteId);
+
+  const cuerpo =
+      '<div class="resumen" style="margin-bottom:18px">'
+    +   '<div class="r-fila"><span>Póliza</span><span>' + esc(p.sitioNombre || p.folio || 'Póliza')
+    +     (cli ? ' · ' + esc(cli.nombre) : '') + '</span></div>'
+    +   '<div class="r-fila"><span>Cobro</span><span>' + (idx+1) + ' de ' + p.cobros.length
+    +     (p.facturacion === 'anual' ? ' (anual)' : '') + '</span></div>'
+    +   (p.facturacion === 'mensual'
+        ? '<div class="r-fila"><span>Fecha de corte</span><span>' + fmtFecha(sumarMeses(p.fechaInicio, idx)) + '</span></div>'
+        : '<div class="r-fila"><span>Inicio de la vigencia</span><span>' + fmtFecha(p.fechaInicio) + '</span></div>')
+    +   (idx === p.cobros.length - 1 && p.cobros.length > 1 && c.montos[idx] !== c.montos[0]
+        ? '<div class="r-fila"><span>Ojo</span><span>Lleva el residuo del reparto</span></div>' : '')
+    +   '<div class="r-fila r-total"><span>Monto de este cobro</span><span>' + dineroCent(c.montos[idx]) + '</span></div>'
+    + '</div>'
+
+    + '<div class="campo"><label>Nombre de quien captura *</label>'
+    +   (conCuenta
+          ? '<input type="text" id="cbQuien" value="' + esc(nombreDe(sesion)) + '" readonly>'
+            + '<div class="pista">Es tu cuenta (' + esc(sesion.correo) + '). Queda registrada en el historial de cambios.</div>'
+          : '<input type="text" id="cbQuien" placeholder="Ej. Santiago Garza" value="' + esc(nombreCapturador()) + '">'
+            + '<div class="pista">Se guarda para las siguientes capturas de esta computadora.</div>')
+    + '</div>'
+
+    + '<div class="campo"><label>Número de OC *</label>'
+    +   '<input type="text" id="cbOC" placeholder="Ej. 4500123" value="' + esc(det.oc) + '">'
+    +   '<div class="pista">La orden de compra con la que se pagó <b>este</b> cobro. Cada uno lleva la suya.</div>'
+    + '</div>'
+
+    + '<label class="casilla"><input type="checkbox" id="cbFacturado"' + (det.facturado ? ' checked' : '') + '> '
+    +   'Ya se facturó este cobro</label>'
+    + '<div class="pista" style="margin:-6px 0 0">Si todavía no se factura, déjala sin marcar y márcala después '
+    +   'volviendo a abrir esta casilla.</div>';
+
+  abrirModal((yaCobrado ? 'Cobro ' : 'Capturar cobro ') + (idx+1), cuerpo,
+      (yaCobrado ? '<button type="button" class="btn btn-peligro izq" id="btnDeshacerCobro">Deshacer captura</button>' : '')
+    + '<button type="button" class="btn btn-suave" data-modal="cancelar">Cancelar</button>'
+    + '<button type="button" class="btn btn-verde" data-modal="guardar">' + ICONO.cheque
+    + (yaCobrado ? 'Guardar cambios' : 'Capturar cobro') + '</button>');
+
+  if(yaCobrado) $('btnDeshacerCobro').addEventListener('click', ()=> deshacerCobro(polizaId, idx));
+  setTimeout(()=>{ const oc = $('cbOC'); if(oc) oc.focus(); }, 70);
+
+  cerrarModalActual = ()=>{
+    /* Se lee TODO antes de cerrar: cerrarModal reemplaza el contenedor. */
+    const quien = $('cbQuien').value.trim();
+    const oc    = $('cbOC').value.trim();
+    if(!quien){ $('cbQuien').setAttribute('aria-invalid','true'); $('cbQuien').focus(); aviso('Falta el nombre de quien captura.', true); return; }
+    if(!oc){ $('cbOC').setAttribute('aria-invalid','true'); $('cbOC').focus(); aviso('Falta el número de OC.', true); return; }
+    const facturado = $('cbFacturado').checked;
+
+    p.cobros[idx] = true;
+    p.cobrosDetalle[idx] = { oc, quien, cuando: new Date().toISOString(), facturado };
+    if(!conCuenta) recordarCapturador(quien);
+
+    guardarPoliza(p, yaCobrado ? 'corrigió el cobro de' : 'capturó el cobro de',
+      'cobro ' + (idx+1) + ' de ' + p.cobros.length + ' · ' + dineroCent(c.montos[idx])
+      + ' · OC ' + oc + ' · ' + (facturado ? 'facturado' : 'sin facturar') + ' · capturó ' + quien);
+    cerrarModal();
+    render();
+    aviso('Cobro ' + (idx+1) + (yaCobrado ? ' actualizado' : ' capturado') + ' con OC ' + oc
+      + (facturado ? ' · facturado' : ' · sin facturar') + '.');
+  };
+}
+
+/* ------------------------- Modal: calendario de la póliza -------------------
+   Mes por mes, qué equipos toca atender. Es la pregunta operativa del módulo —
+   "qué hay que hacer este mes"— y en la tabla de captura no se contesta: ahí se
+   ve por renglón, no por mes.
+   --------------------------------------------------------------------------- */
+function modalCalendario(id){
+  const p = polizaPorId(id);
+  if(!p) return;
+  const c = calcularPoliza(p);
+  const hoy = hoyISO();
+  /* En qué mes de la vigencia estamos, para marcar "este mes". */
+  const mesActual = diasEntre(p.fechaInicio, hoy) < 0 ? -1
+    : Math.min(MESES_POLIZA - 1, mesesTranscurridos(p.fechaInicio, hoy));
+
+  const meses = Array.from({length:MESES_POLIZA}, (_,m)=>{
+    const toca = [];
+    p.partidas.forEach(x=>{
+      if(x.mesesServicio.includes(m)) toca.push({ x, hecho: servicioHecho(x, m), fuera:false });
+      else if(x.hechosDetalle[String(m)]) toca.push({ x, hecho:true, fuera:true });
+    });
+    return { m, toca, equipos: toca.reduce((t,r)=> t + r.x.cantidad, 0) };
+  });
+  const pico = Math.max(...meses.map(z=>z.equipos));
+
+  const cuerpo =
+      '<div class="c-fila"><span>Vigencia</span><b>' + fmtFecha(p.fechaInicio) + ' → ' + fmtFecha(c.fin) + '</b></div>'
+    + '<div class="c-fila"><span>Servicios en el año</span><b>' + numero(c.programados)
+    +   ' · ' + c.hechos + ' ' + plural(c.hechos,'hecho','hechos') + '</b></div>'
+    + '<div class="c-fila"><span>Mes más cargado</span><b>' + pico + ' ' + plural(pico,'equipo','equipos') + '</b></div>'
+    + '<div class="cal-meses">'
+    + meses.map(z=>{
+        const esAhora = z.m === mesActual;
+        return '<div class="cal-mes' + (z.toca.length ? '' : ' vacio') + (esAhora ? ' ahora' : '') + '">'
+          + '<div class="cal-cabeza">'
+          +   '<b>' + esc(etiquetaMesServicio(p.fechaInicio, z.m)) + '</b>'
+          +   (esAhora ? '<span class="insignia i-alerta">este mes</span>' : '')
+          +   '<span class="espacio"></span>'
+          +   (z.toca.length ? '<span class="cal-cuenta">' + z.equipos + ' ' + plural(z.equipos,'equipo','equipos') + '</span>' : '<span class="cal-cuenta">—</span>')
+          + '</div>'
+          + (z.toca.length
+              ? '<ul class="cal-lista">' + z.toca.map(r =>
+                  '<li' + (r.hecho ? ' class="hecho"' : '') + '>'
+                  + (r.hecho ? ICONO.cheque : '')
+                  + esc(r.x.concepto) + (r.x.cantidad > 1 ? ' <b>×' + r.x.cantidad + '</b>' : '')
+                  + (r.fuera ? ' <span class="pista" style="display:inline">(fuera de calendario)</span>' : '')
+                  + (r.hecho && r.x.hechosDetalle[String(z.m)].cuando
+                      ? ' <span class="pista" style="display:inline">' + fmtFecha(r.x.hechosDetalle[String(z.m)].cuando) + '</span>' : '')
+                  + '</li>').join('') + '</ul>'
+              : '<div class="pista">Sin servicios programados.</div>')
+          + '</div>';
+      }).join('')
+    + '</div>';
+
+  abrirModal('Calendario · ' + (p.sitioNombre || 'Póliza'), cuerpo,
+    '<button type="button" class="btn btn-suave" data-modal="cancelar">Cerrar</button>');
+  $('modal').classList.add('ancho');
+}
+
+/* --------------------------- Modal: póliza ---------------------------
+   La cotización completa en una ventana: datos, vendedor y renglones.
+
+   Los renglones NO se redibujan en cada tecla. Se trabaja sobre una copia en
+   partidasTmp y al teclear solo se actualizan el total de ESE renglón y el
+   resumen de abajo. La lista completa se rehace únicamente al agregar o quitar
+   un renglón, que es cuando nadie tiene el cursor puesto. Redibujar en cada
+   tecla lo tiraría.
+   --------------------------------------------------------------------- */
+const MES_CORTO = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+/* Etiqueta del mes i de la vigencia: "ago 26". Preguntarle a alguien en qué mes
+   le toca a la campana no se contesta con un número del 1 al 12. */
+function etiquetaMesServicio(fechaInicio, i){
+  const q = partes(sumarMeses(fechaInicio, i));
+  return MES_CORTO[q.m - 1] + ' ' + String(q.a).slice(2);
+}
+
+function modalPoliza(id){
+  const p = id ? polizaPorId(id) : null;
+  if(!datos.clientes.length){
+    aviso('Primero da de alta un cliente: la póliza cuelga de uno.', true);
+    return;
+  }
+
+  /* Copia de trabajo: se toca esto y no el registro, para que Cancelar cancele
+     de verdad. hechosDetalle viaja adentro sin que el formulario lo toque — si
+     no se arrastrara, editar una póliza borraría su historial de servicios. */
+  let partidasTmp = (p ? p.partidas : []).map(x => Object.assign({}, x, { mesesServicio: x.mesesServicio.slice() }));
+
+  const opc = (lista, sel, texto, valor) => lista.map(o =>
+    '<option value="' + esc(valor(o)) + '"' + (valor(o) === sel ? ' selected' : '') + '>' + esc(texto(o)) + '</option>').join('');
+
+  const clientesOrd = datos.clientes.slice().sort((a,b)=> a.nombre.localeCompare(b.nombre,'es'));
+  /* El vendedor se prellena de quien está capturando. Se guarda COPIADO: el
+     documento impreso lleva su nombre y su celular y tiene que seguir diciendo
+     lo mismo dentro de un año. */
+  const v = p ? p.vendedor : { uid:sesion.uid || '', nombre:nombreDe(sesion), correo:sesion.correo || '', telefono:sesion.telefono || '' };
+
+  const cuerpo =
+      '<div class="seccion"><h4>Datos de la póliza</h4>'
+    +   '<div class="fila2">'
+    +     '<div class="campo"><label>Cliente *</label>'
+    +       '<div class="cliente-zona">'
+    +         '<select id="pCliente">' + opc(clientesOrd, p ? p.clienteId : '', c=>c.nombre, c=>c.id) + '</select>'
+    +         '<button type="button" class="btn btn-suave btn-mini" id="btnClienteNuevo" '
+    +           'title="Dar de alta un cliente sin salir de aquí">' + ICONO.mas + 'Nuevo</button>'
+    +       '</div>'
+    +       '<div class="pista">Hay clientes con póliza y sin ningún kiosco Forpass. Si no está en la lista, créalo aquí.</div>'
+    +     '</div>'
+    +     '<div class="campo"><label>Sitio *</label>'
+    +       '<input type="text" id="pSitioNombre" placeholder="Ej. MXNL02" value="' + esc(p ? p.sitioNombre : '') + '">'
+    +       '<div class="pista">Es lo que sale impreso. Se guarda como texto para que sobreviva aunque el sitio no exista en Forpass.</div></div>'
+    +   '</div>'
+    +   '<div class="campo"><label>Ligar a un sitio de Forpass (opcional)</label>'
+    +     '<select id="pSitioId"></select>'
+    +     '<div class="pista">Solo si esa cafetería también tiene kiosco. Hay pólizas en sitios sin Forpass.</div></div>'
+    +   '<div class="fila2">'
+    +     '<div class="campo"><label>Folio (opcional)</label>'
+    +       '<input type="text" id="pFolio" placeholder="Ej. COT-2026-0041" value="' + esc(p ? p.folio : '') + '"></div>'
+    +     '<div class="campo"><label>Estatus</label><select id="pEstatus">'
+    +       opc(ESTATUS_POLIZA, p ? p.estatus : 'cotizacion', e=>ETIQUETA_ESTATUS[e], e=>e) + '</select></div>'
+    +   '</div>'
+    +   '<div class="fila2">'
+    +     '<div class="campo"><label>Fecha de la cotización</label>'
+    +       '<input type="date" id="pCotizacion" value="' + esc(p ? p.fechaCotizacion : hoyISO()) + '"></div>'
+    +     '<div class="campo"><label>Inicio de la vigencia</label>'
+    +       '<input type="date" id="pInicio" value="' + esc(p ? p.fechaInicio : hoyISO()) + '">'
+    +       '<div class="pista">Manda el calendario: los meses de servicio se cuentan desde aquí.</div></div>'
+    +   '</div>'
+    +   '<div class="campo"><label>Facturación</label><select id="pFacturacion">'
+    +     '<option value="anual"' + (!p || p.facturacion === 'anual' ? ' selected' : '') + '>Anual — un solo cobro</option>'
+    +     '<option value="mensual"' + (p && p.facturacion === 'mensual' ? ' selected' : '') + '>Mensual — doce cobros</option>'
+    +   '</select></div>'
+    + '</div>'
+
+    + '<div class="seccion"><h4>Vendedor</h4>'
+    +   '<div class="fila2">'
+    +     '<div class="campo"><label>Nombre</label><input type="text" id="pVendNombre" value="' + esc(v.nombre) + '"></div>'
+    +     '<div class="campo"><label>Teléfono</label><input type="text" id="pVendTel" placeholder="811 60 71 051" value="' + esc(v.telefono) + '"></div>'
+    +   '</div>'
+    +   '<div class="campo"><label>Correo</label><input type="text" id="pVendCorreo" value="' + esc(v.correo) + '">'
+    +     '<div class="pista">Sale impreso en la cotización. Se guarda copiado, no ligado a la cuenta.</div></div>'
+    + '</div>'
+
+    + '<div class="seccion"><h4>Equipos cotizados</h4>'
+    +   '<div class="busca-equipo">'
+    +     '<input type="text" id="pBuscaEquipo" list="pCatalogoEquipos" autocomplete="off"'
+    +       ' placeholder="Escribe un equipo del catálogo y elígelo para agregarlo…">'
+    +     '<datalist id="pCatalogoEquipos">'
+    +       catalogo().filter(e => e.activo).map(e => '<option value="' + esc(e.concepto) + '">').join('')
+    +     '</datalist>'
+    +     '<span class="cuantos-zona">'
+    +       '<button type="button" class="btn btn-suave btn-mini" id="btnOtroEquipo">' + ICONO.mas + 'Agregar otro</button>'
+    +       '<input type="number" id="pCuantos" class="cuantos" min="1" max="' + MAX_RENGLONES + '" step="1" value="1"'
+    +         ' title="Cuántos renglones vacíos agregar de un golpe" aria-label="Cuántos renglones agregar">'
+    +     '</span>'
+    +   '</div>'
+    +   '<div class="chips-equipo" id="chipsEquipo"></div>'
+    +   '<div id="listaPartidas"></div>'
+    + '</div>'
+
+    + '<div class="seccion"><h4>Resumen</h4><div class="resumen" id="resumenPoliza"></div></div>'
+
+    + '<div class="campo"><label>Notas (opcional)</label>'
+    +   '<textarea id="pNotas" placeholder="Condiciones, accesos, contacto en sitio…">' + esc(p ? p.notas : '') + '</textarea></div>';
+
+  const pie = '<button type="button" class="btn btn-suave" data-modal="cancelar">Cancelar</button>'
+            + '<button type="button" class="btn btn-primario" data-modal="guardar">' + (p ? 'Guardar cambios' : 'Crear cotización') + '</button>';
+
+  abrirModal(p ? 'Editar póliza' : 'Nueva cotización de póliza', cuerpo, pie);
+  $('modal').classList.add('enorme');
+
+  /* Si la cuenta no trae teléfono, se dice de frente y se sigue: la póliza guarda
+     su propia copia, así que esto nunca detiene la captura. */
+  if(!p && !sesion.telefono){
+    aviso('Tu perfil no tiene teléfono. Escríbelo aquí para que salga en la cotización, o guárdalo en Mi cuenta.');
+  }
+
+  function leerForm(){
+    const estatus = ESTATUS_POLIZA.includes($('pEstatus').value) ? $('pEstatus').value : 'cotizacion';
+    return {
+      clienteId: $('pCliente').value,
+      sitioId: $('pSitioId').value,
+      sitioNombre: $('pSitioNombre').value.trim(),
+      folio: $('pFolio').value.trim(),
+      estatus,
+      facturacion: $('pFacturacion').value,
+      fechaCotizacion: $('pCotizacion').value || hoyISO(),
+      fechaInicio: $('pInicio').value || hoyISO(),
+      /* Las dos fechas de trámite se deducen del estatus en vez de capturarse:
+         un campo más que alguien puede dejar en blanco es un campo que miente.
+         Volver a borrador limpia el cierre, que es lo que descongela los precios. */
+      fechaEnvio: estatus === 'cotizacion' ? '' : ((p && p.fechaEnvio) || hoyISO()),
+      fechaCierre: estatus === 'activa' ? ((p && p.fechaCierre) || hoyISO()) : '',
+      vendedor: { uid: v.uid || '', nombre: $('pVendNombre').value.trim(),
+                  correo: $('pVendCorreo').value.trim(), telefono: $('pVendTel').value.trim() },
+      notas: $('pNotas').value.trim()
+    };
+  }
+
+  /* Los sitios de Forpass del cliente elegido. Se repinta solo este select. */
+  function pintarSitios(){
+    const cli = $('pCliente').value;
+    const suyos = sitiosDe(cli);
+    const actual = p ? p.sitioId : '';
+    $('pSitioId').innerHTML = '<option value="">— Sin kiosco Forpass —</option>'
+      + suyos.map(s => '<option value="' + esc(s.id) + '"' + (s.id === actual ? ' selected' : '') + '>' + esc(s.nombre) + '</option>').join('');
+  }
+
+  /* Pinta la tabla completa. Solo se llama al agregar, quitar, duplicar o mover
+     la fecha de inicio: al teclear NO se redibuja, o se perdería el cursor. */
+  function pintarPartidas(){
+    const ini = $('pInicio').value || hoyISO();
+    if(!partidasTmp.length){
+      $('listaPartidas').innerHTML = '<div class="pista">Todavía no hay equipos. '
+        + 'Busca el primero arriba: el precio anual es la suma de los renglones.</div>';
+      refrescarResumen();
+      return;
+    }
+
+    const filas = partidasTmp.map((x,i)=>{
+      const lim = normalizarPartida(x);
+      const arranque = mesArranqueDe(lim);
+      const irregular = arranque === null;
+
+      /* El selector de arranque solo ofrece los ciclos DISTINTOS que existen: con
+         frecuencia 3 (cada 4 meses) hay 4, no 12. Arrancar en el mes 0 y en el 4
+         daría el mismo [0,4,8]. */
+      const opc = arranquesDe(lim.frecuencia).map(a =>
+        '<option value="' + a + '"' + (a === arranque ? ' selected' : '') + '>'
+        + esc(etiquetaMesServicio(ini, a)) + '</option>').join('');
+      const arrHtml = '<select data-arranque>'
+              + (irregular ? '<option value="" selected>— a mano —</option>' : '')
+              + opc + '</select>';
+
+      const fila =
+          '<tr data-idx="' + i + '"' + (irregular ? ' class="irregular"' : '') + '>'
+        + '<td class="num">' + (i+1) + '</td>'
+        + '<td class="equipo"><input type="text" data-campo="concepto" value="' + esc(x.concepto) + '" placeholder="Nombre del equipo"></td>'
+        + '<td class="marca"><input type="text" data-campo="marca" value="' + esc(x.marca) + '" placeholder="—"></td>'
+        + '<td class="mini"><input type="number" min="1" step="1" data-campo="cantidad" value="' + x.cantidad + '"></td>'
+        + '<td class="med"><input type="text" inputmode="decimal" data-campo="precioUnitario" value="' + numero(x.precioUnitario) + '"></td>'
+        + '<td class="mini"><input type="number" min="1" max="' + MESES_POLIZA + '" step="1" data-campo="frecuencia" value="' + x.frecuencia + '"></td>'
+        + '<td class="arr">' + arrHtml + '</td>'
+        + '<td class="med"><input type="text" readonly data-total value=""></td>'
+        + '<td class="acc">'
+        +   '<button type="button" class="icono-mini' + (x._abierta ? ' on' : '') + '" data-meses-mano="' + i + '" '
+        +     'data-tip="Calendario">' + ICONO.calendario + '</button>'
+        +   '<button type="button" class="icono-mini" data-duplicar="' + i + '" '
+        +     'data-tip="Duplicar">' + ICONO.respaldo + '</button>'
+        +   '<button type="button" class="icono-mini" data-quitar="' + i + '" '
+        +     'data-tip="Borrar">' + ICONO.basura + '</button>'
+        + '</td>'
+        + '</tr>';
+
+      /* Los doce meses a mano: modo avanzado, cerrado por omisión. Solo hace falta
+         cuando una unidad no sigue el intervalo. */
+      if(!x._abierta) return fila;
+      const casillas = Array.from({length:MESES_POLIZA}, (_,m)=>
+        '<button type="button" class="mes' + (lim.mesesServicio.includes(m) ? ' serv' : '') + '" data-mes="' + m + '" '
+        + 'aria-pressed="' + (lim.mesesServicio.includes(m) ? 'true' : 'false') + '">'
+        + esc(etiquetaMesServicio(ini, m)) + '</button>').join('');
+      return fila
+        + '<tr class="fila-meses" data-idx="' + i + '"><td></td><td colspan="8">'
+        +   '<div class="pista" style="margin-bottom:7px">Meses de <b>' + esc(x.concepto || 'este renglón') + '</b>. '
+        +     'Los servicios al año se ajustan solos a los que marques, y el arranque pasa a «a mano».</div>'
+        +   '<div class="meses-modal con-mes" data-meses>' + casillas + '</div>'
+        +   '<div class="aviso-cuadre" data-cuadre hidden></div>'
+        + '</td></tr>';
+    }).join('');
+
+    $('listaPartidas').innerHTML =
+        '<div class="rodillo"><table class="tabla-renglones">'
+      + '<thead><tr><th></th><th class="equipo">Equipo</th><th class="marca">Marca</th><th>Cant.</th><th>P. unitario</th>'
+      +   '<th>Serv./año</th><th>Arranque</th><th>Total</th><th></th></tr></thead>'
+      + '<tbody>' + filas + '</tbody></table></div>'
+      /* El pie va FUERA del contenedor que se recorre a lo ancho: los totales son
+         lo que más se mira y no pueden quedar escondidos a la derecha. */
+      + '<div class="pie-renglones">'
+      +   '<div><span>Precio anual</span><b id="pieAnual"></b></div>'
+      +   '<div><span>Mensual (anual ÷ ' + MESES_POLIZA + ')</span><b id="pieMensual"></b></div>'
+      + '</div>';
+    refrescar();
+  }
+
+  /* Actualiza SOLO los números, sin tocar el HTML de los campos: nadie pierde el
+     cursor a media captura. */
+  /* Con "soloIdx" actualiza un renglón; sin él, todos. Al teclear se pasa el
+     índice: recorrer 150 renglones en cada tecla se siente. */
+  function refrescar(soloIdx){
+    const sel = soloIdx === undefined
+      ? 'tbody tr[data-idx]:not(.fila-meses)'
+      : 'tbody tr[data-idx="' + soloIdx + '"]:not(.fila-meses)';
+    const nodos = $('listaPartidas').querySelectorAll(sel);
+    nodos.forEach(nodo=>{
+      const i = +nodo.dataset.idx, x = partidasTmp[i];
+      if(!x) return;
+      const lim = normalizarPartida(x);
+      const t = nodo.querySelector('[data-total]');
+      if(t) t.value = dineroCent(totalRenglon(lim));
+      const cuadra = cuadraFrecuencia(lim);
+      const fr = nodo.querySelector('[data-campo="frecuencia"]');
+      /* No se regaña antes de que el usuario escriba nada: un renglón recién
+         agregado está vacío por definición. */
+      if(fr) fr.setAttribute('aria-invalid', (cuadra || !x._tocada) ? 'false' : 'true');
+      const cu = $('listaPartidas').querySelector('.fila-meses[data-idx="' + i + '"] [data-cuadre]');
+      if(cu){
+        cu.hidden = cuadra || !x._tocada;
+        if(!cuadra) cu.textContent = 'Marcaste ' + lim.mesesServicio.length + ' '
+          + plural(lim.mesesServicio.length,'mes','meses') + ' y pusiste ' + lim.frecuencia + ' '
+          + plural(lim.frecuencia,'servicio al año','servicios al año') + '. No cuadra.';
+      }
+    });
+    refrescarResumen();
+  }
+
+  function refrescarResumen(){
+    const f = leerForm();
+    const prov = normalizarPoliza(Object.assign({}, f, { partidas: partidasTmp, id:'tmp' }));
+    const c = calcularPoliza(prov);
+    if($('pieAnual'))   $('pieAnual').textContent   = dineroCent(c.precioAnual);
+    if($('pieMensual')) $('pieMensual').textContent = dineroCent(c.precioMensual);
+
+    const nCobros = prov.cobros.length;
+    /* Se CUENTAN los iguales en vez de dar por hecho "11 y uno": cuando el anual
+       divide exacto entre doce, los doce cobros son iguales y decir "11 de X"
+       era un off-by-one puro y duro. */
+    const iguales = c.montosCent.filter(m => m === c.montosCent[0]).length;
+    const ultimo = c.montos[nCobros - 1];
+    $('resumenPoliza').innerHTML =
+        '<div class="r-fila"><span>Renglones</span><span>' + partidasTmp.length
+      + (c.noCuadran ? ' · ' + c.noCuadran + ' sin cuadrar' : '') + '</span></div>'
+      + '<div class="r-fila"><span>Equipos en total</span><span>'
+      +   numero(prov.partidas.reduce((t,x)=> t + x.cantidad, 0)) + '</span></div>'
+      + '<div class="r-fila"><span>Vigencia</span><span>' + fmtFecha(prov.fechaInicio) + ' → ' + fmtFecha(c.fin) + '</span></div>'
+      + '<div class="r-fila"><span>Servicios al año</span><span>' + numero(c.programados) + '</span></div>'
+      + (prov.facturacion === 'mensual'
+          ? '<div class="r-fila"><span>Cobros</span><span>'
+            + (iguales === nCobros
+                ? nCobros + ' de ' + dineroCent(c.montos[0])
+                : iguales + ' de ' + dineroCent(c.montos[0]) + ' y uno de ' + dineroCent(ultimo))
+            + '</span></div>'
+          : '<div class="r-fila"><span>Cobros</span><span>uno solo, al inicio</span></div>')
+      + '<div class="r-fila r-total"><span>Precio anual</span><span>' + dineroCent(c.precioAnual) + '</span></div>';
+  }
+
+  /* Agrega un renglón y deja el cursor donde toca seguir capturando. */
+  function agregarRenglon(base, foco){
+    if(partidasTmp.length >= MAX_RENGLONES){
+      aviso('Una cotización aguanta ' + MAX_RENGLONES + ' renglones. Ya no cabe otro.', true);
+      return;
+    }
+    partidasTmp.push(normalizarPartida(base));
+    pintarPartidas();
+    if(foco === null) return;          /* quien llama se encarga del foco */
+    const fila = $('listaPartidas').querySelector('tr[data-idx="' + (partidasTmp.length-1) + '"]');
+    const campo = fila && fila.querySelector('[data-campo="' + (foco || 'concepto') + '"]');
+    if(campo){ campo.focus(); campo.select && campo.select(); }
+  }
+
+  /* ---- Listeners delegados: se cuelgan UNA vez, fuera de pintarPartidas.
+     Adentro se acumularían y una sola acción correría N veces. ---- */
+  $('listaPartidas').addEventListener('input', ev=>{
+    const campo = ev.target.closest('[data-campo]');
+    if(!campo) return;
+    const fila = campo.closest('[data-idx]');
+    const x = partidasTmp[+fila.dataset.idx];
+    if(!x) return;
+    const k = campo.dataset.campo;
+    x._tocada = true;
+    if(k === 'cantidad'){ x.cantidad = parseInt(campo.value,10) || 0; }
+    else if(k === 'frecuencia'){
+      const antes = mesArranqueDe(normalizarPartida(x));
+      x.frecuencia = parseInt(campo.value,10) || 0;
+      /* Cambiar la frecuencia cambia el intervalo, así que los meses se recalculan
+         desde el mismo arranque. Si el renglón estaba a mano no se le tocan: ahí
+         los meses los puso alguien a propósito. */
+      const nuevos = mesesRegulares(antes === null ? 0 : antes, Math.max(1, x.frecuencia));
+      if(antes !== null && nuevos) { x.mesesServicio = nuevos; pintarPartidas(); return; }
+    }
+    else if(k === 'precioUnitario'){ formatearMiles(campo); x.precioUnitario = aNumero(campo.value); }
+    else x[k] = campo.value;
+    refrescar(+fila.dataset.idx);
+  });
+
+  $('listaPartidas').addEventListener('change', ev=>{
+    const sel = ev.target.closest('[data-arranque]');
+    if(!sel) return;
+    if(sel.value === '') return;                 /* «a mano»: no se toca nada */
+    const x = partidasTmp[+sel.closest('[data-idx]').dataset.idx];
+    const m = mesesRegulares(parseInt(sel.value,10), Math.max(1, x.frecuencia));
+    if(!m) return;
+    x.mesesServicio = m;
+    x._tocada = true;
+    pintarPartidas();
+  });
+
+  $('listaPartidas').addEventListener('click', ev=>{
+    const mes = ev.target.closest('[data-mes]');
+    if(mes){
+      const x = partidasTmp[+mes.closest('[data-idx]').dataset.idx];
+      const m = +mes.dataset.mes;
+      const j = x.mesesServicio.indexOf(m);
+      x._tocada = true;
+      if(j === -1) x.mesesServicio.push(m); else x.mesesServicio.splice(j,1);
+      x.mesesServicio.sort((a,b)=> a-b);
+      /* Marcar meses a mano AJUSTA la frecuencia: si escoges cuatro meses, son
+         cuatro servicios al año. Antes había que corregir el número aparte y el
+         renglón se quedaba en rojo por no cuadrar consigo mismo. Si se quedan en
+         cero no se toca: 0 servicios al año no significa nada. */
+      if(x.mesesServicio.length) x.frecuencia = x.mesesServicio.length;
+      pintarPartidas();          /* el arranque puede haber pasado a «a mano» */
+      return;
+    }
+    const mano = ev.target.closest('[data-meses-mano]');
+    if(mano){
+      const x = partidasTmp[+mano.dataset.mesesMano];
+      x._abierta = !x._abierta;
+      pintarPartidas();
+      return;
+    }
+    const dup = ev.target.closest('[data-duplicar]');
+    if(dup){
+      const i = +dup.dataset.duplicar;
+      /* Copia sin el historial de servicios: el duplicado es otro equipo, no el
+         mismo con dos vidas. */
+      const copia = Object.assign({}, partidasTmp[i], { mesesServicio: partidasTmp[i].mesesServicio.slice(), hechosDetalle:{} });
+      partidasTmp.splice(i + 1, 0, normalizarPartida(copia));
+      partidasTmp[i + 1]._tocada = true;
+      pintarPartidas();
+      aviso('Renglón duplicado. Cámbiale los meses si esa unidad va aparte.');
+      return;
+    }
+    const quitar = ev.target.closest('[data-quitar]');
+    if(quitar){
+      const i = +quitar.dataset.quitar;
+      const x = partidasTmp[i];
+      /* Un renglón con servicios ya registrados no se va sin avisar: eso borra
+         trabajo hecho, no solo una línea de precio. */
+      const hechos = Object.keys(x.hechosDetalle || {}).length;
+      /* Mismo motivo que arriba: confirmar() reemplazaría #modalCuerpo y se
+         perdería la captura. Diálogo del navegador. */
+      if(hechos && !window.confirm(
+          (x.concepto || 'Este equipo') + ' tiene ' + hechos + ' '
+          + plural(hechos,'servicio registrado','servicios registrados')
+          + '.\n\nAl quitarlo se borra también ese historial. ¿Seguir?')){
+        return;
+      }
+      partidasTmp.splice(i,1);
+      pintarPartidas();
+    }
+  });
+
+  /* Chips de acceso rápido: los equipos que más se cotizan, a un clic. Escribir
+     el nombre completo para los de siempre era el trabajo tonto de la captura.
+     Salen de las pólizas que ya existen; si no hay ninguna, del catálogo. */
+  function pintarChips(){
+    const caja = $('chipsEquipo');
+    if(!caja) return;
+    const cuenta = {};
+    datos.polizas.forEach(q => q.partidas.forEach(x => {
+      if(x.catalogoId) cuenta[x.catalogoId] = (cuenta[x.catalogoId] || 0) + 1;
+    }));
+    const activos = catalogo().filter(e => e.activo);
+    const orden = activos.slice().sort((a,b)=> (cuenta[b.id]||0) - (cuenta[a.id]||0) || a.concepto.localeCompare(b.concepto,'es'));
+    caja.innerHTML = orden.slice(0, 12).map(e =>
+      '<button type="button" class="chip-eq" data-chip="' + esc(e.id) + '" '
+      + 'title="' + esc(e.concepto + (e.precio ? ' · ' + dineroCent(e.precio) : ' · sin precio')
+          + ' · ' + e.frecuencia + ' al año') + '">'
+      + esc(e.concepto) + '<span class="mas">+</span></button>').join('');
+  }
+  $('chipsEquipo').addEventListener('click', ev=>{
+    const b = ev.target.closest('[data-chip]');
+    if(!b) return;
+    const e = equipoDeCatalogo(b.dataset.chip);
+    if(e) agregarDelEquipo(e);
+  });
+
+  /* Buscador del catálogo: al elegir un equipo se agrega el renglón ya con su
+     precio y su frecuencia, y el foco SE QUEDA en el buscador para poder escribir
+     el siguiente sin volver a picarlo. Con 34 equipos, ir y volver al buscador
+     cada vez era la mitad del trabajo. */
+  function agregarDelCatalogo(){
+    const txt = $('pBuscaEquipo').value.trim();
+    if(!txt) return;
+    const e = catalogo().find(q => q.activo && q.concepto.toLowerCase() === txt.toLowerCase())
+           || catalogo().find(q => q.activo && q.concepto.toLowerCase().startsWith(txt.toLowerCase()));
+    $('pBuscaEquipo').value = '';
+    if(!e){
+      aviso('«' + txt + '» no está en el catálogo. Usa «Agregar otro» y captúralo a mano.', true);
+      return;
+    }
+    agregarDelEquipo(e);
+  }
+  function agregarDelEquipo(e){
+    agregarRenglon({
+      catalogoId: e.id, concepto: e.concepto, cantidad: 1,
+      precioUnitario: e.precio, frecuencia: e.frecuencia,
+      /* Arranca en el primer mes; "Balancear calendario" los reparte después. */
+      mesesServicio: mesesRegulares(0, e.frecuencia)
+    }, null);
+    /* El foco vuelve al buscador, no a la cantidad: así se encadenan los 34
+       equipos escribiendo, y las cantidades se ajustan al final en la tabla. */
+    if($('pBuscaEquipo')) $('pBuscaEquipo').focus();
+    if(!e.precio) aviso(e.concepto + ' no tiene precio en el catálogo. Escríbelo en el renglón.', true);
+  }
+  $('pBuscaEquipo').addEventListener('change', agregarDelCatalogo);
+  $('pBuscaEquipo').addEventListener('keydown', ev=>{
+    if(ev.key === 'Enter'){ ev.preventDefault(); agregarDelCatalogo(); }
+  });
+  /* Agregar de a muchos: capturar una cotización de 40 equipos picando "Agregar
+     otro" cuarenta veces es absurdo. Se pide el número y se ponen todos de golpe. */
+  $('btnOtroEquipo').addEventListener('click', ()=>{
+    const pedidos = Math.max(1, Math.min(MAX_RENGLONES, parseInt($('pCuantos').value,10) || 1));
+    const espacio = MAX_RENGLONES - partidasTmp.length;
+    if(espacio <= 0){
+      aviso('Una cotización aguanta ' + MAX_RENGLONES + ' renglones. Ya no cabe otro.', true);
+      return;
+    }
+    const cuantos = Math.min(pedidos, espacio);
+    const molde = () => ({ concepto:'', cantidad:1, precioUnitario:0, frecuencia:3, mesesServicio:mesesRegulares(0,3) });
+    for(let i = 0; i < cuantos; i++) partidasTmp.push(normalizarPartida(molde()));
+    pintarPartidas();
+    /* El cursor cae en el PRIMERO de los nuevos, no en el último: se captura de
+       arriba hacia abajo y de ahí en adelante todo es Tab. */
+    const fila = $('listaPartidas').querySelector('tr[data-idx="' + (partidasTmp.length - cuantos) + '"]');
+    const campo = fila && fila.querySelector('[data-campo="concepto"]');
+    if(campo) campo.focus();
+    $('pCuantos').value = 1;
+    if(cuantos > 1) aviso(cuantos + ' renglones agregados. Captúralos con Tab.');
+    if(cuantos < pedidos) aviso('Solo cupieron ' + cuantos + ': el tope es ' + MAX_RENGLONES + ' renglones.', true);
+  });
+
+  /* Cliente nuevo sin salir del modal: hay clientes con póliza y sin ningún
+     kiosco, y mandar al usuario al módulo de Forpass a crearlo rompía la captura. */
+  $('btnClienteNuevo').addEventListener('click', ()=>{
+    if(!exigirPermiso()) return;
+    /* window.prompt y no un modal: confirmar()/abrirModal reemplazan #modalCuerpo
+       y eso borraría toda la captura en curso. */
+    const nombre = (window.prompt('Nombre del cliente nuevo:') || '').trim();
+    if(!nombre) return;
+    const ya = datos.clientes.find(c => c.nombre.toLowerCase() === nombre.toLowerCase());
+    if(ya){
+      $('pCliente').value = ya.id; pintarSitios(); refrescarResumen();
+      aviso('Ese cliente ya existía; lo seleccioné.');
+      return;
+    }
+    const nuevo = normalizarCliente({ id:nuevoId(), nombre });
+    datos.clientes.push(nuevo);
+    guardarCliente(nuevo, 'creó');
+    /* Se repinta solo el select, no el modal: repintar tiraría la captura. */
+    $('pCliente').innerHTML = datos.clientes.slice()
+      .sort((x,y)=> x.nombre.localeCompare(y.nombre,'es'))
+      .map(c => '<option value="' + esc(c.id) + '"' + (c.id === nuevo.id ? ' selected' : '') + '>' + esc(c.nombre) + '</option>').join('');
+    pintarSitios(); refrescarResumen();
+    aviso(nombre + ' dado de alta y seleccionado. Su logo se sube desde el detalle de la póliza.');
+  });
+
+  $('pCliente').addEventListener('change', ()=>{ pintarSitios(); refrescarResumen(); });
+  /* Mover el inicio mueve el calendario entero: hay que reescribir las etiquetas
+     de los meses, así que este sí redibuja la tabla. */
+  $('pInicio').addEventListener('change', pintarPartidas);
+  ['pSitioNombre','pFolio','pEstatus','pCotizacion','pNotas','pVendNombre','pVendCorreo','pVendTel']
+    .forEach(x => $(x).addEventListener('input', refrescarResumen));
+  $('pFacturacion').addEventListener('change', ()=>{
+    /* Cambiar de anual a mensual rehace las casillas de cobro. Si ya había algo
+       capturado, se avisa en vez de que aparezcan once casillas de la nada. */
+    if(p && p.cobros.some(Boolean)) aviso('Ojo: esta póliza ya tiene cobros capturados y cambiar la facturación rehace las casillas.', true);
+    refrescarResumen();
+  });
+
+  pintarSitios();
+  pintarChips();
+  pintarPartidas();
+
+  cerrarModalActual = ()=>{
+    /* Se lee TODO antes de cerrar: cerrarModal() reemplaza #modalCuerpo por un
+       clon limpio y después de eso los campos devuelven null. */
+    const f = leerForm();
+    const limpias = partidasTmp.map(normalizarPartida).filter(x => x.concepto);
+
+    if(!f.clienteId){ aviso('Selecciona un cliente.', true); return; }
+    if(!f.sitioNombre){ $('pSitioNombre').setAttribute('aria-invalid','true'); $('pSitioNombre').focus(); aviso('La póliza necesita el nombre del sitio.', true); return; }
+    if(!limpias.length){ aviso('Agrega al menos un equipo con su concepto.', true); return; }
+
+    /* Se puede guardar una cotización a medias; lo que no se puede es CERRARLA
+       si los renglones no cuadran. Un contrato activo con una frecuencia que no
+       corresponde a sus meses es justo lo que veníamos a evitar. */
+    const noCuadran = limpias.filter(x => !cuadraFrecuencia(x));
+    /* Al intentar guardar sí se destapan todos los avisos: ya no es prematuro. */
+    if(noCuadran.length){ partidasTmp.forEach(x => { x._tocada = true; }); refrescar(); }
+    if(f.estatus === 'activa'){
+      if(!exigirAdmin('cerrar una póliza como activa')) return;
+      if(noCuadran.length){
+        aviso('No se puede cerrar: ' + noCuadran.length + ' ' + plural(noCuadran.length,'renglón no cuadra','renglones no cuadran') + ' entre meses y servicios al año.', true);
+        return;
+      }
+    }
+
+    /* El formulario no trae la cobranza: se administra aparte. Hay que arrastrarla
+       o normalizarPoliza la deja en blanco y editar borra las OC capturadas.
+       hechosDetalle no va aquí porque viaja dentro de cada partida. */
+    const conservado = p ? { cobros:p.cobros, cobrosDetalle:p.cobrosDetalle } : {};
+    const limpio = normalizarPoliza(Object.assign({}, conservado, f, {
+      partidas: partidasTmp, id: p ? p.id : nuevoId()
+    }));
+
+    const c = calcularPoliza(limpio);
+    if(p){ Object.assign(p, limpio); }
+    else{ datos.polizas.push(limpio); }
+
+    let accion = p ? 'editó' : 'creó';
+    if(f.estatus === 'activa' && (!p || p.estatus !== 'activa')) accion = 'cerró';
+    /* El precio de cierre queda en la bitácora, que es inmutable por regla: si
+       alguien corrige una póliza activa después, este renglón sigue diciendo con
+       cuánto se cerró. */
+    guardarPoliza(p || limpio, accion,
+      limpio.partidas.length + ' ' + plural(limpio.partidas.length,'equipo','equipos') + ' · ' + dineroCent(c.precioAnual) + ' al año');
+
+    cerrarModal();
+    estado.modulo = 'polizas'; guardarModulo();
+    estado.vista = 'polizas'; estado.polizaId = null;
+    render();
+    if(noCuadran.length && f.estatus !== 'activa'){
+      aviso('Guardada, pero ' + noCuadran.length + ' ' + plural(noCuadran.length,'renglón no cuadra','renglones no cuadran') + ': no se podrá cerrar así.', true);
+    }else{
+      aviso(p ? 'Póliza actualizada.' : 'Cotización creada.');
+    }
   };
 }
 
@@ -3507,6 +5534,13 @@ $('vista').addEventListener('click', ev=>{
     if(a === 'nuevo-cliente'){ if(exigirPermiso()) modalCliente(null); }
     else if(a === 'nuevo-sitio'){ if(exigirPermiso()) modalSitio(estado.clienteId, null); }
     else if(a === 'ir-clientes') irAClientes();
+    else if(a === 'ir-polizas') irAPolizas();
+    else if(a === 'nueva-poliza'){ if(exigirPermiso()) modalPoliza(null); }
+    else if(a === 'ver-precios') irAPrecios();
+    else if(a === 'nuevo-equipo') modalEquipo(null);
+    else if(a === 'guardar-catalogo') sembrarCatalogo();
+    else if(a === 'editar-poliza'){ if(exigirPermiso()) modalPoliza(estado.polizaId); }
+    else if(a === 'calendario-poliza') modalCalendario(estado.polizaId);
     else if(a === 'excel') descargarExcel(null);
     else if(a === 'excel-cliente') descargarExcel(estado.clienteId);
     else if(a === 'respaldo'){ if(exigirAdmin('descargar el respaldo completo')) descargarRespaldo(); }
@@ -3595,14 +5629,75 @@ $('vista').addEventListener('click', ev=>{
   const encB = t.closest('[data-encargado]');
   if(encB){ modalEncargado(encB.dataset.encargado); return; }
 
+  const edE = t.closest('[data-editar-equipo]');
+  if(edE){ modalEquipo(edE.dataset.editarEquipo); return; }
+
+  const apE = t.closest('[data-apagar-equipo]');
+  if(apE){
+    if(!exigirAdmin('cambiar la lista de precios')) return;
+    if(!datos.catalogo.length) datos.catalogo = CATALOGO_SEMILLA.map(normalizarEquipo);
+    const eq = datos.catalogo.find(x => x.id === apE.dataset.apagarEquipo);
+    if(!eq) return;
+    eq.activo = !eq.activo;
+    guardarCatalogo((eq.activo ? 'prendió ' : 'apagó ') + eq.concepto);
+    render();
+    aviso(eq.concepto + (eq.activo ? ' vuelve al catálogo.' : ' ya no se va a ofrecer al cotizar.'));
+    return;
+  }
+
+  const verP = t.closest('[data-ver-poliza]');
+  if(verP){ entrarPoliza(verP.dataset.verPoliza); return; }
+
+  const cob = t.closest('[data-cobro]');
+  if(cob){ modalCobroPoliza(cob.dataset.cobro, +cob.dataset.idx); return; }
+
+  const calP = t.closest('[data-calendario]');
+  if(calP){ modalCalendario(calP.dataset.calendario); return; }
+
+  const edP = t.closest('[data-editar-poliza]');
+  if(edP){ if(exigirPermiso()) modalPoliza(edP.dataset.editarPoliza); return; }
+
+  const boP = t.closest('[data-borrar-poliza]');
+  if(boP){
+    if(!exigirPermiso()) return;
+    const pol = polizaPorId(boP.dataset.borrarPoliza);
+    if(!pol) return;
+    /* Borrar una póliza cerrada es la forma más burda de saltarse el congelado de
+       precios, así que en el servidor es de Owner/Admin. Se corta aquí también
+       para no encolar un cambio que va a rebotar con 403 sin explicación. */
+    if(pol.estatus === 'activa' && !exigirAdmin('eliminar una póliza activa')) return;
+    const c = calcularPoliza(pol);
+    confirmar('Eliminar póliza',
+      'Se va a eliminar la póliza de <b>' + esc(pol.sitioNombre || pol.folio || 'sin nombre') + '</b>'
+      + ' — ' + esc(dineroCent(c.precioAnual)) + ' al año, ' + pol.partidas.length + ' '
+      + plural(pol.partidas.length,'equipo','equipos') + '.'
+      + (c.hechos ? ' Se borran también sus <b>' + c.hechos + ' ' + plural(c.hechos,'servicio registrado','servicios registrados') + '</b>.' : '')
+      + ' Esta acción no se puede deshacer.',
+      'Sí, eliminar', ()=>{
+        datos.polizas = datos.polizas.filter(x => x.id !== pol.id);
+        borrarRegistro('polizas', pol.id);
+        anotar('eliminó', 'póliza', pol.sitioNombre || pol.folio || 'sin nombre', dineroCent(c.precioAnual) + ' al año');
+        if(estado.polizaId === pol.id){ estado.vista = 'polizas'; estado.polizaId = null; }
+        render(); aviso('Póliza eliminada.');
+      });
+    return;
+  }
+
   const tar = t.closest('[data-cliente]');
   if(tar){ entrarCliente(tar.dataset.cliente); return; }
+
+  const tarP = t.closest('[data-poliza]');
+  if(tarP){ entrarPoliza(tarP.dataset.poliza); return; }
 });
 
-/* Abrir una tarjeta de cliente con Enter o barra espaciadora. */
+/* Abrir una tarjeta con Enter o barra espaciadora. */
 $('vista').addEventListener('keydown', ev=>{
-  const tar = ev.target.closest && ev.target.closest('[data-cliente]');
-  if(tar && (ev.key === 'Enter' || ev.key === ' ')){ ev.preventDefault(); entrarCliente(tar.dataset.cliente); }
+  if(ev.key !== 'Enter' && ev.key !== ' ') return;
+  if(!ev.target.closest) return;
+  const tar = ev.target.closest('[data-cliente]');
+  if(tar){ ev.preventDefault(); entrarCliente(tar.dataset.cliente); return; }
+  const tarP = ev.target.closest('[data-poliza]');
+  if(tarP){ ev.preventDefault(); entrarPoliza(tarP.dataset.poliza); }
 });
 
 function entrarCliente(id){
@@ -3624,7 +5719,9 @@ function descargar(blob, nombre){
 function selloFecha(){ return hoyISO().replace(/-/g,''); }
 
 function descargarRespaldo(){
-  const blob = new Blob([JSON.stringify({ v:1, generado:new Date().toISOString(), clientes:datos.clientes, sitios:datos.sitios }, null, 2)],
+  const blob = new Blob([JSON.stringify({ v:1, generado:new Date().toISOString(),
+                          clientes:datos.clientes, sitios:datos.sitios, polizas:datos.polizas,
+                          catalogo:datos.catalogo }, null, 2)],
                         { type:'application/json' });
   descargar(blob, 'Respaldo_Control_Forpass_' + selloFecha() + '.json');
   aviso('Respaldo descargado.');
@@ -3640,24 +5737,33 @@ $('archivoRestaurar').addEventListener('change', ev=>{
     catch(e){ aviso('El archivo no es un respaldo JSON válido.', true); return; }
     if(!d || !Array.isArray(d.clientes) || !Array.isArray(d.sitios)){ aviso('El archivo no tiene el formato esperado.', true); return; }
     if(!esAdmin()){ aviso('Solo un Owner o un Admin puede restaurar un respaldo.', true); return; }
+    /* Un respaldo anterior al módulo de pólizas no trae la llave. No se exige
+       arriba a propósito: es un archivo viejo, no un archivo roto. */
+    const dPolizas = Array.isArray(d.polizas) ? d.polizas : [];
     confirmar('Restaurar respaldo',
       'Se van a reemplazar los datos ' + (HAY_NUBE ? '<b>del servidor</b>' : 'de este navegador') + ' por los del archivo: <b>'
       + d.clientes.length + ' ' + plural(d.clientes.length,'cliente','clientes')
-      + '</b> y <b>' + d.sitios.length + ' ' + plural(d.sitios.length,'sitio','sitios') + '</b>. Lo que hay ahora se va a perder'
-      + (HAY_NUBE ? ' para todo el equipo' : '') + '.',
+      + '</b>, <b>' + d.sitios.length + ' ' + plural(d.sitios.length,'sitio','sitios')
+      + '</b> y <b>' + dPolizas.length + ' ' + plural(dPolizas.length,'póliza','pólizas') + '</b>. Lo que hay ahora se va a perder'
+      + (HAY_NUBE ? ' para todo el equipo' : '') + '.'
+      + (!d.polizas ? '<br><br>Ojo: este respaldo es <b>anterior al módulo de pólizas</b>, así que restaurarlo va a dejar el tablero <b>sin ninguna póliza</b>.' : ''),
       'Sí, restaurar', async ()=>{
-        const previos = { clientes:datos.clientes.map(c=>c.id), sitios:datos.sitios.map(s=>s.id) };
-        datos = { v:1, clientes:d.clientes.map(normalizarCliente), sitios:d.sitios.map(normalizarSitio) };
-        estado.vista = 'clientes'; estado.clienteId = null;
+        const previos = { clientes:datos.clientes.map(c=>c.id), sitios:datos.sitios.map(s=>s.id), polizas:datos.polizas.map(p=>p.id) };
+        datos = { v:1, clientes:d.clientes.map(normalizarCliente), sitios:d.sitios.map(normalizarSitio),
+                  polizas:dPolizas.map(normalizarPoliza),
+                  catalogo:(Array.isArray(d.catalogo) ? d.catalogo : datos.catalogo).map(normalizarEquipo) };
+        estado.vista = inicioDelModulo(); estado.clienteId = null; estado.polizaId = null;
         guardarLocal();
         if(HAY_NUBE){
           /* Borra del servidor lo que ya no viene en el respaldo y sube el resto. */
-          const vivos = { clientes:new Set(datos.clientes.map(c=>c.id)), sitios:new Set(datos.sitios.map(s=>s.id)) };
+          const vivos = { clientes:new Set(datos.clientes.map(c=>c.id)), sitios:new Set(datos.sitios.map(s=>s.id)),
+                          polizas:new Set(datos.polizas.map(p=>p.id)) };
           previos.clientes.filter(id => !vivos.clientes.has(id)).forEach(id => encolar({ tipo:'borrar', coleccion:'clientes', id }));
           previos.sitios.filter(id => !vivos.sitios.has(id)).forEach(id => encolar({ tipo:'borrar', coleccion:'sitios', id }));
+          previos.polizas.filter(id => !vivos.polizas.has(id)).forEach(id => encolar({ tipo:'borrar', coleccion:'polizas', id }));
           subirTodo();
           anotar('restauró', 'respaldo', 'archivo JSON',
-                 datos.clientes.length + ' clientes y ' + datos.sitios.length + ' sitios');
+                 datos.clientes.length + ' clientes, ' + datos.sitios.length + ' sitios y ' + datos.polizas.length + ' pólizas');
         }
         render(); aviso('Respaldo restaurado.');
       });
@@ -4345,8 +6451,17 @@ $('btnSalir').addEventListener('click', ()=>{
 });
 
 /* El manejador de data-accion vive en #vista, y la cabecera está fuera de ahí:
-   este botón necesita su propio listener. */
-$('btnInicio').addEventListener('click', ()=>{ if(estado.vista !== 'clientes') irAClientes(); });
+   estos botones necesitan su propio listener. */
+$('btnInicio').addEventListener('click', ()=>{
+  if(estado.vista === inicioDelModulo()) return;
+  if(estado.modulo === 'polizas') irAPolizas(); else irAClientes();
+});
+
+/* El selector de módulo: delegado en el <nav>, que también está fuera de #vista. */
+$('selectorModulo').addEventListener('click', ev=>{
+  const b = ev.target.closest('[data-modulo]');
+  if(b) irAModulo(b.dataset.modulo);
+});
 
 $('btnPerfil').addEventListener('click', ()=> modalPerfil());
 
@@ -4470,6 +6585,9 @@ async function arrancarNube(){
 /* =============================== ARRANQUE =============================== */
 cargar();
 cargarCola();
+/* Antes del primer render: la app abre en el módulo donde te quedaste, y así el
+   selector no parpadea de Forpass a Pólizas al arrancar. */
+cargarModulo();
 
 if(!HAY_NUBE){
   /* Modo local: igual que siempre, sin cuentas. */
