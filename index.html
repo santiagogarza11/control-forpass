@@ -1036,6 +1036,15 @@ const IDS_COLOR = COLORES.map(c => c.id);
    la plantilla — que lo exija es honesto. */
 const MESES_POLIZA = 12;
 
+/* Datos de Forguard que salen impresos en el documento de la póliza. Van aquí y
+   no en cada cotización porque no cambian por cliente: los cuatro PDF reales
+   traen exactamente los mismos. Si algún día se mudan las oficinas, se cambia en
+   un lugar y se corrige en todo lo que se imprima de ahí en adelante — no en 79
+   renglones de JSON. El teléfono y el correo DEL VENDEDOR sí van copiados en
+   cada póliza, porque esos sí cambian de persona a persona. */
+const TEL_OFICINA = '+(52) 81 8458 8845';
+const OFICINAS = ['Lázaro Garza Ayala, 1213', 'SPGG, Nuevo León'];
+
 /* Tope de renglones por cotización. La más grande de verdad es MXGT01 con 79 sin
    consolidar y ~40 consolidada, así que 150 sobra de largo. El número no es
    estético: la tabla se redibuja completa al agregar o quitar, y a partir de
@@ -2521,6 +2530,152 @@ function calcularPoliza(p){
            programados, hechos, pendientes, atrasados, tocanEsteMes, huerfanos,
            mesesCumplidos, mesActual, vigente, diasVigencia, diasEsperando,
            noCuadran, cerrable, estado, tono, activa };
+}
+
+/* ==================== El puente hacia el documento imprimible ====================
+   armarPayloadPoliza() entrega TODO resuelto. La plantilla formatea y concatena:
+   no multiplica, no divide, no calcula módulos y no decide títulos.
+
+   Por qué así, y no pasarle la póliza cruda: el descuadre que originó este módulo
+   nació de que el papel se armaba aparte del cálculo. Si la plantilla vuelve a
+   multiplicar, hay dos lugares que calculan lo mismo y el bug regresa por otra
+   puerta. Aquí los totales salen de calcularPoliza() y totalRenglon(), las MISMAS
+   que ya pinta la pantalla.
+
+   Las cifras van como cadenas YA FORMATEADAS para que el redondeo tenga un solo
+   dueño. Los números crudos viajan aparte, en `crudo`, y son solo para las
+   aserciones de prueba — nunca para imprimir.
+   ============================================================================= */
+
+const MES_LARGO = ['enero','febrero','marzo','abril','mayo','junio',
+                   'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+/* «29 de julio 2026». Es el ÚNICO formato de fecha que existe en las cuatro
+   cotizaciones reales —medido—, así que se usa en todas: la de la cotización y
+   las dos de la vigencia. Dos detalles que salen del papel y no de la intuición:
+   el día va con cero a la izquierda (NGK imprime «09 de julio 2026») y NO lleva
+   «de» antes del año. fmtFecha() no sirve aquí: esa es «29 jul 2026», la de la
+   pantalla. */
+function fechaDocumento(iso){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return '—';
+  const q = partes(iso);
+  return String(q.d).padStart(2,'0') + ' de ' + MES_LARGO[q.m - 1] + ' ' + q.a;
+}
+
+/* «ago-26», con guion, como lo imprimen las cuatro. */
+function etiquetaColumnaCalendario(fechaInicio, i){
+  const q = partes(sumarMeses(fechaInicio, i));
+  return MES_CORTO[q.m - 1] + '-' + String(q.a).slice(2);
+}
+
+/* El día ANTERIOR al que devuelve sumarMeses(inicio, 12).
+   calcularPoliza().fin es el fin exclusivo: con vigencia desde el 1-ago-2026 da
+   1-ago-2027, y eso son doce meses y un día. En pantalla da igual, pero en el
+   papel es una fecha contractual y tiene que ser la correcta: 31 de julio 2027.
+   Un solo día se resta con Date.UTC sin riesgo — la regla de no usar Date es para
+   la aritmética de MESES, que es la que se mueve con las zonas horarias. */
+function diaAnterior(iso){
+  const d = new Date(aUTC(iso) - 86400000);
+  return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0')
+       + '-' + String(d.getUTCDate()).padStart(2,'0');
+}
+
+function armarPayloadPoliza(p){
+  const c   = calcularPoliza(p);
+  const cli = clientePorId(p.clienteId);
+
+  return {
+    meta: { generado: new Date().toISOString(), origen: 'control-forpass', version: 1 },
+
+    /* Resuelto aquí, no en la plantilla: solo una póliza VIVA se imprime como
+       póliza; todo lo demás —incluidas perdida y cancelada— es una cotización. */
+    titulo: { lineas: p.estatus === 'activa'
+                ? ['Póliza de', 'Mtto Prev.']
+                : ['Cotización'] },
+
+    /* sitioNombre es lo que se imprime, SIEMPRE: es texto guardado y sobrevive a
+       que el sitio se borre del módulo de Forpass. */
+    cliente: { nombre: cli ? cli.nombre : '', sitio: p.sitioNombre || '' },
+    folio: p.folio || '',
+    estatus: p.estatus,
+
+    fechas: {
+      cotizacion:     fechaDocumento(p.fechaCotizacion),
+      vigenciaInicio: fechaDocumento(p.fechaInicio),
+      vigenciaFin:    fechaDocumento(diaAnterior(c.fin))
+    },
+
+    vendedor: { nombre:   p.vendedor.nombre   || '',
+                correo:   p.vendedor.correo   || '',
+                telefono: p.vendedor.telefono || '' },
+    contacto: { telOficina: TEL_OFICINA, oficinas: OFICINAS.slice() },
+
+    renglones: p.partidas.map((x, i) => {
+      /* `total` es el intermedio que el documento imprime en su propia columna:
+         precio × cantidad. `totalMtto` viene de totalRenglon(), o sea por otro
+         camino. Que los dos cuadren (total × frecuencia === totalMtto) es la
+         aserción que el cliente va a hacer con una calculadora sobre el papel. */
+      const total = x.precioUnitario * x.cantidad;
+      return {
+        n: i + 1,
+        concepto: x.concepto,
+        /* La marca va aparte aunque se imprima pegada al concepto: la plantilla
+           hace la concatenación y su <span>. El payload no mete marcado adentro
+           de un dato. */
+        marca: x.marca || '',
+        cantidad: String(x.cantidad),
+        precioUnitario: dineroCent(x.precioUnitario),
+        total:          dineroCent(total),
+        frecuencia: String(x.frecuencia),
+        totalMtto:      dineroCent(c.totales[i]),
+        /* YA son índices de columna. mesesServicio son DESFASES desde
+           fechaInicio, así que el valor guardado ES la columna: no se rota.
+           Se llama `columnas` justo para que nadie le aplique un % 12. */
+        columnas: x.mesesServicio.slice(),
+        crudo: { precioUnitario: x.precioUnitario, cantidad: x.cantidad,
+                 frecuencia: x.frecuencia, total, totalMtto: c.totales[i] }
+      };
+    }),
+
+    /* Los doce encabezados salen de fechaInicio, que trae el año. NUNCA de
+       Math.min(...mesesServicio): si ningún equipo se atiende el primer mes
+       —normal, se escalonan a propósito— el mínimo ancla el calendario en el mes
+       equivocado y se recorren TODOS los renglones a la vez, sin aviso. */
+    calendario: { encabezados: Array.from({length: MESES_POLIZA},
+                    (_, i) => etiquetaColumnaCalendario(p.fechaInicio, i)) },
+
+    totales: { anual:   dineroCent(c.precioAnual),
+               mensual: dineroCent(c.precioMensual),
+               crudo:   { anual: c.precioAnual, mensual: c.precioMensual } },
+
+    pie: { iva: 'Precio más Iva.', tagline: 'Sostenemos a los que sostienen todo.' }
+  };
+}
+
+/* Abre el documento en pestaña nueva con los datos en sessionStorage.
+
+   SIN 'noopener'. No es descuido y no se debe "arreglar": con noopener la pestaña
+   nueva estrena un contexto y NO HEREDA el sessionStorage, así que llegaría vacía
+   y la plantilla pintaría «Sin datos». El riesgo que noopener mitiga —que la
+   pestaña abierta manipule a la que la abrió— aquí no aplica: el destino es un
+   archivo nuestro, del mismo origen. */
+const LLAVE_DOC_POLIZA = 'forguard.documento.poliza';
+
+function abrirDocumentoPoliza(id){
+  const p = polizaPorId(id);
+  if(!p) return;
+  let payload;
+  try{
+    payload = armarPayloadPoliza(p);
+    sessionStorage.setItem(LLAVE_DOC_POLIZA, JSON.stringify(payload));
+  }catch(e){
+    aviso('No se pudo preparar el documento: ' + (e && e.message ? e.message : 'error'), true);
+    return;
+  }
+  /* Ruta relativa: la plantilla vive junto al index.html en docs/ de Pages. */
+  const w = window.open('docs/plantilla_poliza_forguard.html', '_blank');
+  if(!w) aviso('El navegador bloqueó la pestaña. Permite las ventanas emergentes de este sitio.', true);
+  return payload;
 }
 
 /* Gemelos de sitiosDe() / sitioPorId(): join en memoria, sin consulta. */

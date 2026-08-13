@@ -156,16 +156,30 @@
   .body{position:absolute;left:.72in;right:.72in;top:2.62in;}
 
   /* ---- Tablas ---- */
-  table.grid{width:100%;border-collapse:collapse;}
+  /* Medido de las cuatro cotizaciones: TODAS las columnas van CENTRADAS —
+     desviación del centro 0.00 pt con hasta seis anchos distintos de valor— y el
+     encabezado comparte centro con sus datos, desfase 0.0. La única excepción es
+     Concepto, cuyo encabezado va centrado pero sus datos a la izquierda.
+     Ver docs/ESPECIFICACION-DOCUMENTO.md. */
+  table.grid{width:100%;border-collapse:collapse;table-layout:fixed;}
   table.grid thead th{
-    font-size:8.5px;font-weight:600;color:#2B3341;text-align:left;
-    padding:6px 7px;border-bottom:1.2px solid var(--rule-strong);
+    font-size:8.5px;font-weight:700;color:#2B3341;text-align:center;
+    padding:6px 3px;border-bottom:1.2px solid var(--rule-strong);
   }
-  table.grid tbody td{font-size:9.5px;padding:6px 7px;border-bottom:1px solid var(--rule);vertical-align:middle;}
-  
+  /* padding horizontal 0 en el cuerpo: el concepto más ancho de las cuatro
+     ocupa 125.4 pt de los 126.6 de su columna — 1.2 pt de holgura. Con 1 pt de
+     padding por lado ya no cabría. */
+  table.grid tbody td{font-size:9.5px;padding:6px 0;border-bottom:1px solid var(--rule);
+    vertical-align:middle;text-align:center;}
+  table.grid thead th.cpt{width:29%;}
+  table.grid tbody td.cpt{text-align:left;padding-left:2px;}
+  /* La marca pegada al concepto, en cuerpo más chico. Envuelve sola: la celda
+     aguanta dos líneas y con eso el truncado es casi inalcanzable. */
+  .marca{font-size:7.6px;color:#5C6673;}
+
   .n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}
-  .c{text-align:center;}
-  .ix{width:22px;color:#98A0AA;text-align:right;}
+  .c{text-align:center;font-variant-numeric:tabular-nums;}
+  .ix{width:22px;color:#98A0AA;text-align:center;}
 
   /* ---- Totales ---- */
   .totals{margin-top:16px;width:100%;}
@@ -216,72 +230,45 @@
 <div id="doc"></div>
 
 <script>
-/* ==================== DATOS · contrato para Firestore ====================
+/* ==================== DATOS ====================
+   El tablero deja aquí el documento YA RESUELTO, en sessionStorage, antes de
+   abrir esta pestaña. Esta plantilla FORMATEA Y CONCATENA: no multiplica, no
+   divide, no calcula módulos y no decide títulos. Todo eso lo hizo
+   armarPayloadPoliza() con las mismas funciones que pinta la pantalla — si aquí
+   se volviera a calcular, habría dos lugares que hacen la misma cuenta y el
+   descuadre que originó este módulo regresaría por otra puerta.
 
-   ⚠ CASO DEMO. Estos NO son los datos de ninguna cotización real: son once
-   renglones de muestra para poder ver la plantilla dibujada. La cotización real
-   de MXNL02 trae 34 renglones y suma $683,134 anuales, no los $393,000 de aquí.
+   Si no hay datos NO se pinta un caso demo. Antes había uno y era una trampa:
+   un fallo del puente salía como un documento de aspecto perfecto con cifras
+   inventadas, y eso se le puede mandar a un cliente sin que nadie lo note. Vale
+   mil veces más una hoja que dice «Sin datos».
+   ============================================================= */
+const LLAVE_DOC = 'forguard.documento.poliza';
 
-   Sirven de respaldo cuando la plantilla se abre sola, sin que el tablero le
-   haya pasado una póliza. Nunca los tomes como cifras verificadas.
-   ========================================================================= */
-const POLIZA = {
-  cliente:"Cliente Demo",
-  sitio:"CASO-DEMO",
-  fecha:"29 de julio 2026",
-  proyecto:"Póliza de Mantenimiento Preventivo",
-  tituloPortada:["Cotización","Póliza de","Mtto Prev."],
-  /* Ya no hay etiquetaPrecio: siempre dice "Precio". Las cotizaciones de abril y
-     principios de julio decían "Costo", pero eso era desorden de documentos hechos
-     a mano, no un requisito de nadie — las dos más recientes ya decían "Precio".
-     Modelarlo como campo habría petrificado esa inconsistencia para siempre.
-     Además "costo" es lo que le cuesta a Forguard; al cliente se le da un precio. */
-  inicioCalendario:{mes:7,anio:2026},   // mes 0-11 → 7 = agosto 2026
-  contacto:{tel:"811 60 71 051",correo:"pablo.quiroga@forguard.com"},
-  telOficina:"+(52) 81 8458 8845",
-  oficinas:["Lázaro Garza Ayala, 1213","SPGG, Nuevo León"],
-  vigencia:"La póliza se contrata y se presta por un periodo anual de doce (12) meses, independientemente de que la facturación se realice de forma anual o mensual. La vigencia iniciará en la fecha acordada por las partes y se mantendrá por el periodo anual establecido.",
-
-  /* mesesServicio: índices 0–11 del calendario donde toca mantenimiento */
-  partidas:[
-    {concepto:"Cámara de refrigeración",marca:"Arctic",cantidad:1,precioUnitario:7000,frecuencia:3,mesesServicio:[0,4,8],
-     descripcion:"Lavado de condensador y evaporador, inspección del funcionamiento de motores y ventiladores, revisión de voltaje y amperaje, verificación de presión de gas, limpieza y ajuste de contactores, reapriete de terminales y tornillería."},
-    {concepto:"Cámara de congelación",marca:"Arctic",cantidad:1,precioUnitario:7000,frecuencia:3,mesesServicio:[0,4,8],
-     descripcion:"Lavado de condensador y evaporador, inspección del funcionamiento de motores y ventiladores, revisión de voltaje y amperaje, verificación de presión de gas, limpieza y ajuste de contactores, reapriete de terminales y tornillería."},
-    {concepto:"Horno Rational",marca:"Rational",cantidad:2,precioUnitario:7000,frecuencia:3,mesesServicio:[1,5,9],
-     descripcion:"Revisión de voltaje, amperaje y conexiones, ajuste y reapriete de conexiones, limpieza mecánica, lubricación de componentes y revisión de funcionamiento."},
-    {concepto:"Campana de extracción",marca:"A medida",cantidad:1,precioUnitario:16000,frecuencia:3,mesesServicio:[2,6,10],
-     descripcion:"Limpieza de campana de extracción de humo con desengrasante y alta presión, incluye lavado de filtros."},
-    {concepto:"Extracción",marca:"A medida",cantidad:1,precioUnitario:22000,frecuencia:3,mesesServicio:[2,6,10],
-     descripcion:"Medición de amperaje y voltaje del equipo, así como la revisión de las condiciones y funcionamiento de bandas y componentes, lubricación de chumaceras y limpieza del equipo con desengrasante."},
-    {concepto:"Máquina de hielo",marca:"Scotsman",cantidad:1,precioUnitario:7000,frecuencia:3,mesesServicio:[3,7,11],
-     descripcion:"Limpieza del motor y abanico, limpieza del evaporador y condensador, inspección del cableado eléctrico y ajuste de terminales."},
-    {concepto:"Máquina lavaloza",marca:"Meiko",cantidad:1,precioUnitario:7000,frecuencia:3,mesesServicio:[3,7,11],
-     descripcion:"Inspección visual de los componentes físicos del equipo, revisión de mangueras y componentes hidráulicos, limpieza general con desincrustante."},
-    {concepto:"Estufón",marca:"Coriat",cantidad:2,precioUnitario:4500,frecuencia:3,mesesServicio:[1,5,9],
-     descripcion:"Revisión de válvulas de gas, perillas, quemadores (flautas), manguera de gas y regulador. Limpieza con desengrasante."},
-    {concepto:"Barra caliente de servicio eléctrica",marca:"Asber",cantidad:4,precioUnitario:5625,frecuencia:3,mesesServicio:[1,5,9],
-     descripcion:"Revisión de voltaje y amperaje del equipo y contacto, revisión de componentes eléctricos, verificación de funcionamiento y temperatura adecuada, revisión de empaques de puerta."},
-    {concepto:"Trampa de grasa",marca:"Helvex",cantidad:3,precioUnitario:3500,frecuencia:3,mesesServicio:[0,4,8],
-     descripcion:"Limpieza de trampa de grasa, raspado de paredes, deflectores y filtros para eliminar residuos, retiro de sólidos y revisión de tapa."},
-    {concepto:"Segurista",marca:"",cantidad:1,precioUnitario:27000,frecuencia:1,mesesServicio:[0],
-     descripcion:"Servicio de seguridad e higiene conforme al alcance acordado con el cliente."}
-  ]
-};
-
-/* ========================== UTILIDADES ========================== */
-const MESES_ABR=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const mxn2=n=>new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN",minimumFractionDigits:2}).format(n);
-const mxn0=n=>new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN",maximumFractionDigits:0}).format(n);
-const totalRenglon=p=>p.precioUnitario*p.cantidad*p.frecuencia;
-const precioAnual=()=>POLIZA.partidas.reduce((s,p)=>s+totalRenglon(p),0);
-
-function encabezadoMeses(){
-  const out=[];let m=POLIZA.inicioCalendario.mes,a=POLIZA.inicioCalendario.anio;
-  for(let i=0;i<12;i++){out.push(`${MESES_ABR[m]}-${String(a).slice(2)}`);m++;if(m>11){m=0;a++;}}
-  return out;
+function leerPayload(){
+  let crudo = null;
+  try{ crudo = sessionStorage.getItem(LLAVE_DOC); }
+  catch(e){ return { error:'El navegador no dejó leer los datos de la pestaña.' }; }
+  if(!crudo) return { error:'No llegaron datos del tablero.' };
+  let d;
+  try{ d = JSON.parse(crudo); }
+  catch(e){ return { error:'Los datos llegaron dañados y no se pudieron leer.' }; }
+  if(!d || !Array.isArray(d.renglones) || !d.calendario || !d.totales)
+    return { error:'Los datos llegaron incompletos.' };
+  return { doc:d };
 }
-const MESES=encabezadoMeses();
+
+const LEIDO = leerPayload();
+const POLIZA = LEIDO.doc || null;
+
+/* ========================== UTILIDADES ==========================
+   Aquí ya NO viven mxn2/mxn0, totalRenglon, precioAnual ni encabezadoMeses.
+   Se fueron a propósito: cada una era un segundo lugar donde se calculaba algo
+   que la app ya había calculado. Las cifras llegan formateadas y los doce
+   encabezados llegan hechos. */
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const MESES = POLIZA ? POLIZA.calendario.encabezados : [];
 
 /* ---------- Identidad oficial de Forguard (SVG extraído de logo-forguard.svg) ----------
    Isotipo y logotipo van como vectores, no como texto: fidelidad exacta.
@@ -307,15 +294,15 @@ function sheetHead(titulo,dosLineas){
   <div class="eyebrow">Cotización de Servicios Extras</div>
   <div class="h1${dosLineas?" two":""}">${titulo}</div>
   <table class="metabar"><tr>
-    <td><div class="k">Concepto Cotizado:</div><div class="v">${POLIZA.proyecto}</div></td>
-    <td><div class="k">Cliente</div><div class="v">${POLIZA.cliente}${POLIZA.sitio?` ${POLIZA.sitio}`:""}</div></td>
+    <td><div class="k">Concepto Cotizado:</div><div class="v">Póliza de Mantenimiento Preventivo</div></td>
+    <td><div class="k">Cliente</div><div class="v">${esc(POLIZA.cliente.nombre)}${POLIZA.cliente.sitio?` ${esc(POLIZA.cliente.sitio)}`:""}</div></td>
   </tr></table>`;
 }
 function sheetFoot(nota){
   return `<div class="footwrap"><table class="foot"><tr>
-    <td width="34%"><span class="k">Teléfono</span>${POLIZA.telOficina}<br><br>
-      <span class="k">Correo:</span>${POLIZA.contacto.correo}</td>
-    <td width="30%"><span class="k">Oficinas Corporativas:</span>${POLIZA.oficinas.join("<br>")}</td>
+    <td width="34%"><span class="k">Teléfono</span>${esc(POLIZA.contacto.telOficina)}<br><br>
+      <span class="k">Correo:</span>${esc(POLIZA.vendedor.correo)}</td>
+    <td width="30%"><span class="k">Oficinas Corporativas:</span>${POLIZA.contacto.oficinas.map(esc).join("<br>")}</td>
     <td class="tag">${nota?`<div style="color:#5C6673;font-size:8px;text-align:right;padding-bottom:6px">${nota}</div>`:""}Sostenemos a los que sostienen todo.</td>
   </tr></table></div>`;
 }
@@ -347,15 +334,15 @@ function pageCover(){
     <div class="inner">
       ${isotipo(70)}
       <div class="wordmark-cover">${logotipo(152)}</div>
-      <div class="cover-title">${POLIZA.tituloPortada.join("<br>")}</div>
+      <div class="cover-title">${POLIZA.titulo.lineas.map(esc).join("<br>")}</div>
       <table class="cover-meta"><tr>
-        <td><i>Cliente:</i> <b>${POLIZA.cliente}${POLIZA.sitio?`<br>${POLIZA.sitio}`:""}</b></td>
-        <td class="sep"><i>Fecha:</i> <b>${POLIZA.fecha}</b></td>
-        <td class="sep"><i>Proyecto:</i> <b>${POLIZA.proyecto}</b></td>
+        <td><i>Cliente:</i> <b>${esc(POLIZA.cliente.nombre)}${POLIZA.cliente.sitio?`<br>${esc(POLIZA.cliente.sitio)}`:""}</b></td>
+        <td class="sep"><i>Fecha:</i> <b>${esc(POLIZA.fechas.cotizacion)}</b></td>
+        <td class="sep"><i>Vigencia:</i> <b>${esc(POLIZA.fechas.vigenciaInicio)}<br>al ${esc(POLIZA.fechas.vigenciaFin)}</b></td>
       </tr></table>
       <div class="cover-contact">
-        <div class="blk"><span class="k">Teléfono</span>${POLIZA.contacto.tel}</div>
-        <div class="blk"><span class="k">Correo:</span>${POLIZA.contacto.correo}</div>
+        <div class="blk"><span class="k">Teléfono</span>${esc(POLIZA.vendedor.telefono)}</div>
+        <div class="blk"><span class="k">Correo:</span>${esc(POLIZA.vendedor.correo)}</div>
       </div>
       <div class="tagline-cover">Sostenemos a los que sostienen todo.</div>
     </div>
@@ -363,37 +350,45 @@ function pageCover(){
 }
 
 /* ====================== PÓLIZA (tabla + totales) ====================== */
+/* Siete columnas, las de NGK: es el único de los cuatro documentos que imprime la
+   aritmética completa, así que el cliente puede seguir la multiplicación de
+   izquierda a derecha con una calculadora —Total = precio × cantidad, y
+   Total Mtto = Total × frecuencia—. Verificado: sus 17 renglones cumplen las dos.
+
+   La marca va PEGADA al concepto, en la misma celda y en cuerpo más chico. No es
+   columna propia: los cuatro documentos que sí traen Marca la ponen como columna,
+   pero entonces no cabe Cantidad, y una tabla sin Cantidad es exactamente de
+   donde salieron las cantidades escondidas que hubo que deducir de los totales. */
 function pagePoliza(){
-  const filas=POLIZA.partidas.map((p,i)=>`<tr>
-      <td class="ix">${i+1}</td>
-      <td>${p.concepto}</td>
-      <td>${p.marca||"—"}</td>
-      <td class="c">${p.cantidad}</td>
-      <td class="n">${mxn2(p.precioUnitario)}</td>
-      <td class="c">${p.frecuencia}</td>
-      <td class="n">${mxn0(totalRenglon(p))}</td>
+  const filas=POLIZA.renglones.map(r=>`<tr>
+      <td class="ix">${r.n}</td>
+      <td class="cpt">${esc(r.concepto)}${r.marca?`<span class="marca"> — ${esc(r.marca)}</span>`:""}</td>
+      <td class="c">${esc(r.cantidad)}</td>
+      <td class="c">${esc(r.precioUnitario)}</td>
+      <td class="c">${esc(r.total)}</td>
+      <td class="c">${esc(r.frecuencia)}</td>
+      <td class="c">${esc(r.totalMtto)}</td>
     </tr>`).join("");
-  const anual=precioAnual();
   return `<section class="page">
     <div class="sheet">
       ${sheetHead("Póliza de Mantenimiento")}
       <div class="body">
         <table class="grid">
           <thead><tr>
-            <th class="ix">#</th><th>Concepto</th><th>Marca</th>
-            <th class="c">Cantidad</th><th class="n">Precio Unitario</th>
-            <th class="c">Frecuencia</th><th class="n">Total Mtto</th>
+            <th class="ix">#</th><th class="cpt">Concepto</th>
+            <th class="c">Cantidad</th><th class="c">Precio Unitario</th>
+            <th class="c">Total</th><th class="c">Frecuencia</th><th class="c">Total Mtto</th>
           </tr></thead>
           <tbody>${filas}</tbody>
         </table>
         <table class="totals">
-          <tr><td class="lbl">Precio Anual</td><td class="val">${mxn2(anual)}</td></tr>
-          <tr class="grand"><td class="lbl">Precio Mensual</td><td class="val">${mxn2(anual/12)}</td></tr>
+          <tr><td class="lbl">Precio Anual</td><td class="val">${esc(POLIZA.totales.anual)}</td></tr>
+          <tr class="grand"><td class="lbl">Precio Mensual</td><td class="val">${esc(POLIZA.totales.mensual)}</td></tr>
         </table>
         <ul class="note">
-          <li>Precio más IVA.</li>
+          <li>${esc(POLIZA.pie.iva)}</li>
+          <li>Vigencia: del ${esc(POLIZA.fechas.vigenciaInicio)} al ${esc(POLIZA.fechas.vigenciaFin)}.</li>
           <li>La póliza se contrata y se presta por un periodo anual de doce (12) meses, independientemente de que la facturación se realice de forma anual o mensual.</li>
-          <li>La vigencia iniciará en la fecha acordada por las partes y se mantendrá por el periodo anual establecido.</li>
         </ul>
       </div>
     </div>
@@ -403,10 +398,14 @@ function pagePoliza(){
 
 /* ============================ CALENDARIO ============================ */
 function pageCalendario(){
-  const th=MESES.map(m=>`<th>${m}</th>`).join("");
-  const filas=POLIZA.partidas.map((p,i)=>{
-    const celdas=MESES.map((_,mi)=>`<td class="${p.mesesServicio.includes(mi)?"on":""}"></td>`).join("");
-    return `<tr><td class="ix">${i+1}</td><td class="lbl">${p.concepto}</td>${celdas}</tr>`;
+  const th=MESES.map(m=>`<th>${esc(m)}</th>`).join("");
+  /* r.columnas YA son índices de columna: mesesServicio son desfases desde el
+     inicio de la vigencia, así que el valor guardado ES la columna. Aquí NO se
+     rota nada — un % 12 de más movería todos los servicios de todos los
+     renglones a la vez, sin error y sin aviso. */
+  const filas=POLIZA.renglones.map(r=>{
+    const celdas=MESES.map((_,mi)=>`<td class="${r.columnas.includes(mi)?"on":""}"></td>`).join("");
+    return `<tr><td class="ix">${r.n}</td><td class="lbl">${esc(r.concepto)}</td>${celdas}</tr>`;
   }).join("");
   return `<section class="page">
     <div class="sheet">
@@ -455,28 +454,42 @@ function pageConsideraciones(){
   </section>`;
 }
 
-/* ====================== DESCRIPCIÓN DE TRABAJOS ====================== */
-function pageDescripcion(){
-  const vistos=new Set();
-  const filas=POLIZA.partidas.filter(p=>{
-    if(vistos.has(p.concepto))return false;vistos.add(p.concepto);return true;
-  }).map((p,i)=>`<tr><td class="ix">${i+1}</td><td class="eq">${p.concepto}</td><td>${p.descripcion||""}</td></tr>`).join("");
+/* ====================== SIN DATOS ======================
+   La hoja que sale cuando el puente falló. Tiene que verse ROTA a propósito: un
+   documento de aspecto perfecto con cifras inventadas es algo que se le puede
+   mandar a un cliente sin que nadie lo note. Por eso aquí no hay caso demo. */
+function pageSinDatos(motivo){
   return `<section class="page">
     <div class="sheet">
-      ${sheetHead("Descripción de Trabajos")}
+      <div class="logo-tl">${isotipo(44)}</div>
+      <div class="wordmark-tr">${logotipo(116)}</div>
+      <div class="h1 two">Sin datos</div>
       <div class="body">
-        <table class="grid desc">
-          <thead><tr><th class="ix">#</th><th>Equipo</th><th>Descripción del trabajo a realizar</th></tr></thead>
-          <tbody>${filas}</tbody>
-        </table>
+        <p style="font-size:11px;line-height:1.6;color:#22282F;max-width:4.6in">
+          Esta hoja se abrió sin recibir los datos del tablero, así que
+          <b>no hay nada que imprimir</b>. ${esc(motivo || '')}
+        </p>
+        <p style="font-size:9.5px;line-height:1.6;color:#5C6673;max-width:4.6in;margin-top:14px">
+          Se llega aquí abriendo el archivo directamente, recargando esta pestaña
+          después de un rato, o si la pestaña se abrió perdiendo su
+          <code>sessionStorage</code>. La salida es volver al tablero, entrar a la
+          póliza y darle otra vez a imprimir.
+        </p>
       </div>
     </div>
-    ${sheetFoot()}
   </section>`;
 }
 
-document.getElementById("doc").innerHTML =
-  pageCover()+pagePoliza()+pageCalendario()+pageConsideraciones()+pageDescripcion();
+
+/* Orden de hojas: Portada → Tabla → Calendario → Consideraciones.
+   Consideraciones va AL FINAL porque es el único bloque de prosa de largo
+   variable: si fuera antes de la tabla, agregar o quitar una cláusula correría
+   el arranque de la tabla y cambiaría cuántas filas caben en la primera hoja. */
+document.getElementById("doc").innerHTML = POLIZA
+  ? pageCover() + pagePoliza() + pageCalendario() + pageConsideraciones()
+  : pageSinDatos(LEIDO.error);
+
+if(POLIZA) document.title = 'Póliza ' + (POLIZA.cliente.sitio || POLIZA.cliente.nombre || '') + ' · Forguard';
 </script>
 </body>
 </html>
