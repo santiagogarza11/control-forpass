@@ -2770,8 +2770,15 @@ function abrirDocumentoPoliza(id){
     aviso('No se pudo preparar el documento: ' + (e && e.message ? e.message : 'error'), true);
     return;
   }
-  /* Ruta relativa: la plantilla vive junto al index.html en docs/ de Pages. */
-  const w = window.open('docs/plantilla_poliza_forguard.html', '_blank');
+  /* Ruta relativa: la plantilla vive junto al index.html en docs/ de Pages.
+     Con ?v= del momento, SIEMPRE fresca. GitHub Pages manda
+     `cache-control: max-age=600` en la plantilla, y como se abre en pestaña
+     nueva el refresco forzado del tablero no la alcanza: el navegador seguía
+     sirviendo la copia vieja: se arreglaba un defecto del documento, se
+     desplegaba, y el papel salía igual de roto durante diez minutos. Pesa 78 KB
+     y se abre de vez en cuando — volver a bajarla no le cuesta nada a nadie, y
+     un documento que va al cliente no se imprime de una copia rancia. */
+  const w = window.open('docs/plantilla_poliza_forguard.html?v=' + Date.now(), '_blank');
   if(!w) aviso('El navegador bloqueó la pestaña. Permite las ventanas emergentes de este sitio.', true);
   return payload;
 }

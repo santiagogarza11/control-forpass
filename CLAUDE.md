@@ -402,6 +402,13 @@ tapado y nadie lo vio, así que sí hay que animar el siguiente.
 - **Un cambio puede estar committeado y el build de Pages fallado.** Verificar
   con `gh api repos/santiagogarza11/control-forpass/pages/builds/latest`;
   reconstruir con `gh api -X POST repos/santiagogarza11/control-forpass/pages/builds`.
+- **La plantilla del documento se abre con `?v=` del momento, y no es capricho.**
+  Pages le manda `cache-control: max-age=600`, y como se abre en **pestaña nueva**
+  el `Cmd+Shift+R` del tablero no la alcanza: se arreglaba un defecto del papel, se
+  desplegaba, y el PDF seguía saliendo roto diez minutos. Pasó de verdad —con el
+  pie encimado sobre la tabla— y costó media hora de medir la copia buena mientras
+  el navegador servía la vieja. **Si algo del documento "no se arregló", lo primero
+  es descartar la caché.**
 - **Tras el deploy el navegador sirve la versión vieja.** El build puede estar
   bien y el DOM tener lo anterior. Refresco forzado (`Cmd+Shift+R`) o `?v=algo`
   al final del link. Al verificar con `curl` no pasa, porque ignora el caché.
