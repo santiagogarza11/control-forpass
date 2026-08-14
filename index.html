@@ -1072,8 +1072,16 @@ const MAX_RENGLONES = 150;
    "Contrato cubierto". Guardar un estatus que se puede calcular es un dato más
    que se desincroniza. */
 const ESTATUS_POLIZA = ['cotizacion', 'enviada', 'activa', 'perdida', 'cancelada'];
+/* Los que se OFRECEN al capturar. Es una lista aparte de ESTATUS_POLIZA a
+   propósito: esa otra la usa normalizarPoliza para VALIDAR lo que llega, así que
+   quitar 'perdida' de ahí convertiría en 'cotizacion' —callada— cualquier póliza
+   vieja que lo tuviera. Se deja de ofrecer sin dejar de reconocerse: si una
+   póliza ya trae 'perdida', su opción se agrega al vuelo para no cambiársela por
+   el solo hecho de abrir el modal. Se quitó porque 'Cancelada' ya cubre el caso
+   y dos etiquetas para "no se vendió" solo confunden al capturar. */
+const ESTATUS_OFRECIDOS = ['cotizacion', 'enviada', 'activa', 'cancelada'];
 const ETIQUETA_ESTATUS = {
-  cotizacion:'Borrador', enviada:'En la calle', activa:'Activa',
+  cotizacion:'Borrador', enviada:'En espera de confirmar', activa:'Activa',
   perdida:'No se cerró', cancelada:'Cancelada'
 };
 
@@ -2561,7 +2569,7 @@ function calcularPoliza(p){
   if(p.estatus === 'cancelada'){ estado = 'Cancelada'; tono = 'neutro'; }
   else if(p.estatus === 'perdida'){ estado = 'No se cerró'; tono = 'neutro'; }
   else if(p.estatus === 'cotizacion'){ estado = 'Borrador'; tono = 'neutro'; }
-  else if(p.estatus === 'enviada'){ estado = 'En la calle'; tono = 'alerta'; }
+  else if(p.estatus === 'enviada'){ estado = 'En espera de confirmar'; tono = 'alerta'; }
   else if(!vigente){ estado = 'Terminada'; tono = 'neutro'; }
   else if(atrasados > 0){ estado = 'Servicios atrasados'; tono = 'error'; }
   else if(cobrosAtrasados > 0){ estado = 'Cobro atrasado'; tono = 'error'; }
@@ -3225,7 +3233,7 @@ function vistaPolizas(){
 
   h += '<div class="kpis">'
      + tarjetaKpi('Pólizas activas', numero(r.activas), dinero(r.valorActivo) + ' al año', r.activas ? 'k-ok' : '')
-     + tarjetaKpi('En la calle', numero(r.enLaCalle),
+     + tarjetaKpi('En espera de confirmar', numero(r.enLaCalle),
          r.enLaCalle ? dinero(r.montoEnLaCalle) + ' esperando respuesta' : 'Nada enviado sin contestar',
          r.esperaLarga ? 'k-alerta' : '')
      + tarjetaKpi('Servicios este mes', numero(r.tocanEsteMes), 'Mantenimientos que tocan y siguen sin hacerse',
@@ -3345,7 +3353,7 @@ function vistaPoliza(){
      +     (p.folio ? ' · ' + esc(p.folio) : '')
      +     ' · <b>' + esc(ETIQUETA_ESTATUS[p.estatus]) + '</b>'
      /* El semáforo solo se agrega si dice algo distinto del estatus. En cuatro
-        de los cinco el texto es el mismo —«En la calle · En la calle»— porque
+        de los cinco el texto es el mismo —«En espera de confirmar» dos veces— porque
         solo una póliza activa se juzga por servicios, cobranza y vigencia. */
      +     (c.estado === ETIQUETA_ESTATUS[p.estatus] ? '' : ' · ' + esc(c.estado)) + '</p>'
      + '</div><div class="acciones">'
@@ -4996,7 +5004,11 @@ function modalPoliza(id){
     +     '<div class="campo"><label>Folio (opcional)</label>'
     +       '<input type="text" id="pFolio" placeholder="Ej. COT-2026-0041" value="' + esc(p ? p.folio : '') + '"></div>'
     +     '<div class="campo"><label>Estatus</label><select id="pEstatus">'
-    +       opc(ESTATUS_POLIZA, p ? p.estatus : 'cotizacion', e=>ETIQUETA_ESTATUS[e], e=>e) + '</select></div>'
+    /* Si esta póliza trae un estatus que ya no se ofrece —'perdida', de antes—,
+       se agrega a la lista para que abrir el modal no se lo cambie en silencio. */
+    +       opc(ESTATUS_OFRECIDOS.includes(p ? p.estatus : 'cotizacion')
+                ? ESTATUS_OFRECIDOS : ESTATUS_OFRECIDOS.concat(p.estatus),
+             p ? p.estatus : 'cotizacion', e=>ETIQUETA_ESTATUS[e], e=>e) + '</select></div>'
     +   '</div>'
     +   '<div class="fila2">'
     +     '<div class="campo"><label>Fecha de la cotización</label>'
