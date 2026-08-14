@@ -215,8 +215,16 @@
 
   /* ---- Calendario ---- */
   table.cal{width:100%;border-collapse:collapse;table-layout:fixed;}
-  table.cal th{font-size:7.5px;font-weight:600;color:#2B3341;padding:5px 2px;text-align:center;
-               border-bottom:1.2px solid var(--rule-strong);}
+  /* 5.76 pt es el tamaño MEDIDO de los encabezados de mes en las cotizaciones
+     reales, y ahí van todos en UNA línea: el más ancho, «may-27», mide 19.21 pt
+     de los 23.53 de su columna. Aquí se partían unos y otros no —«ago-26» sí,
+     «sep-26» no— porque el guion permite salto y el relleno lateral de 2px por
+     lado dejaba el texto justo en el límite: los meses de letras anchas (ago,
+     nov, mar, may) se pasaban y los angostos no. Con nowrap NUNCA se parten, y
+     sin relleno lateral les sobra espacio. Que se rompan de forma distinta según
+     el mes es lo que se veía mal, más que el corte en sí. */
+  table.cal th{font-size:5.76pt;font-weight:600;color:#2B3341;padding:5px 0;text-align:center;
+               white-space:nowrap;border-bottom:1.2px solid var(--rule-strong);}
   table.cal th.cpt{text-align:left;padding-left:7px;}
   table.cal td{border-bottom:1px solid var(--rule);height:20px;padding:0;}
   table.cal td.lbl{font-size:8px;padding:4px 7px;line-height:1.25;}
