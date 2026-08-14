@@ -199,7 +199,10 @@
 
   .n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}
   .c{text-align:center;font-variant-numeric:tabular-nums;}
-  .ix{width:22px;color:#98A0AA;text-align:center;}
+  /* El número de renglón NO va en gris: medido en MXGT01, INOAC y NGK, va en
+     #000000, exactamente igual que el concepto de su fila. El gris venía de la
+     plantilla vieja y hacía que el renglón se leyera como secundario. */
+  .ix{width:22px;text-align:center;}
 
   /* ---- Totales ---- */
   .totals{margin-top:16px;width:100%;}
@@ -217,7 +220,7 @@
   table.cal th.cpt{text-align:left;padding-left:7px;}
   table.cal td{border-bottom:1px solid var(--rule);height:20px;padding:0;}
   table.cal td.lbl{font-size:8px;padding:4px 7px;line-height:1.25;}
-  table.cal td.ix{font-size:8px;text-align:right;color:#98A0AA;padding-right:4px;}
+  table.cal td.ix{font-size:8px;text-align:right;padding-right:4px;}
   table.cal td.on{background:var(--shade);}
 
   /* ---- Consideraciones ---- */
@@ -506,14 +509,18 @@ function pagePoliza(){
    alto real, porque estas filas no son de altura fija. */
 function pageDescripcion(){
   if(!POLIZA.descripciones.length) return '';
-  const filas = POLIZA.descripciones.map((d,i)=>
-    `<tr><td class="ix">${i+1}</td><td class="eq">${esc(d.concepto)}</td><td>${esc(d.texto)}</td></tr>`).join("");
+  /* SIN columna de número. Iba 1–16 sobre conceptos DEDUPLICADOS mientras la
+     tabla de renglones va 1–30 sobre renglones, y las dos encabezaban «#»: dos
+     numeraciones distintas con el mismo nombre invitan a cruzarlas y no cuadran
+     nunca. El equipo ya identifica la fila. */
+  const filas = POLIZA.descripciones.map(d=>
+    `<tr><td class="eq">${esc(d.concepto)}</td><td>${esc(d.texto)}</td></tr>`).join("");
   return `<section class="page" data-parte="descripcion">
     <div class="sheet">
       ${sheetHead("Descripción de Trabajos")}
       <div class="body">
         <table class="grid desc">
-          <thead><tr><th class="ix">#</th><th>Equipo</th><th>Descripción del trabajo a realizar</th></tr></thead>
+          <thead><tr><th>Equipo</th><th>Descripción del trabajo a realizar</th></tr></thead>
           <tbody>${filas}</tbody>
         </table>
       </div>
@@ -540,8 +547,14 @@ function pageCalendario(){
       ${sheetHead("Calendario de<br>Mantenimientos",true)}
       <div class="body" style="top:2.85in">
         <table class="cal" data-filas="${grupo.length}">
-          <colgroup><col style="width:22px"><col style="width:1.55in">
-            ${MESES.map(()=>'<col style="width:6.55%">').join("")}</colgroup>
+          <!-- Anchos MEDIDOS de las cotizaciones reales: la rejilla de meses son
+               282.4 pt (12 × 23.53) y el # mide 7.4 pt. Concepto se queda con
+               TODO lo que sobra, que es lo que evita que «Barra Caliente De
+               Servicio Eléctrica» se parta en dos líneas. En pt y no en %:
+               un porcentaje ata la rejilla al ancho de la hoja y el paso de
+               23.53 dejaría de cumplirse. -->
+          <colgroup><col style="width:14pt"><col>
+            ${MESES.map(()=>'<col style="width:23.53pt">').join("")}</colgroup>
           <thead><tr><th class="ix"></th><th class="cpt">Concepto</th>${th}</tr></thead>
           <tbody>${filas}</tbody>
         </table>
@@ -571,7 +584,12 @@ function pageConsideraciones(){
     {h:"TRABAJOS ESTÉTICOS O DE ACABADO",
      p:`Esta póliza se enfoca en el mantenimiento funcional de los equipos. <b>No incluye trabajos estéticos</b> como pintura, limpieza profunda no rutinaria (más allá de la necesaria para el mantenimiento técnico), pulido de acero inoxidable ni la reparación de daños superficiales que no afecten la operatividad del equipo.`},
     {h:"ACTUALIZACIÓN Y VIGENCIA",
-     p:`En caso de que el cliente solicite la incorporación o el retiro de equipos durante la vigencia, la póliza será actualizada para reflejar dichos cambios, lo cual podrá implicar un ajuste en el alcance y en el precio del servicio. Toda modificación deberá quedar debidamente documentada y aceptada por ambas partes. ${POLIZA.vigencia}`}
+     /* Aquí venía `${POLIZA.vigencia}` y salía «undefined» impreso al final del
+        párrafo: ese campo existía en el contrato viejo del JSON del lector y NO
+        está en el payload que arma armarPayloadPoliza. La cláusula de los doce
+        meses ya se imprime en las notas de la tabla, con las fechas concretas
+        de esta póliza, así que aquí no falta nada — sobraba. */
+     p:`En caso de que el cliente solicite la incorporación o el retiro de equipos durante la vigencia, la póliza será actualizada para reflejar dichos cambios, lo cual podrá implicar un ajuste en el alcance y en el precio del servicio. Toda modificación deberá quedar debidamente documentada y aceptada por ambas partes.`}
   ].map(x=>`<div class="clause"><div class="hd">${x.h}</div>${x.t||`<p>${x.p}</p>`}</div>`).join("");
 
   return `<section class="page">
@@ -646,7 +664,16 @@ function partirDescripcion(){
      desbocó: 616 filas donde había 16. Medir primero y repartir después no tiene
      ese modo de fallar. */
   const arranque = pagina.querySelector('.body').getBoundingClientRect().top;
-  const limite   = pagina.getBoundingClientRect().bottom - 64;   /* sitio para el pie */
+  /* El techo del pie se MIDE, no se estima. Con una reserva de 64 px a ojo, la
+     hoja 1 de la descripción de MXNL02 metía 14 filas y la última se encimaba
+     22 px con el bloque de Teléfono/Correo/Oficinas: el pie quedaba escrito
+     encima del texto y salía así en el PDF. El pie real ocupa 102 px (58 de alto
+     más 44 de su `bottom:.46in`), y medirlo aguanta que cambie de tamaño. Los
+     +6 son aire para que no se toquen. */
+  const pie = pagina.querySelector('.footwrap');
+  const limite = pie
+    ? pie.getBoundingClientRect().top - 6
+    : pagina.getBoundingClientRect().bottom - 102;
   const alturaCabeza = pagina.querySelector('table.grid.desc thead').getBoundingClientRect().height;
   const disponible = limite - arranque - alturaCabeza;
   const altos = filas.map(f => f.getBoundingClientRect().height);
