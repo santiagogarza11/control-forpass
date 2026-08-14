@@ -514,6 +514,12 @@ table.tabla tr.tiene-notas > td{border-bottom:none; padding-bottom:2px;}
 .cal-lista{list-style:none; display:flex; flex-direction:column; gap:5px;}
 .cal-lista li{font-size:12px; color:var(--ink); line-height:1.4; display:flex; align-items:baseline; gap:5px;}
 .cal-lista li.hecho{color:var(--ok);}
+/* El resumen de arriba del calendario: etiqueta con dos puntos, aire entre
+   etiqueta y valor. Sin esto .c-fila queda sin estilo aquí (solo lo trae dentro
+   de .bloque) y todo salía pegado. */
+.cal-resumen{margin-bottom:4px;}
+.cal-resumen .c-fila{display:flex; gap:8px; align-items:baseline; font-size:13.5px; padding:3px 0;}
+.cal-resumen .c-fila span:first-child{color:var(--gray);}
 .cal-lista li svg{width:12px; height:12px; flex:0 0 auto; position:relative; top:2px;}
 /* El renglón del calendario es un botón: ahí se marca "este ya se hizo". Se ve
    como texto hasta que el mouse encima lo delata — una lista de doce meses llena
@@ -4854,11 +4860,15 @@ function modalCalendario(id){
   });
   const pico = Math.max(...meses.map(z=>z.equipos));
 
+  /* Con su envoltorio .cal-resumen: .c-fila solo trae estilo dentro de .bloque
+     y aquí quedaba pelona — etiqueta y valor salían pegados («Vigencia01 jun»). */
   const cuerpo =
-      '<div class="c-fila"><span>Vigencia</span><b>' + fmtFecha(p.fechaInicio) + ' → ' + fmtFecha(c.fin) + '</b></div>'
-    + '<div class="c-fila"><span>Servicios en el año</span><b>' + numero(c.programados)
-    +   ' · ' + c.hechos + ' ' + plural(c.hechos,'hecho','hechos') + '</b></div>'
-    + '<div class="c-fila"><span>Mes más cargado</span><b>' + pico + ' ' + plural(pico,'equipo','equipos') + '</b></div>'
+      '<div class="cal-resumen">'
+    +   '<div class="c-fila"><span>Vigencia:</span><b>' + fmtFecha(p.fechaInicio) + ' → ' + fmtFecha(c.fin) + '</b></div>'
+    +   '<div class="c-fila"><span>Servicios en el año:</span><b>' + numero(c.programados)
+    +     ' · ' + c.hechos + ' ' + plural(c.hechos,'hecho','hechos') + '</b></div>'
+    +   '<div class="c-fila"><span>Mes más cargado:</span><b>' + pico + ' ' + plural(pico,'equipo','equipos') + '</b></div>'
+    + '</div>'
     + (marcable ? '<div class="pista" style="margin:10px 0 0">Pica un equipo para registrar que su mantenimiento ya se hizo.</div>' : '')
     + '<div class="cal-meses">'
     + meses.map(z=>{
