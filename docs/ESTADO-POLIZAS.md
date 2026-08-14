@@ -332,11 +332,20 @@ Botón **Imprimir** en el detalle de la póliza, junto a Calendario y Editar:
   **sin `noopener`** (con `noopener` no hereda el `sessionStorage`).
 - El título de portada lo resuelve el payload por estatus: `activa` → «Póliza de /
   Mtto Prev.», todo lo demás → «Cotización / Póliza de / Mtto Prev.».
-- **Banner fijo de ajustes de impresión** en la plantilla: Márgenes Ninguno ·
-  Encabezados apagados · **Gráficos de fondo ACTIVADO** (viene apagado por omisión
-  y sin él el navy desaparece — parecería bug de la app). `position:fixed` para no
-  recorrer la paginación —verificado: hojas 8·8·5·5 con y sin banner—, oculto en
-  `@media print` (verificado por CSSOM), y se quita del DOM en «Sin datos».
+- **Barra de guardar con UN botón** («Guardar como PDF» → `window.print()`). Los
+  tres ajustes que la primera versión pedía a mano **ya no existen para el
+  usuario**: `print-color-adjust:exact` en todo imprime el navy y las celdas del
+  calendario aunque «Gráficos de fondo» esté apagado (su estado por omisión), y
+  con `@page{margin:0}` el navegador no tiene margen donde pintar sus encabezados.
+  **Verificado imprimiendo con Chrome headless sin tocar un ajuste**: 5 hojas de
+  612×792 exactos, navy de borde a borde, cinta verde en su esquina, 1,532
+  muestras del azul de celdas, cero texto del navegador. Lo único que el diálogo
+  no nos deja decidir es el destino — la barra lo dice. `position:fixed` (no
+  recorre la paginación), oculta en `@media print`, fuera del DOM en «Sin datos».
+- **El documento ya no repite el nombre del cliente**: si el sitio ya lo trae
+  adentro —«INOAC»/«INOAC», «Prolec»/«Prolec Planta 1»— se imprime solo el sitio;
+  si es código aparte («Mercado Libre»/«MXGT01») van los dos. Ignora mayúsculas y
+  acentos. Cinco casos probados.
 - La **portada es réplica medida** de la real: fondo `#031649`, escudo gigante con
   los trazos del vector del PDF tal cual, título Helvetica 72 pt (la única
   excepción a Poppins, a propósito), todo a ±0.5 pt contra el render de referencia.

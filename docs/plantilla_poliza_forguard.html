@@ -93,7 +93,15 @@
     --shade:#8BB4D8;        /* celda marcada del calendario — medido del vector */
   }
 
-  *{box-sizing:border-box;margin:0;padding:0;}
+  /* print-color-adjust:exact EN TODO: fuerza que fondos y colores se impriman
+     aunque «Gráficos de fondo» esté apagado en el diálogo de Chrome — que es su
+     estado por omisión. Sin esto, el navy entero desaparecía del PDF y el
+     documento salía como texto flotando en blanco. Es lo que permite que el
+     banner no tenga que pedirle ajustes a nadie. Y con @page{margin:0} el
+     navegador tampoco tiene margen donde pintar sus encabezados y pies, así
+     que esas dos casillas dejan de importar. */
+  *{box-sizing:border-box;margin:0;padding:0;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;}
   body{background:#E9EBEE;font-family:var(--font-body);color:var(--text);-webkit-font-smoothing:antialiased;}
 
   /* SIN overflow:hidden, y no se vuelve a poner.
@@ -231,23 +239,25 @@
   .foot .k{font-weight:700;color:#8A929D;display:block;}
   .foot .tag{text-align:right;font-size:10px;color:#2E4E96;}
 
-  /* ---- Banner de ajustes de impresión ----
-     Evita el fallo silencioso: «Gráficos de fondo» viene APAGADO por omisión en
-     Chrome y sin él todo el navy desaparece — el documento se ve perfecto en
-     pantalla y sale texto flotando en blanco, y cualquiera concluye que la app
-     está mal. position:fixed a propósito: no empuja el contenido ni puede
-     alterar la paginación, solo flota encima en pantalla. */
+  /* ---- Barra de guardar ----
+     Un solo botón que abre el diálogo de imprimir ya listo. Los tres ajustes
+     que antes pedíamos a mano ya no hacen falta: print-color-adjust:exact
+     imprime el navy con «Gráficos de fondo» apagado, y @page{margin:0} deja al
+     navegador sin margen donde pintar encabezados. Lo único que el navegador no
+     nos deja decidir es el DESTINO del diálogo — por eso la pista.
+     position:fixed a propósito: no empuja el contenido ni puede alterar la
+     paginación. Casi negro y con sombra, NO el navy del documento: sobre la
+     portada un banner navy se camufla y parece parte del papel. */
   .aviso-impresion{position:fixed;top:0;left:0;right:0;z-index:50;
-    /* Casi negro y con sombra, NO el navy del documento: sobre la portada un
-       banner navy se camufla y parece parte del papel. Tiene que leerse como
-       barra de la herramienta. */
     background:#0E1116;color:#fff;font-family:var(--font-body);
-    font-size:12px;line-height:1.5;padding:8px 18px;
+    font-size:12.5px;line-height:1.5;padding:9px 18px;
     box-shadow:0 6px 18px rgba(0,0,0,.35);
-    display:flex;gap:6px 22px;align-items:center;justify-content:center;flex-wrap:wrap;}
-  .aviso-impresion b{color:#7EE2A8;}
-  .aviso-impresion .aj{white-space:nowrap;}
-  .aviso-impresion .aj i{font-style:normal;color:#9FB3DC;}
+    display:flex;gap:8px 16px;align-items:center;justify-content:center;flex-wrap:wrap;}
+  .aviso-impresion button{
+    font-family:var(--font-body);font-size:13px;font-weight:700;color:#06281a;
+    background:#54C682;border:none;border-radius:8px;padding:7px 16px;cursor:pointer;}
+  .aviso-impresion button:hover{background:#7EE2A8;}
+  .aviso-impresion .pista{color:#9FB3DC;}
 
   @media print{
     body{background:#fff;}
@@ -259,14 +269,11 @@
 </style>
 </head>
 <body>
-<!-- Los tres ajustes del diálogo de imprimir de Chrome. El tercero es el que
-     viene apagado por omisión y rompe en silencio. Se quita solo del papel
-     (@media print) y se quita del DOM cuando no hay datos que imprimir. -->
+<!-- La barra de la herramienta: un botón y una sola pista. Se quita del papel
+     (@media print) y del DOM cuando no hay datos que imprimir. -->
 <div class="aviso-impresion" id="avisoImpresion">
-  <span class="aj">Para el PDF: <b>⌘P → Guardar como PDF</b>, con</span>
-  <span class="aj"><i>Márgenes:</i> Ninguno</span>
-  <span class="aj"><i>Encabezados y pies:</i> apagados</span>
-  <span class="aj"><i>Gráficos de fondo:</i> <b>ACTIVADO</b> — sin esto el documento sale en blanco</span>
+  <button type="button" onclick="window.print()">Guardar como PDF</button>
+  <span class="pista">si sale una impresora, cambia el destino a «Guardar como PDF»</span>
 </div>
 <div id="doc"></div>
 

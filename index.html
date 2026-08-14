@@ -2598,7 +2598,23 @@ function armarPayloadPoliza(p){
 
     /* sitioNombre es lo que se imprime, SIEMPRE: es texto guardado y sobrevive a
        que el sitio se borre del módulo de Forpass. */
-    cliente: { nombre: cli ? cli.nombre : '', sitio: p.sitioNombre || '' },
+    /* El documento imprimía «INOAC INOAC» y también imprimiría «Prolec Prolec
+       Planta 1»: cuando el SITIO ya trae el nombre del cliente adentro —igual
+       («INOAC»/«INOAC») o como prefijo («Prolec»/«Prolec Planta 1»)—, repetir
+       el nombre es ruido. En ese caso se imprime SOLO el sitio, que ya
+       identifica al cliente. Si el sitio es un código aparte («Mercado Libre» /
+       «MXGT01») se imprimen los dos, como en las cotizaciones reales.
+       La comparación ignora mayúsculas y acentos: «Álamo» / «alamo norte»
+       también es prefijo. */
+    cliente: (() => {
+      const llano = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .toLowerCase().replace(/\s+/g,' ').trim();
+      const nombre = cli ? cli.nombre : '';
+      const sitio  = p.sitioNombre || '';
+      if(sitio && llano(sitio).startsWith(llano(nombre)))
+        return { nombre: sitio, sitio: '' };
+      return { nombre, sitio };
+    })(),
     folio: p.folio || '',
     estatus: p.estatus,
 
