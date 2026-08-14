@@ -229,6 +229,14 @@
   table.cal td{border-bottom:1px solid var(--rule);height:20px;padding:0;}
   table.cal td.lbl{font-size:8px;padding:4px 7px;line-height:1.25;}
   table.cal td.ix{font-size:8px;text-align:right;padding-right:4px;}
+  /* Separadores verticales de las columnas de mes. Los documentos de referencia
+     NO los traen —medido: cero reglas verticales— pero con doce columnas cuesta
+     seguir a qué mes pertenece una celda a media tabla. Van desde la 3ª columna
+     (la 1ª es #, la 2ª Concepto), así que la primera raya también separa el
+     texto de la rejilla. Tono suave: la rejilla se lee por sus celdas
+     sombreadas, y una raya oscura competiría con ellas. */
+  table.cal th:nth-child(n+3),
+  table.cal td:nth-child(n+3){border-left:1px solid var(--rule);}
   table.cal td.on{background:var(--shade);}
 
   /* ---- Consideraciones ---- */
