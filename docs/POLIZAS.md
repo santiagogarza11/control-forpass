@@ -210,9 +210,16 @@ Dos diferencias con el cobro:
   sistema sería mentir en el papel que se le enseña al cliente. Se propone una
   fecha **dentro del mes de la vigencia** (hoy si estamos en ese mes, si no el
   día 1), y no se acepta una futura: un servicio no se marca por adelantado.
-- **Un renglón con cantidad > 1 se marca completo.** El modal lo dice: marcar
-  «Refrigerador Doble ×4» da por atendidos los cuatro. Si se atendieron por
-  separado, se separan en dos renglones — para eso está *Duplicar*.
+- **Un renglón con cantidad > 1 se marca POR UNIDADES.** El modal pinta un botón
+  por unidad, todos prendidos; se apagan los que no se atendieron y el porqué se
+  vuelve obligatorio. Se guarda `hechas` (cuántas) y `motivo` (por qué faltaron)
+  en el registro del mes — las unidades de un renglón consolidado son idénticas,
+  así que se guarda el CUÁNTAS, nunca cuáles. Cero prendidos no se puede guardar:
+  eso no es un servicio, es no marcar el mes. Un registro viejo sin `hechas`
+  significa «todas» y `normalizarPoliza` lo materializa así (idempotente, y
+  `hechas` se acota a `[1, cantidad]`; `motivo` se tira si quedó completo). El
+  parcial se ve en el chip del detalle (ámbar, «4/5», porqué en el globito) y en
+  el calendario («4 de 5» con el porqué al lado).
 
 Deshacer usa `confirmar()` y **reabre el calendario con un tick de retraso**:
 `confirmar()` corre su callback y *después* cierra el modal, así que abrirlo ahí

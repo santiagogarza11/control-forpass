@@ -529,6 +529,16 @@ table.tabla tr.tiene-notas > td{border-bottom:none; padding-bottom:2px;}
 .chip-mes{font-family:inherit; cursor:pointer;}
 .chip-mes:hover{filter:brightness(.95);}
 .chip-mes:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+/* Botones de unidad del modal de servicio: prendido = se atendió. El apagado se
+   ve deliberadamente "hueco" (borde punteado, número tachado) para que el ojo
+   cuente los prendidos de un vistazo. */
+.sv-unidades{display:flex; gap:8px; flex-wrap:wrap; margin:2px 0 4px;}
+.sv-uni{min-width:46px; padding:9px 0; text-align:center; cursor:pointer;
+  font:700 13.5px Manrope,sans-serif; border-radius:9px;
+  background:#E8F5EE; color:#26714A; border:1.5px solid #54C682;}
+.sv-uni:not(.activa){background:var(--bg); color:var(--gray);
+  border:1.5px dashed var(--line); text-decoration:line-through;}
+.sv-uni:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
 .busca-equipo .cuantos{flex:0 0 auto; width:58px; min-width:0; text-align:center; padding:6px 4px; font-size:12px;}
 /* Pie de la tabla de renglones. Fuera del scroll horizontal a propósito. */
 .pie-renglones{display:flex; gap:26px; justify-content:flex-end; flex-wrap:wrap;
@@ -2091,6 +2101,9 @@ function normalizarPoliza(p){
     crudos[id] = Object.assign({}, viejo, crudos[id] || {});
   });
 
+  /* Para acotar `hechas` contra el tamaño real del renglón. */
+  const cantidadDe = new Map(partidas.map(x => [x.id, x.cantidad]));
+
   const hechos = {};
   Object.keys(crudos).filter(id => vivas.has(id)).sort().forEach(id=>{
     const porMes = crudos[id];
@@ -2103,11 +2116,25 @@ function normalizarPoliza(p){
         /* Sin fecha no hubo servicio: es una casilla que alguien abrió y no
            llenó. Se tira para que no se acumule basura invisible. */
         if(!d || !d.cuando) return;
-        limpio[String(m)] = {
+        /* `hechas`: cuántas unidades del renglón se atendieron ese mes. Las
+           unidades de un renglón consolidado son intercambiables —tres Rational
+           idénticos—, así que lo que se guarda es el CUÁNTAS, no cuáles. Se
+           materializa SIEMPRE (los registros viejos no la traían: significaban
+           "todas") para que normalizar sea idempotente, y se acota a
+           [1, cantidad]: cero hechas no es un servicio, es no marcar el mes.
+           `motivo` es el porqué de las que faltaron: solo existe cuando faltó
+           alguna — completo, el porqué no significa nada. */
+        const tope = cantidadDe.get(id) || 1;
+        const n = parseInt(d.hechas, 10);
+        const hechas = Math.max(1, Math.min(tope, (Number.isInteger(n) && n > 0) ? n : tope));
+        const reg = {
           cuando: String(d.cuando),
           quien:  d.quien ? String(d.quien) : '',
-          nota:   d.nota  ? String(d.nota)  : ''
+          nota:   d.nota  ? String(d.nota)  : '',
+          hechas
         };
+        if(hechas < tope && d.motivo) reg.motivo = String(d.motivo);
+        limpio[String(m)] = reg;
       });
     /* Un renglón sin nada hecho no deja llave vacía colgando. */
     if(Object.keys(limpio).length) hechos[id] = limpio;
@@ -3368,12 +3395,18 @@ function vistaPoliza(){
          const chip = (m, tono, aviso) => {
            const hecho = servicioDetalle(p, x, m);
            const etiqueta = etiquetaMesServicio(p.fechaInicio, m);
+           /* Servicio a medias —2 de 3 unidades— se distingue de completo: chip
+              ámbar con la fracción adentro, y el porqué en el globito. */
+           const parcial = hecho && x.cantidad > 1 && (hecho.hechas || x.cantidad) < x.cantidad;
+           if(parcial) tono = 'z-ambar';
            const tip = etiqueta + (hecho ? ' · hecho el ' + fmtFecha(hecho.cuando)
                                             + (hecho.quien ? ' · ' + hecho.quien : '')
+                                            + (parcial ? ' · ' + hecho.hechas + ' de ' + x.cantidad
+                                                + (hecho.motivo ? ' · faltó: ' + hecho.motivo : '') : '')
                                          : ' · pendiente')
                      + (aviso ? ' · fuera del calendario' : '')
                      + (marcable ? (hecho ? ' — pica para corregirlo' : ' — pica para marcarlo hecho') : '');
-           const dentro = esc(etiqueta) + (aviso ? ' ⚠' : '');
+           const dentro = esc(etiqueta) + (parcial ? ' ' + hecho.hechas + '/' + x.cantidad : '') + (aviso ? ' ⚠' : '');
            return marcable
              ? '<button type="button" class="chip-zona chip-mes ' + tono + '" title="' + esc(tip) + '" '
                + 'data-servicio="' + esc(p.id) + '" data-partida="' + esc(x.id) + '" data-mes="' + m + '">' + dentro + '</button>'
@@ -4610,9 +4643,28 @@ function modalServicioPoliza(polizaId, partidaId, mes, vuelveAlCalendario){
         : '<div class="r-fila"><span>Ojo</span><span>Este mes ya no está en el calendario del equipo</span></div>')
     + '</div>'
 
+    /* Con varias unidades en el renglón, se marca CUÁNTAS se atendieron: botones
+       prendidos por omisión, se apagan los que no se hicieron. Las unidades de
+       un renglón consolidado son idénticas entre sí, así que el número del botón
+       no nombra a nadie: lo que cuenta es cuántos quedan prendidos. Si falta
+       alguno, el porqué es obligatorio — un faltante sin explicación es
+       exactamente la clase de dato mudo que este módulo vino a matar. */
     + (x.cantidad > 1
-        ? '<div class="pista" style="margin:-8px 0 14px">Son <b>' + x.cantidad + ' equipos</b> en un renglón: '
-          + 'marcarlo da por atendidos los ' + x.cantidad + '. Si se atendieron por separado, sepáralos en dos renglones.</div>'
+        ? '<div class="campo"><label>Equipos atendidos *</label>'
+          + '<div class="sv-unidades" id="svUnidades">'
+          + Array.from({length:x.cantidad}, (_,i)=>{
+              const prendido = det ? (i < (det.hechas || x.cantidad)) : true;
+              return '<button type="button" class="sv-uni' + (prendido ? ' activa' : '') + '" data-uni="' + i + '">' + (i+1) + '</button>';
+            }).join('')
+          + '</div>'
+          + '<div class="pista">Apaga los que NO se atendieron. No importa cuál número: los '
+          +   x.cantidad + ' son el mismo equipo, lo que se guarda es cuántos.</div>'
+          + '</div>'
+          + '<div class="campo" id="svCampoMotivo" style="display:none">'
+          +   '<label>¿Por qué no se atendieron todos? *</label>'
+          +   '<input type="text" id="svMotivo" placeholder="Ej. el equipo estaba en uso y no lo pudieron detener" value="' + esc((det && det.motivo) || '') + '">'
+          +   '<div class="pista">Queda en el registro del mes, junto a cuántos se atendieron.</div>'
+          + '</div>'
         : '')
 
     + '<div class="campo"><label>Fecha en que se hizo *</label>'
@@ -4652,6 +4704,21 @@ function modalServicioPoliza(polizaId, partidaId, mes, vuelveAlCalendario){
   if(vuelveAlCalendario){
     $('btnVolverCalendario').addEventListener('click', ()=>{ cerrarModal(); volver(); });
   }
+  /* Los botones de unidad: prender/apagar, y el motivo solo aparece cuando
+     falta alguno. Delegado en el contenedor, que muere con el modal. */
+  if(x.cantidad > 1){
+    $('svUnidades').addEventListener('click', ev=>{
+      const b = ev.target.closest('.sv-uni');
+      if(!b) return;
+      b.classList.toggle('activa');
+      const prendidos = $('svUnidades').querySelectorAll('.activa').length;
+      const campo = $('svCampoMotivo');
+      campo.style.display = prendidos < x.cantidad ? '' : 'none';
+      if(prendidos < x.cantidad) $('svMotivo').focus();
+    });
+    /* Al reabrir un registro parcial, el campo del motivo ya debe verse. */
+    if(det && (det.hechas || x.cantidad) < x.cantidad) $('svCampoMotivo').style.display = '';
+  }
   setTimeout(()=>{ const f = $('svCuando'); if(f) f.focus(); }, 70);
   cerrarModalActual = ()=>{
     /* Todo se lee ANTES de cerrar: cerrarModal reemplaza el contenedor por un
@@ -4672,15 +4739,35 @@ function modalServicioPoliza(polizaId, partidaId, mes, vuelveAlCalendario){
       aviso('Falta el nombre de quien captura.', true); return;
     }
 
-    marcarServicio(p, partidaId, mes, { cuando, quien, nota });
+    /* Cuántas unidades quedaron prendidas, y el porqué si falta alguna. */
+    let hechas = x.cantidad, motivo = '';
+    if(x.cantidad > 1){
+      hechas = $('svUnidades').querySelectorAll('.activa').length;
+      if(hechas === 0){
+        aviso('Si no se atendió ninguno, no lo marques como hecho: cancela, o deshaz el registro.', true);
+        return;
+      }
+      if(hechas < x.cantidad){
+        motivo = $('svMotivo').value.trim();
+        if(!motivo){
+          $('svMotivo').setAttribute('aria-invalid','true'); $('svMotivo').focus();
+          aviso('Falta el porqué de los equipos que no se atendieron.', true); return;
+        }
+      }
+    }
+
+    marcarServicio(p, partidaId, mes, Object.assign({ cuando, quien, nota, hechas },
+      motivo ? { motivo } : {}));
     if(!conCuenta) recordarCapturador(quien);
 
+    const parcial = hechas < x.cantidad ? ' · ' + hechas + ' de ' + x.cantidad + ' · faltó: ' + motivo : '';
     guardarPoliza(p, yaHecho ? 'corrigió el servicio de' : 'registró el servicio de',
       x.concepto + ' · ' + etiqueta + ' · hecho el ' + fmtFecha(cuando) + ' · capturó ' + quien
-      + (nota ? ' · ' + nota : ''));
+      + parcial + (nota ? ' · ' + nota : ''));
     cerrarModal();
     render();
-    aviso('Servicio de ' + x.concepto + ' en ' + etiqueta + (yaHecho ? ' actualizado' : ' registrado') + '.');
+    aviso('Servicio de ' + x.concepto + ' en ' + etiqueta
+      + (hechas < x.cantidad ? ' registrado: ' + hechas + ' de ' + x.cantidad : (yaHecho ? ' actualizado' : ' registrado')) + '.');
     volver();
   };
 }
@@ -4747,9 +4834,13 @@ function modalCalendario(id){
         const esAhora = z.m === mesActual;
         const renglon = r => {
           const marca = r.det ? ICONO.cheque : '';
+          /* «2 de 3» cuando el mes quedó a medias, con el porqué a un lado. */
+          const parcial = r.det && r.x.cantidad > 1 && (r.det.hechas || r.x.cantidad) < r.x.cantidad;
           const texto = esc(r.x.concepto) + (r.x.cantidad > 1 ? ' <b>×' + r.x.cantidad + '</b>' : '')
               + (r.fuera ? ' <span class="pista" style="display:inline">(fuera de calendario)</span>' : '')
-              + (r.det && r.det.cuando ? ' <span class="pista" style="display:inline">' + fmtFecha(r.det.cuando) + '</span>' : '');
+              + (r.det && r.det.cuando ? ' <span class="pista" style="display:inline">' + fmtFecha(r.det.cuando) + '</span>' : '')
+              + (parcial ? ' <b style="color:#8A5A0B">' + r.det.hechas + ' de ' + r.x.cantidad + '</b>'
+                  + (r.det.motivo ? ' <span class="pista" style="display:inline">' + esc(r.det.motivo) + '</span>' : '') : '');
           return '<li' + (r.det ? ' class="hecho"' : '') + '>'
             + (marcable
                 ? '<button type="button" class="cal-marcar" data-servicio="' + esc(p.id) + '" '

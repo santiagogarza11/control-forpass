@@ -322,6 +322,24 @@ Indicadores de pólizas en la portada de su módulo ya están (activas, en la ca
 servicios del mes, atrasados). Falta el cruce con Forpass si se quiere una portada
 única, y la vista de "qué toca este mes" a nivel de todas las pólizas, no de una.
 
+### Servicios por unidad: hecho (14-ago-2026, 30 verificaciones)
+
+Pedido por Santiago: con «3 Rational» en un renglón, marcar el mes daba por
+atendidos los tres. Ahora el modal pinta **un botón por unidad** (prendidos por
+omisión), se apagan los no atendidos, y **el porqué es obligatorio** cuando falta
+alguno. Detalle en `docs/POLIZAS.md` §Servicios ejecutados. Esquema: `hechas` y
+`motivo` dentro del registro del mes en `hechos` — fuera de `partidas`, así que
+el congelado ni se entera (verificado: `partidas` sale idéntica).
+
+### ⏸ Diferido por Santiago: vigencia variable (1–24 meses)
+
+Lo pidió el 14-ago-2026 —cotizar lo que resta del año— y lo difirió él mismo en
+el mismo mensaje por riesgo. Correcto: `MESES_POLIZA = 12` es decisión cerrada
+con raíces en la cláusula impresa («doce (12) meses»), las 12 columnas del
+calendario del documento, `repartirCentavos`, `mesesRegulares` y `arranquesDe`.
+**Si se reabre, es proyecto con fase propia, no un ajuste** — y ya existe el
+motivo de negocio real que la tabla de decisiones pedía.
+
 ### Fase 5 — botón Imprimir: hecho (13-ago-2026, 44 verificaciones)
 
 Botón **Imprimir** en el detalle de la póliza, junto a Calendario y Editar:
