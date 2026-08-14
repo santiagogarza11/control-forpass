@@ -323,10 +323,14 @@ button.encargado:focus-visible{outline:2px solid var(--accent); outline-offset:2
 .meses{display:flex; gap:4px; flex-wrap:wrap;}
 .mes{
   width:26px; height:26px; border-radius:7px; border:1.5px solid #d9dfec; background:#fbfcfe;
-  font-family:inherit; font-size:10.5px; font-weight:600; color:#9aa0b0; cursor:pointer;
+  font-family:inherit; font-size:10.5px; font-weight:600; color:#9aa0b0;
+  /* El cursor de mano solo si de verdad se puede picar: para el Viewer estas
+     casillas son <span>, no botones. */
+  cursor:default;
   display:grid; place-items:center; transition:background .12s, border-color .12s, color .12s, transform .1s;
 }
 .mes:hover{border-color:var(--accent); color:var(--accent);}
+button.mes{cursor:pointer;}
 .mes.pagado{background:var(--ok); border-color:var(--ok); color:#fff;}
 .mes.pagado:hover{background:#35935c; border-color:#35935c; color:#fff;}
 .mes.debido{border-color:var(--error); color:var(--error); background:var(--error-suave);}
@@ -3226,7 +3230,7 @@ function vistaPolizas(){
           ? '<button type="button" class="btn btn-suave btn-mini" data-accion="importar-polizas" '
             + 'title="Cargar una cotización ya extraída de su PDF">' + ICONO.subir + 'Importar JSON</button>'
           : '')
-     +   (datos.polizas.length
+     +   (datos.polizas.length && puedeEditar()
           ? '<button type="button" class="btn btn-primario" data-accion="nueva-poliza">' + ICONO.mas + 'Nueva cotización</button>'
           : '')
      + '</div></div>';
@@ -3327,8 +3331,14 @@ function vistaPolizas(){
          +     '<button type="button" class="btn btn-suave btn-mini" data-calendario="' + esc(p.id) + '" '
          +       'title="Qué equipos se atienden cada mes">' + ICONO.calendario + '</button>'
          +     '<span class="espacio"></span>'
-         +     '<button type="button" class="btn btn-suave btn-mini" data-editar-poliza="' + esc(p.id) + '" title="Editar póliza">' + ICONO.lapiz + '</button>'
-         +     '<button type="button" class="btn btn-peligro btn-mini" data-borrar-poliza="' + esc(p.id) + '" title="Eliminar póliza">' + ICONO.basura + '</button>'
+         /* Editar y borrar SOLO con permiso. Al Viewer no se le enseñan botones
+            que el servidor le va a negar: la interfaz debe decir la verdad de lo
+            que puede hacer, no ofrecerle callejones sin salida. Ver el detalle,
+            el calendario y el documento sí los tiene: son lectura. */
+         +     (puedeEditar()
+                ? '<button type="button" class="btn btn-suave btn-mini" data-editar-poliza="' + esc(p.id) + '" title="Editar póliza">' + ICONO.lapiz + '</button>'
+                  + '<button type="button" class="btn btn-peligro btn-mini" data-borrar-poliza="' + esc(p.id) + '" title="Eliminar póliza">' + ICONO.basura + '</button>'
+                : '')
          +   '</div>'
          + '</div>';
   }).join('') + '</div>';
@@ -3474,16 +3484,26 @@ function vistaPoliza(){
      + '<div class="c-fila"><span>Vencido sin cobrar</span><b' + (c.adeudo ? ' style="color:var(--error)"' : '') + '>' + dineroCent(c.adeudo) + '</b></div>'
      + '<div class="c-fila"><span>Casillas</span><b>' + c.cobrados + ' de ' + p.cobros.length + ' pagadas</b></div>'
      + '<div class="meses" style="margin-top:10px">'
-     + p.cobros.map((ok,i)=>'<button type="button" class="mes' + (ok ? ' pagado' : (i < c.debidos ? ' debido' : '')) + '" '
-         + 'data-cobro="' + esc(p.id) + '" data-idx="' + i + '" '
-         + 'title="' + esc('Cobro ' + (i+1) + ' · ' + dineroCent(c.montos[i])
+     /* Las casillas se VEN siempre —el estado de cobranza es lectura— pero solo
+        son botones con permiso: al Viewer no se le ofrece un clic que termina en
+        «tu cuenta no puede hacer cambios». Mismo criterio que los chips de mes. */
+     + p.cobros.map((ok,i)=>{
+         const clase = 'mes' + (ok ? ' pagado' : (i < c.debidos ? ' debido' : ''));
+         const tip = 'Cobro ' + (i+1) + ' · ' + dineroCent(c.montos[i])
              + (p.facturacion === 'mensual' ? ' · ' + fmtFecha(sumarMeses(p.fechaInicio, i)) : '')
              + (ok ? ' · pagado' + (p.cobrosDetalle[i].oc ? ' con OC ' + p.cobrosDetalle[i].oc : '')
                    : (i < c.debidos ? ' · vencido' : ' · por venir'))
-             + ' — clic para capturar') + '">' + (i+1) + '</button>').join('')
+             + (puedeEditar() ? ' — clic para capturar' : '');
+         return puedeEditar()
+           ? '<button type="button" class="' + clase + '" data-cobro="' + esc(p.id) + '" data-idx="' + i + '" '
+             + 'title="' + esc(tip) + '">' + (i+1) + '</button>'
+           : '<span class="' + clase + '" title="' + esc(tip) + '">' + (i+1) + '</span>';
+       }).join('')
      + '</div>'
-     + '<div class="pista" style="margin-top:8px">Pícale a una casilla para capturar su OC. '
-     +   'Un cobro ya capturado se puede reabrir para corregirlo.</div>'
+     + (puedeEditar()
+         ? '<div class="pista" style="margin-top:8px">Pícale a una casilla para capturar su OC. '
+           + 'Un cobro ya capturado se puede reabrir para corregirlo.</div>'
+         : '')
      + (c.cobrados
          ? '<div class="rodillo" style="margin-top:14px"><table class="tabla">'
            + '<thead><tr><th>#</th><th>Monto</th><th>OC</th><th>Capturó</th><th>Cuándo</th><th>Factura</th></tr></thead><tbody>'
