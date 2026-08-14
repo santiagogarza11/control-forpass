@@ -2394,6 +2394,15 @@ function repartirCentavos(totalCent, n){
 /* Lo ejecutado de UN renglón. Todos pasan por aquí para que el resto del código
    no tenga que saber que `hechos` vive en la póliza y no en la partida. */
 const hechosDe = (p, x) => (p.hechos && p.hechos[x.id]) || {};
+/* El segurista es una PERSONA supervisando, no un equipo: no se le "da
+   mantenimiento" ni lleva palomita. Se detecta por el concepto y no por una
+   bandera en la partida A PROPÓSITO: `partidas` está congelada por la regla del
+   servidor en las pólizas vivas, así que agregarle un campo dejaría a un
+   Analyst sin poder guardar nada en una activa. Su dinero no se toca — sigue
+   siendo un renglón cotizado; lo que cambia es que no cuenta como servicio
+   pendiente y el calendario lo anuncia como «Incluye segurista». */
+const esSegurista = x => /segurist/i.test(x.concepto || '');
+
 const servicioHecho = (p, x, mes) => !!hechosDe(p, x)[String(mes)];
 const servicioDetalle = (p, x, mes) => hechosDe(p, x)[String(mes)] || null;
 const serviciosHechos = (p, x) => x.mesesServicio.filter(m => servicioHecho(p, x, m)).length;
@@ -2517,6 +2526,10 @@ function calcularPoliza(p){
      nadie lo marcó; el del mes en curso todavía no lo está, solo "toca". */
   let programados = 0, hechos = 0, atrasados = 0, tocanEsteMes = 0, huerfanos = 0;
   p.partidas.forEach(x=>{
+    /* El segurista no entra al seguimiento: es presencia, no mantenimiento.
+       Sin esto, sus meses contarían como "atrasados" para siempre y la póliza
+       viviría en rojo. Su dinero ya quedó sumado arriba, en totales. */
+    if(esSegurista(x)) return;
     programados += x.mesesServicio.length;
     hechos      += serviciosHechos(p, x);
     huerfanos   += serviciosFueraDeCalendario(p, x).length;
@@ -3393,8 +3406,15 @@ function vistaPoliza(){
      + p.partidas.map((x,i)=>{
          const fuera = serviciosFueraDeCalendario(p, x);
          const chip = (m, tono, aviso) => {
-           const hecho = servicioDetalle(p, x, m);
            const etiqueta = etiquetaMesServicio(p.fechaInicio, m);
+           /* El segurista no se marca: sus meses son presencia incluida, no
+              mantenimientos. Chip plano, sin botón, que lo diga. */
+           if(esSegurista(x)){
+             return '<span class="chip-zona z-gris" title="Incluye segurista en '
+               + esc(etiqueta) + ' — es presencia, no lleva registro de mantenimiento">'
+               + esc(etiqueta) + '</span>';
+           }
+           const hecho = servicioDetalle(p, x, m);
            /* Servicio a medias —2 de 3 unidades— se distingue de completo: chip
               ámbar con la fracción adentro, y el porqué en el globito. */
            const parcial = hecho && x.cantidad > 1 && (hecho.hechas || x.cantidad) < x.cantidad;
@@ -4617,6 +4637,11 @@ function modalServicioPoliza(polizaId, partidaId, mes, vuelveAlCalendario){
   if(!p) return;
   const x = p.partidas.find(q => q.id === partidaId);
   if(!x) return;
+  /* Cinturón por si algún camino viejo llega aquí con un segurista. */
+  if(esSegurista(x)){
+    aviso('El segurista es presencia incluida en la póliza: no lleva registro de mantenimiento.');
+    return;
+  }
   if(!exigirPermiso()) return;
 
   const det = servicioDetalle(p, x, mes);
@@ -4813,12 +4838,18 @@ function modalCalendario(id){
 
   const marcable = puedeEditar();
   const meses = Array.from({length:MESES_POLIZA}, (_,m)=>{
-    const toca = [];
+    const toca = [], seguristas = [];
     p.partidas.forEach(x=>{
+      /* El segurista no es un equipo que atender: se anuncia aparte, sin
+         palomita, sin contar en los equipos del mes. */
+      if(esSegurista(x)){
+        if(x.mesesServicio.includes(m)) seguristas.push(x);
+        return;
+      }
       if(x.mesesServicio.includes(m)) toca.push({ x, det: servicioDetalle(p, x, m), fuera:false });
       else if(servicioHecho(p, x, m)) toca.push({ x, det: servicioDetalle(p, x, m), fuera:true });
     });
-    return { m, toca, equipos: toca.reduce((t,r)=> t + r.x.cantidad, 0),
+    return { m, toca, seguristas, equipos: toca.reduce((t,r)=> t + r.x.cantidad, 0),
              pendientes: toca.filter(r => !r.det).length };
   });
   const pico = Math.max(...meses.map(z=>z.equipos));
@@ -4834,22 +4865,36 @@ function modalCalendario(id){
         const esAhora = z.m === mesActual;
         const renglon = r => {
           const marca = r.det ? ICONO.cheque : '';
-          /* «2 de 3» cuando el mes quedó a medias, con el porqué a un lado. */
+          /* «2 de 3» visible cuando el mes quedó a medias; el PORQUÉ va en el
+             globito, no en la tarjeta: inline rompía el renglón en columnas
+             angostas. Al picar, el registro lo enseña completo. */
           const parcial = r.det && r.x.cantidad > 1 && (r.det.hechas || r.x.cantidad) < r.x.cantidad;
           const texto = esc(r.x.concepto) + (r.x.cantidad > 1 ? ' <b>×' + r.x.cantidad + '</b>' : '')
               + (r.fuera ? ' <span class="pista" style="display:inline">(fuera de calendario)</span>' : '')
               + (r.det && r.det.cuando ? ' <span class="pista" style="display:inline">' + fmtFecha(r.det.cuando) + '</span>' : '')
-              + (parcial ? ' <b style="color:#8A5A0B">' + r.det.hechas + ' de ' + r.x.cantidad + '</b>'
-                  + (r.det.motivo ? ' <span class="pista" style="display:inline">' + esc(r.det.motivo) + '</span>' : '') : '');
-          return '<li' + (r.det ? ' class="hecho"' : '') + '>'
+              + (parcial ? ' <b style="color:#8A5A0B">' + r.det.hechas + ' de ' + r.x.cantidad + '</b>' : '');
+          const tip = r.det
+            ? 'Hecho el ' + fmtFecha(r.det.cuando) + (r.det.quien ? ' · ' + r.det.quien : '')
+              + (parcial ? ' · ' + r.det.hechas + ' de ' + r.x.cantidad
+                  + (r.det.motivo ? ' · faltó: ' + r.det.motivo : '') : '')
+              + (r.det.nota ? ' · ' + r.det.nota : '')
+              + (marcable ? ' — pica para corregirlo' : '')
+            : (marcable ? 'Registrar que ya se hizo' : 'Pendiente');
+          return '<li' + (r.det ? ' class="hecho"' : '') + ' title="' + esc(tip) + '">'
             + (marcable
                 ? '<button type="button" class="cal-marcar" data-servicio="' + esc(p.id) + '" '
-                  + 'data-partida="' + esc(r.x.id) + '" data-mes="' + z.m + '" data-vuelve="cal" '
-                  + 'title="' + (r.det ? 'Ya se hizo · pica para corregirlo' : 'Registrar que ya se hizo') + '">'
+                  + 'data-partida="' + esc(r.x.id) + '" data-mes="' + z.m + '" data-vuelve="cal">'
                   + marca + texto + '</button>'
                 : marca + texto)
             + '</li>';
         };
+        /* La nota del segurista: presencia incluida, no mantenimiento. El icono
+           va acotado a mano: los SVG de ICONO no traen tamaño propio y en un
+           div suelto se inflan al ancho completo. */
+        const notaSegurista = z.seguristas.map(x =>
+          '<div class="pista" style="margin-top:7px;display:flex;align-items:center;gap:5px">'
+          + '<span style="display:inline-flex;width:13px;height:13px;flex:0 0 auto">' + ICONO.persona + '</span>'
+          + 'Incluye segurista' + (x.cantidad > 1 ? ' ×' + x.cantidad : '') + '</div>').join('');
         return '<div class="cal-mes' + (z.toca.length ? '' : ' vacio') + (esAhora ? ' ahora' : '') + '">'
           + '<div class="cal-cabeza">'
           +   '<b>' + esc(etiquetaMesServicio(p.fechaInicio, z.m)) + '</b>'
@@ -4860,6 +4905,7 @@ function modalCalendario(id){
           + (z.toca.length
               ? '<ul class="cal-lista">' + z.toca.map(renglon).join('') + '</ul>'
               : '<div class="pista">Sin servicios programados.</div>')
+          + notaSegurista
           + '</div>';
       }).join('')
     + '</div>';

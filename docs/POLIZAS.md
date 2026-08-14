@@ -175,6 +175,24 @@ Los tres iconos de la fila (*Calendario*, *Duplicar*, *Borrar*) llevan su etique
 en un globito de CSS, no en `title`: el nativo tarda casi un segundo y con tres
 iconos seguidos nadie adivina cuál es cuál mientras espera.
 
+### El segurista no es un equipo
+
+Un renglón cuyo concepto dice «segurista» es una PERSONA supervisando, no un
+equipo que reciba mantenimiento. Su dinero es un renglón cotizado normal, pero
+**no entra al seguimiento**: no cuenta en programados/hechos/atrasados —sin esto
+sus meses vivirían en rojo para siempre—, en el calendario aparece como nota
+(«Incluye segurista») en los meses cubiertos, sus chips no son botones y el modal
+de servicio lo rechaza.
+
+Se detecta **por el concepto** (`esSegurista`), no con una bandera en la partida,
+a propósito: `partidas` está congelada por la regla del servidor en las pólizas
+vivas, y agregarle un campo dejaría a un Analyst sin poder guardar nada en una
+activa.
+
+En el calendario, el **porqué de un mes parcial va en el globito** (y en el
+registro al picar), no inline: el texto largo rompía las tarjetas angostas. La
+fracción «4 de 5» sí queda visible — es la señal operativa.
+
 ### Cobranza
 
 Las casillas del detalle son **botones**, y abren `modalCobroPoliza()` con el mismo

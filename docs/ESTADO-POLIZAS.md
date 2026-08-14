@@ -331,6 +331,15 @@ alguno. Detalle en `docs/POLIZAS.md` §Servicios ejecutados. Esquema: `hechas` y
 `motivo` dentro del registro del mes en `hechos` — fuera de `partidas`, así que
 el congelado ni se entera (verificado: `partidas` sale idéntica).
 
+### Segurista fuera del seguimiento + el porqué al globito (14-ago-2026, 21 pruebas)
+
+Pedidos por Santiago sobre la marcha: el segurista es una persona supervisando,
+no un equipo — ahora es nota «Incluye segurista» en los meses cubiertos (MXGT01
+los 12, MXNL02 sus 3), sin palomita, sin contar en los KPIs de servicios (MXGT01
+131→119 programados) y con su dinero intacto. Y el motivo de un parcial salió de
+la tarjeta del calendario: fracción visible, porqué en el globito. Detalle y
+porqués en `docs/POLIZAS.md` §El segurista no es un equipo.
+
 ### ⏸ Diferido por Santiago: vigencia variable (1–24 meses)
 
 Lo pidió el 14-ago-2026 —cotizar lo que resta del año— y lo difirió él mismo en
