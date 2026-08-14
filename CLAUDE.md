@@ -402,6 +402,18 @@ tapado y nadie lo vio, así que sí hay que animar el siguiente.
 - **Un cambio puede estar committeado y el build de Pages fallado.** Verificar
   con `gh api repos/santiagogarza11/control-forpass/pages/builds/latest`;
   reconstruir con `gh api -X POST repos/santiagogarza11/control-forpass/pages/builds`.
+- **Paginar prediciendo no basta: hay que medir lo dibujado y corregir.** Los
+  topes de 23 y 21 filas y el reparto de la descripción son PREDICCIONES, y
+  fallan por cosas que no controlamos —métricas de fuente de cada máquina, un
+  tamaño mínimo de letra configurado en Chrome, un concepto larguísimo—. En la
+  máquina de Santiago cabía una fila más que en la mía y el pie le salía escrito
+  **encima del texto**, en el papel que ve el cliente; medí tres veces en la mía
+  y siempre dio limpio. Ahora `evitarTraslapeConPie()` recorre las hojas ya
+  pintadas y empuja a la siguiente lo que invada el pie, creando hoja si hace
+  falta. Y corre **después de `document.fonts.ready`** (si asientan tarde, los
+  altos cambian y el reparto queda viejo) **y otra vez en `beforeprint`**, que es
+  el único momento que de verdad importa. La aserción permanente ahora también
+  cuenta filas encimadas, no solo filas faltantes.
 - **La plantilla del documento se abre con `?v=` del momento, y no es capricho.**
   Pages le manda `cache-control: max-age=600`, y como se abre en **pestaña nueva**
   el `Cmd+Shift+R` del tablero no la alcanza: se arreglaba un defecto del papel, se

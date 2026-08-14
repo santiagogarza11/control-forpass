@@ -715,7 +715,83 @@ function partirDescripcion(){
     anterior = hoja;
   });
 }
-if(POLIZA) partirDescripcion();
+
+/* --- El corrector: mide lo YA DIBUJADO y empuja lo que se encima ---
+   partirDescripcion() y los topes de 23 y 21 filas son PREDICCIONES: calculan
+   dónde debería cortar antes de dibujar. Y una predicción puede fallar por cosas
+   que no controlamos —métricas de fuente de cada máquina, un tamaño mínimo de
+   letra configurado en el navegador, un concepto larguísimo que envuelve—. Le
+   pasó a Santiago: en su Chrome cabía una fila más que en el mío y el pie le
+   quedaba escrito encima del texto, en el papel que se le manda al cliente.
+
+   Esto no predice: recorre las hojas ya pintadas y, mientras la última fila de
+   una tabla invada el pie, la MUEVE a la hoja siguiente —creándola si no
+   existe—. Al final vuelve a medir. Sirve para las tres tablas y para cualquier
+   póliza futura, sin volver a calibrar un tope a mano.
+
+   Se hace UNA sola pasada de trabajo por hoja con un guardián de vueltas: mover
+   filas dentro de un bucle que remide es exactamente como se desbocó la primera
+   versión de la paginación (616 filas donde había 16). */
+const TABLAS = [
+  { tb:'table.grid.desc tbody', tabla:'table.grid.desc' },
+  { tb:'table.grid:not(.desc) tbody', tabla:'table.grid:not(.desc)' },
+  { tb:'table.cal tbody', tabla:'table.cal' }
+];
+
+function hojaDe(el){ return el.closest('.page'); }
+
+function nuevaHojaComo(hoja, selTabla, selTb){
+  /* Clona la hoja, le vacía la tabla y le quita el bloque de cierre —Precio
+     Anual y las notas van SOLO en la última—; después se le devuelve. */
+  const nueva = hoja.cloneNode(true);
+  nueva.querySelector(selTb).innerHTML = '';
+  const cierre = nueva.querySelectorAll('.totals, .note');
+  cierre.forEach(c => c.remove());
+  hoja.after(nueva);
+  return nueva;
+}
+
+function evitarTraslapeConPie(){
+  let guardia = 0, hubo = true;
+  while(hubo && guardia++ < 80){
+    hubo = false;
+    for(const { tb, tabla } of TABLAS){
+      const cuerpos = [...document.querySelectorAll(tb)];
+      for(let i = 0; i < cuerpos.length; i++){
+        const cuerpo = cuerpos[i];
+        const hoja = hojaDe(cuerpo);
+        const pie = hoja && hoja.querySelector('.footwrap');
+        if(!pie) continue;
+        const techo = pie.getBoundingClientRect().top - 4;
+        const filas = [...cuerpo.children];
+        /* Nunca se deja una hoja sin ninguna fila: si ni una cabe, el problema
+           es de otro tamaño y lo va a gritar la aserción. */
+        if(filas.length < 2) continue;
+        const ultima = filas[filas.length - 1];
+        if(ultima.getBoundingClientRect().bottom <= techo) continue;
+
+        /* Se encima: a la hoja siguiente del mismo tipo, o a una nueva. */
+        const siguiente = cuerpos[i + 1] || nuevaHojaComo(hoja, tabla, tb).querySelector(tb);
+        siguiente.insertBefore(ultima, siguiente.firstChild);
+        hubo = true;
+      }
+    }
+  }
+  /* El bloque de cierre de la tabla tiene que acabar en la ÚLTIMA hoja de la
+     tabla: si el corrector creó una hoja nueva después, se lo lleva. */
+  const cierres = document.querySelectorAll('.totals');
+  if(cierres.length){
+    const cierre = cierres[cierres.length - 1];
+    const notas = cierre.parentNode.querySelector('.note');
+    const tablas = document.querySelectorAll('table.grid:not(.desc)');
+    const ultimaTabla = tablas[tablas.length - 1];
+    const cuerpoDeLaUltima = ultimaTabla && ultimaTabla.closest('.body');
+    if(cuerpoDeLaUltima && cierre.parentNode !== cuerpoDeLaUltima){
+      cuerpoDeLaUltima.appendChild(cierre);
+      if(notas) cuerpoDeLaUltima.appendChild(notas);
+    }
+  }
+}
 
 /* --- La aserción que se queda para siempre ---
    Cuenta los renglones REALMENTE IMPRESOS en todas las hojas y los compara con
@@ -736,7 +812,22 @@ function verificarRenglonesImpresos(){
     { que:'filas de la descripción',    impreso: cuenta('table.grid.desc tbody'),       esperado: POLIZA.descripciones.length }
   ];
   const mal = pruebas.filter(p => p.impreso !== p.esperado);
-  if(!mal.length){ console.info('Documento completo:', pruebas.map(p=>`${p.que} ${p.impreso}/${p.esperado}`).join(' · ')); return true; }
+
+  /* Y que NADA se encime con el pie. El conteo por sí solo no lo veía: las filas
+     estaban todas impresas, solo que una encima del telefono. Se revisa después
+     del corrector, así que si esto salta es que ni corrigiendo cupo. */
+  let encimadas = 0;
+  document.querySelectorAll('.page').forEach(pg => {
+    const pie = pg.querySelector('.footwrap');
+    if(!pie) return;
+    const techo = pie.getBoundingClientRect().top;
+    pg.querySelectorAll('.body tbody tr').forEach(tr => {
+      if(tr.getBoundingClientRect().bottom > techo + 1) encimadas++;
+    });
+  });
+  if(encimadas) mal.push({ que:'filas encimadas con el pie', impreso: encimadas, esperado: 0 });
+
+  if(!mal.length){ console.info('Documento completo:', pruebas.map(p=>`${p.que} ${p.impreso}/${p.esperado}`).join(' · ') + ' · sin traslapes'); return true; }
 
   const aviso = document.createElement('div');
   /* Bloque normal, no sticky: sticky no se imprime en algunos navegadores y este
@@ -745,13 +836,54 @@ function verificarRenglonesImpresos(){
   aviso.setAttribute('style',
     'background:#B3312C;color:#fff;padding:14px 18px;margin:0 auto 8px;max-width:8.5in;'
   + 'font:700 13px/1.5 Poppins,Helvetica,Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact');
-  aviso.innerHTML = 'ESTE DOCUMENTO ESTÁ INCOMPLETO — NO LO MANDES.<br>'
-    + mal.map(p=>`Se imprimieron ${p.impreso} ${p.que} de ${p.esperado}.`).join('<br>');
+  aviso.innerHTML = 'ESTE DOCUMENTO ESTÁ MAL FORMADO — NO LO MANDES.<br>'
+    + mal.map(p => p.esperado === 0
+        ? `Hay ${p.impreso} ${p.que}.`
+        : `Se imprimieron ${p.impreso} ${p.que} de ${p.esperado}.`).join('<br>');
   document.getElementById('doc').prepend(aviso);
   console.error('Documento incompleto', mal);
   return false;
 }
-if(POLIZA) verificarRenglonesImpresos();
+
+/* --- CUÁNDO se acomoda el documento ---
+   No basta con hacerlo al final del script: en ese momento las fuentes
+   embebidas pueden no haber asentado, y si asientan después las filas cambian
+   de alto y el reparto que se acaba de calcular queda viejo. Se acomoda:
+
+     1. Al cargar, ya con document.fonts.ready — el momento en que los altos son
+        los definitivos.
+     2. Otra vez en 'beforeprint', porque imprimir vuelve a maquetar y es el
+        único momento que de verdad importa: el papel es lo que ve el cliente.
+
+   La red del setTimeout no es adorno: fonts.ready NO resuelve en una pestaña de
+   fondo, y sin ella el documento se quedaría sin acomodar para siempre. Es la
+   misma trampa que ya está documentada para las animaciones.
+
+   `acomodando` evita que las dos entradas se pisen, y partirDescripcion() ya
+   sale sola si la descripción cabe entera, así que repetir es barato. */
+let acomodando = false;
+function acomodarDocumento(){
+  if(!POLIZA || acomodando) return;
+  acomodando = true;
+  try{
+    partirDescripcion();
+    evitarTraslapeConPie();
+    verificarRenglonesImpresos();
+  } finally { acomodando = false; }
+}
+
+if(POLIZA){
+  let yaCorrio = false;
+  const unaVez = () => { if(yaCorrio) return; yaCorrio = true; acomodarDocumento(); };
+  if(document.fonts && document.fonts.ready){
+    document.fonts.ready.then(unaVez);
+    setTimeout(unaVez, 1200);          /* pestaña de fondo: fonts.ready no llega */
+  } else {
+    unaVez();
+  }
+  /* Imprimir vuelve a maquetar: se revisa otra vez justo antes. */
+  addEventListener('beforeprint', acomodarDocumento);
+}
 </script>
 </body>
 </html>
