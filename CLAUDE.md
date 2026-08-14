@@ -151,7 +151,7 @@ tocar cualquier cosa del módulo. Lo mínimo que hay que saber:
 | **Plazo fijo en 12** (`MESES_POLIZA`), sin campo `meses` | la cláusula impresa dice "doce (12) meses" y el calendario del documento tiene 12 columnas clavadas |
 | **Cinco estatus**: `cotizacion → enviada → activa`, más `perdida` y `cancelada` | "terminada" y "por vencer" se derivan de las fechas, como los sitios no guardan "Contrato cubierto" |
 | **Congelado de precios por regla de servidor**, no por convención | la interfaz sola no es seguridad; la regla exige que `partidas` salga idéntica |
-| **Sin campo de descuento, en ninguna parte** | MXGT01 traía un 5% escondido en los totales y por eso dejó de cuadrar |
+| **Descuento solo en porcentaje, a nivel de póliza, de Owner/Admin y SIEMPRE impreso como renglón** *(reabierta 14-ago-2026)* | lo que rompió MXGT01 no fue el descuento sino que viviera escondido en el Total Mtto de cada renglón. Nunca toca `totalRenglon()`, solo se guarda el %, y está congelado por regla igual que los precios |
 | **El total siempre derivado**, nunca guardado | ni `precioAnual` ni el total de un renglón. Guardar un total calculado es cómo se llega a que no cuadre |
 | **El catálogo es colección** (`catalogo/lista`), un documento con el arreglo | los precios los edita el equipo, así que persisten; uno y no 48 para que sea 1 lectura |
 | **Un solo `clientes`**, cada módulo filtra el suyo | una empresa con kioscos y pólizas es un registro con un solo logo |

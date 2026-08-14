@@ -71,6 +71,12 @@ service cloud.firestore {
          3. Para cualquier otro estatus: se puede guardar SI el estatus no
             cambió Y las partidas salieron idénticas a como entraron.
 
+       Por qué la cláusula 3 compara también el DESCUENTO: es un precio. Vive al
+       nivel de la póliza y no dentro de `partidas`, así que comparando solo
+       partidas un analyst podía bajarle 30% a una póliza ya cerrada sin tocar un
+       solo renglón — pasaba la cláusula 3 y nadie se enteraba. Congelar los
+       precios sin congelar el descuento es no congelar nada.
+
        Por qué la cláusula 3 compara también el estatus y no solo las partidas:
        comparando solo partidas, el candado se brincaba en dos pasos —el analyst
        pasaba 'activa' a 'cotizacion' dejando partidas igual (le pasaba la 3), y
@@ -90,7 +96,8 @@ service cloud.firestore {
                         && request.resource.data.estatus in ['cotizacion', 'enviada'])
                     || (puedeEditar()
                         && request.resource.data.estatus == resource.data.estatus
-                        && request.resource.data.partidas == resource.data.partidas);
+                        && request.resource.data.partidas == resource.data.partidas
+                        && request.resource.data.descuento == resource.data.descuento);
 
       /* Borrar una póliza cerrada es la forma más burda de saltarse todo lo de
          arriba, así que también es de Owner y Admin. */

@@ -26,6 +26,32 @@ Cambiar de módulo es **UN** render.
     precioAnual   = suma de los renglones
     precioMensual = precioAnual / 12
 
+### El descuento, y por qué este sí es seguro
+
+Hay **una** casilla de descuento, en **porcentaje**, a nivel de la póliza y solo
+para Owner/Admin. Reabre una decisión que estaba cerrada, y la reabre a propósito
+con la diferencia que importa: **lo que rompió MXGT01 no fue que hubiera un
+descuento, fue que estaba escondido dentro del Total Mtto de cada renglón.** El
+papel cuadraba consigo mismo y solo apareció al recalcular desde los precios.
+
+Las cuatro reglas que lo mantienen a salvo:
+
+- **Nunca toca los renglones.** `totalRenglon()` sigue siendo precio × cantidad ×
+  frecuencia. El descuento se aplica UNA vez, sobre el total.
+- **Se imprime como renglón propio**: Subtotal · Descuento X% · Precio Anual. Si
+  hay descuento, el cliente lo ve.
+- **Solo se guarda el porcentaje.** El monto y el total se derivan, como todo lo
+  demás. Guardar el monto sería otra vez el error de MXGT01.
+- **Está congelado por regla de servidor**, igual que los precios. Vive FUERA de
+  `partidas`, así que sin agregarlo a la cláusula 3 un Analyst podía bajarle 30% a
+  una póliza cerrada sin tocar un renglón: congelar los precios sin congelar el
+  descuento es no congelar nada.
+
+La cobranza reparte el anual **ya con descuento** en centavos enteros, así que las
+doce casillas siguen sumando exacto. Se acota a [0, 100] y a dos decimales: un
+5.125% no existe en una negociación y sí produce centavos que nadie reproduce a
+mano.
+
 **El total de un renglón nunca se captura ni se guarda.** Vive solo en
 `totalRenglon()`. Esto corrige un problema real: en cotizaciones pasadas los
 totales se teclearon y dejaron de cuadrar —una traía cantidades escondidas sin

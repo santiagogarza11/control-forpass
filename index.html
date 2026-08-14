@@ -2170,6 +2170,15 @@ function normalizarPoliza(p){
     folio: (p.folio || '').trim(),
     estatus: ESTATUS_POLIZA.includes(p.estatus) ? p.estatus : 'cotizacion',
     facturacion,
+    /* Descuento comercial, en PORCENTAJE, a nivel de la póliza y NUNCA dentro
+       de un renglón: los precios siguen siendo precios. Es lo único que se
+       guarda del descuento — el monto y el total se derivan siempre, como todo
+       lo demás. Guardar el monto sería exactamente el error de MXGT01, donde el
+       5% vivía enterrado en los totales y por eso el papel dejó de cuadrar.
+       Se acota a [0, 100] y a dos decimales: un 5.125% no existe en una
+       negociación y sí produce centavos que nadie puede reproducir a mano. */
+    descuento: Math.max(0, Math.min(100,
+      Math.round((parseFloat(p.descuento) || 0) * 100) / 100)),
     /* La que sale en la portada del documento. */
     fechaCotizacion: /^\d{4}-\d{2}-\d{2}$/.test(p.fechaCotizacion||'') ? p.fechaCotizacion : hoyISO(),
     /* Cuándo se mandó al cliente. De aquí sale "cuántos días lleva esperando",
@@ -2504,8 +2513,16 @@ function calcularPoliza(p){
   const fin = sumarMeses(p.fechaInicio, MESES_POLIZA);
 
   const totales = p.partidas.map(totalRenglon);
-  const precioAnual = totales.reduce((t,n)=> t + n, 0);
-  const precioAnualCent = aCentavos(precioAnual);
+  /* El SUBTOTAL es la suma de los renglones, sin tocar. El descuento se aplica
+     UNA vez, aquí, sobre el total — nunca repartido entre los equipos, que es
+     como se vuelve invisible. Se redondea a centavos enteros para que el
+     documento y la cobranza partan del mismo número exacto. */
+  const subtotal = totales.reduce((t,n)=> t + n, 0);
+  const subtotalCent = aCentavos(subtotal);
+  const descuento = p.descuento || 0;
+  const descuentoCent = descuento ? Math.round(subtotalCent * descuento / 100) : 0;
+  const precioAnualCent = subtotalCent - descuentoCent;
+  const precioAnual = deCentavos(precioAnualCent);
   /* Entre 12 fijo, no entre una variable: la póliza es anual por contrato.
      Este es el mensual NOMINAL, el que se imprime en el documento. Ojo: por
      doce no siempre da el anual —683,134 ÷ 12 son 56,927.83 y por doce son
@@ -2584,6 +2601,8 @@ function calcularPoliza(p){
   const activa = p.estatus === 'activa' && vigente;
 
   return { hoy, fin, precioAnual, precioAnualCent, precioMensual, totales,
+           subtotal, subtotalCent, descuento, descuentoCent,
+           montoDescuento: deCentavos(descuentoCent),
            montos, montosCent, cobrados, debidos, cobrosAtrasados, adeudo, cobrado, proximoCobro,
            programados, hechos, pendientes, atrasados, tocanEsteMes, huerfanos,
            mesesCumplidos, mesActual, vigente, diasVigencia, diasEsperando,
@@ -2742,9 +2761,17 @@ function armarPayloadPoliza(p){
       return out;
     })(),
 
+    /* Con descuento viajan los tres números ya formateados. `descuento` es el
+       porcentaje como texto listo para el papel («5%»), y va vacío si no hay:
+       la plantilla decide si pinta el bloque, no si calcula. */
     totales: { anual:   dineroCent(c.precioAnual),
                mensual: dineroCent(c.precioMensual),
-               crudo:   { anual: c.precioAnual, mensual: c.precioMensual } },
+               subtotal: c.descuento ? dineroCent(c.subtotal) : '',
+               descuento: c.descuento ? c.descuento + '%' : '',
+               montoDescuento: c.descuento ? dineroCent(c.montoDescuento) : '',
+               crudo:   { anual: c.precioAnual, mensual: c.precioMensual,
+                          subtotal: c.subtotal, descuento: c.descuento,
+                          montoDescuento: c.montoDescuento } },
 
     pie: { iva: 'Precio más Iva.', tagline: 'Sostenemos a los que sostienen todo.' }
   };
@@ -3478,7 +3505,14 @@ function vistaPoliza(){
            + '</tr>';
        }).join('')
      + '</tbody></table></div>'
-     + '<div class="c-fila" style="margin-top:12px"><span>Precio anual — suma de los renglones</span><b>' + dineroCent(c.precioAnual) + '</b></div>'
+     /* Con descuento se enseñan los tres renglones: sin el subtotal a la vista,
+        el «Precio anual» no cuadra contra la suma de la columna de arriba y
+        parece un error de la app. */
+     + (c.descuento
+         ? '<div class="c-fila" style="margin-top:12px"><span>Subtotal — suma de los renglones</span><b>' + dineroCent(c.subtotal) + '</b></div>'
+           + '<div class="c-fila"><span>Descuento ' + c.descuento + '%</span><b style="color:var(--error)">−' + dineroCent(c.montoDescuento) + '</b></div>'
+           + '<div class="c-fila"><span>Precio anual — ya con descuento</span><b>' + dineroCent(c.precioAnual) + '</b></div>'
+         : '<div class="c-fila" style="margin-top:12px"><span>Precio anual — suma de los renglones</span><b>' + dineroCent(c.precioAnual) + '</b></div>')
      + '<div class="c-fila"><span>Precio mensual — anual ÷ ' + MESES_POLIZA + '</span><b>' + dineroCent(c.precioMensual) + '</b></div>'
      + '</div>';
 
@@ -5048,6 +5082,21 @@ function modalPoliza(id){
     +     '<option value="anual"' + (!p || p.facturacion === 'anual' ? ' selected' : '') + '>Anual — un solo cobro</option>'
     +     '<option value="mensual"' + (p && p.facturacion === 'mensual' ? ' selected' : '') + '>Mensual — doce cobros</option>'
     +   '</select></div>'
+    /* El descuento solo lo VE quien lo puede poner. A un Analyst no se le enseña
+       una casilla que el servidor le va a negar; y si la póliza ya trae uno, se
+       le muestra como texto para que sepa con qué está trabajando. */
+    +   (esAdmin()
+        ? '<div class="campo"><label>Descuento (%)</label>'
+          + '<input type="number" id="pDescuento" min="0" max="100" step="0.01" '
+          +   'value="' + (p && p.descuento ? p.descuento : '') + '" placeholder="0">'
+          + '<div class="pista">Se aplica al total, se imprime como renglón aparte y '
+          +   '<b>los precios de los equipos no se tocan</b>. Déjalo vacío si no hay.</div>'
+          + '</div>'
+        : (p && p.descuento
+            ? '<div class="campo"><label>Descuento</label>'
+              + '<input type="text" value="' + p.descuento + '% — solo un Admin u Owner lo cambia" readonly>'
+              + '</div>'
+            : ''))
     + '</div>'
 
     + '<div class="seccion"><h4>Vendedor</h4>'
@@ -5102,6 +5151,11 @@ function modalPoliza(id){
       folio: $('pFolio').value.trim(),
       estatus,
       facturacion: $('pFacturacion').value,
+      /* Si no hay casilla —Analyst— se ARRASTRA el que ya tenía: leerForm solo
+         trae los campos del formulario, y sin esto editar una póliza le borraría
+         el descuento a quien no lo puede ver. Es la misma trampa que ya nos costó
+         las OC y el historial de servicios. */
+      descuento: $('pDescuento') ? (parseFloat($('pDescuento').value) || 0) : (p ? p.descuento : 0),
       fechaCotizacion: $('pCotizacion').value || hoyISO(),
       fechaInicio: $('pInicio').value || hoyISO(),
       /* Las dos fechas de trámite se deducen del estatus en vez de capturarse:
@@ -5194,6 +5248,8 @@ function modalPoliza(id){
       /* El pie va FUERA del contenedor que se recorre a lo ancho: los totales son
          lo que más se mira y no pueden quedar escondidos a la derecha. */
       + '<div class="pie-renglones">'
+      +   '<div id="pieBloqueDesc" style="display:none"><span>Subtotal</span><b id="pieSubtotal"></b></div>'
+      +   '<div id="pieBloqueDesc2" style="display:none"><span id="pieDescEtiqueta">Descuento</span><b id="pieDescuento" style="color:var(--error)"></b></div>'
       +   '<div><span>Precio anual</span><b id="pieAnual"></b></div>'
       +   '<div><span>Mensual (anual ÷ ' + MESES_POLIZA + ')</span><b id="pieMensual"></b></div>'
       + '</div>';
@@ -5236,6 +5292,18 @@ function modalPoliza(id){
     const prov = normalizarPoliza(Object.assign({}, f, { partidas: partidasTmp, id:'tmp' }));
     const c = calcularPoliza(prov);
     if($('pieAnual'))   $('pieAnual').textContent   = dineroCent(c.precioAnual);
+    /* El descuento en vivo mientras se captura: se teclea 5 y el pie ya enseña
+       cuánto son y cuánto queda. Sin esto habría que guardar para saberlo. */
+    if($('pieBloqueDesc')){
+      const hay = c.descuento > 0;
+      $('pieBloqueDesc').style.display  = hay ? '' : 'none';
+      $('pieBloqueDesc2').style.display = hay ? '' : 'none';
+      if(hay){
+        $('pieSubtotal').textContent = dineroCent(c.subtotal);
+        $('pieDescEtiqueta').textContent = 'Descuento ' + c.descuento + '%';
+        $('pieDescuento').textContent = '−' + dineroCent(c.montoDescuento);
+      }
+    }
     if($('pieMensual')) $('pieMensual').textContent = dineroCent(c.precioMensual);
 
     const nCobros = prov.cobros.length;
@@ -5485,6 +5553,10 @@ function modalPoliza(id){
   $('pInicio').addEventListener('change', pintarPartidas);
   ['pSitioNombre','pFolio','pEstatus','pCotizacion','pNotas','pVendNombre','pVendCorreo','pVendTel']
     .forEach(x => $(x).addEventListener('input', refrescarResumen));
+  /* El descuento repinta el pie en cada tecla, como los renglones: teclear 5 y
+     ver de inmediato cuánto son y cuánto queda es la mitad del valor de tenerlo. */
+  if($('pDescuento')) $('pDescuento').addEventListener('input', refrescarResumen);
+
   $('pFacturacion').addEventListener('change', ()=>{
     /* Cambiar de anual a mensual rehace las casillas de cobro. Si ya había algo
        capturado, se avisa en vez de que aparezcan once casillas de la nada. */

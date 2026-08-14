@@ -490,6 +490,9 @@ function pagePoliza(){
        diría un total que todavía no se ha terminado de listar. */
     const cierre = ultima ? `
         <table class="totals">
+          ${POLIZA.totales.descuento ? `
+          <tr><td class="lbl">Subtotal</td><td class="val">${esc(POLIZA.totales.subtotal)}</td></tr>
+          <tr><td class="lbl">Descuento ${esc(POLIZA.totales.descuento)}</td><td class="val">−${esc(POLIZA.totales.montoDescuento)}</td></tr>` : ''}
           <tr><td class="lbl">Precio Anual</td><td class="val">${esc(POLIZA.totales.anual)}</td></tr>
           <tr class="grand"><td class="lbl">Precio Mensual</td><td class="val">${esc(POLIZA.totales.mensual)}</td></tr>
         </table>
