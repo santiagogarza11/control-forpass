@@ -322,6 +322,25 @@ Indicadores de pólizas en la portada de su módulo ya están (activas, en la ca
 servicios del mes, atrasados). Falta el cruce con Forpass si se quiere una portada
 única, y la vista de "qué toca este mes" a nivel de todas las pólizas, no de una.
 
+### Fase 5 — botón Imprimir: hecho (13-ago-2026, 44 verificaciones)
+
+Botón **Imprimir** en el detalle de la póliza, junto a Calendario y Editar:
+
+- **Todos los estatus y todos los roles**, Viewer incluido: imprimir es lectura y
+  el Viewer ya ve las cifras — el control de acceso es la cuenta, no el botón.
+- Abre `docs/plantilla_poliza_forguard.html` con `window.open(..., '_blank')`
+  **sin `noopener`** (con `noopener` no hereda el `sessionStorage`).
+- El título de portada lo resuelve el payload por estatus: `activa` → «Póliza de /
+  Mtto Prev.», todo lo demás → «Cotización / Póliza de / Mtto Prev.».
+- **Banner fijo de ajustes de impresión** en la plantilla: Márgenes Ninguno ·
+  Encabezados apagados · **Gráficos de fondo ACTIVADO** (viene apagado por omisión
+  y sin él el navy desaparece — parecería bug de la app). `position:fixed` para no
+  recorrer la paginación —verificado: hojas 8·8·5·5 con y sin banner—, oculto en
+  `@media print` (verificado por CSSOM), y se quita del DOM en «Sin datos».
+- La **portada es réplica medida** de la real: fondo `#031649`, escudo gigante con
+  los trazos del vector del PDF tal cual, título Helvetica 72 pt (la única
+  excepción a Poppins, a propósito), todo a ±0.5 pt contra el render de referencia.
+
 ### Fase 5 — documento imprimible y PDF
 
 `docs/plantilla_poliza_forguard.html` se abre en pestaña nueva y recibe los datos

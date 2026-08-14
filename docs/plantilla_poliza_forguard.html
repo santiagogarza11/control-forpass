@@ -231,14 +231,43 @@
   .foot .k{font-weight:700;color:#8A929D;display:block;}
   .foot .tag{text-align:right;font-size:10px;color:#2E4E96;}
 
+  /* ---- Banner de ajustes de impresión ----
+     Evita el fallo silencioso: «Gráficos de fondo» viene APAGADO por omisión en
+     Chrome y sin él todo el navy desaparece — el documento se ve perfecto en
+     pantalla y sale texto flotando en blanco, y cualquiera concluye que la app
+     está mal. position:fixed a propósito: no empuja el contenido ni puede
+     alterar la paginación, solo flota encima en pantalla. */
+  .aviso-impresion{position:fixed;top:0;left:0;right:0;z-index:50;
+    /* Casi negro y con sombra, NO el navy del documento: sobre la portada un
+       banner navy se camufla y parece parte del papel. Tiene que leerse como
+       barra de la herramienta. */
+    background:#0E1116;color:#fff;font-family:var(--font-body);
+    font-size:12px;line-height:1.5;padding:8px 18px;
+    box-shadow:0 6px 18px rgba(0,0,0,.35);
+    display:flex;gap:6px 22px;align-items:center;justify-content:center;flex-wrap:wrap;}
+  .aviso-impresion b{color:#7EE2A8;}
+  .aviso-impresion .aj{white-space:nowrap;}
+  .aviso-impresion .aj i{font-style:normal;color:#9FB3DC;}
+
   @media print{
     body{background:#fff;}
     .page{margin:0;box-shadow:none;page-break-after:always;}
     @page{size:letter;margin:0;}
+    /* El banner es para la persona, no para el papel. */
+    .aviso-impresion{display:none;}
   }
 </style>
 </head>
 <body>
+<!-- Los tres ajustes del diálogo de imprimir de Chrome. El tercero es el que
+     viene apagado por omisión y rompe en silencio. Se quita solo del papel
+     (@media print) y se quita del DOM cuando no hay datos que imprimir. -->
+<div class="aviso-impresion" id="avisoImpresion">
+  <span class="aj">Para el PDF: <b>⌘P → Guardar como PDF</b>, con</span>
+  <span class="aj"><i>Márgenes:</i> Ninguno</span>
+  <span class="aj"><i>Encabezados y pies:</i> apagados</span>
+  <span class="aj"><i>Gráficos de fondo:</i> <b>ACTIVADO</b> — sin esto el documento sale en blanco</span>
+</div>
 <div id="doc"></div>
 
 <script>
@@ -584,6 +613,9 @@ document.getElementById("doc").innerHTML = POLIZA
   : pageSinDatos(LEIDO.error);
 
 if(POLIZA) document.title = 'Póliza ' + (POLIZA.cliente.sitio || POLIZA.cliente.nombre || '') + ' · Forguard';
+/* Sin documento no hay nada que imprimir: el banner de ajustes sobraría y
+   hasta confundiría — se quita del DOM, no solo de la vista. */
+if(!POLIZA){ const av = document.getElementById('avisoImpresion'); if(av) av.remove(); }
 
 /* --- La descripción se parte MIDIENDO, no contando ---
    Sus filas son de altura variable —19.8 a 28.0 pt en los documentos reales—

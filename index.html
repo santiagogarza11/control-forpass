@@ -2747,6 +2747,7 @@ function irAModulo(m){
 
 const ICONO = {
   mas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  imprimir:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>',
   excel:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
   respaldo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 4v6h8V4M8 20v-6h8v6"/></svg>',
   subir:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
@@ -3287,6 +3288,11 @@ function vistaPoliza(){
      +     (c.estado === ETIQUETA_ESTATUS[p.estatus] ? '' : ' · ' + esc(c.estado)) + '</p>'
      + '</div><div class="acciones">'
      +   '<button type="button" class="btn btn-suave btn-mini" data-accion="calendario-poliza">' + ICONO.calendario + 'Calendario</button>'
+     /* Imprimir va en TODOS los estatus y para TODOS los roles: una cotización
+        se imprime antes de aprobarse o aunque nunca se venda, y el estatus solo
+        cambia el título de portada (eso ya lo resuelve el payload). */
+     +   '<button type="button" class="btn btn-suave btn-mini" data-accion="imprimir-poliza" '
+     +     'title="Abre el documento en otra pestaña, listo para guardarse como PDF">' + ICONO.imprimir + 'Imprimir</button>'
      +   (puedeEditar() ? '<button type="button" class="btn btn-primario" data-accion="editar-poliza">' + ICONO.lapiz + 'Editar</button>' : '')
      + '</div></div>';
 
@@ -6289,6 +6295,9 @@ $('vista').addEventListener('click', ev=>{
     else if(a === 'guardar-catalogo') sembrarCatalogo();
     else if(a === 'editar-poliza'){ if(exigirPermiso()) modalPoliza(estado.polizaId); }
     else if(a === 'calendario-poliza') modalCalendario(estado.polizaId);
+    /* SIN exigirPermiso, a propósito: imprimir es solo lectura y el Viewer ya
+       ve todas estas cifras en pantalla — negarle el botón no protege nada. */
+    else if(a === 'imprimir-poliza') abrirDocumentoPoliza(estado.polizaId);
     else if(a === 'excel') descargarExcel(null);
     else if(a === 'excel-cliente') descargarExcel(estado.clienteId);
     else if(a === 'respaldo'){ if(exigirAdmin('descargar el respaldo completo')) descargarRespaldo(); }

@@ -432,12 +432,17 @@ clientes serían ~125 ms. Nunca va a ser el cuello de botella.
   interna, y ahí la regla es que el renglón manda.
 - **Documento imprimible (Fase 5), en curso.** `docs/plantilla_poliza_forguard.html`
   se abre en pestaña nueva y recibe los datos por `sessionStorage`.
-  - **Hecho:** fuentes embebidas en base64 (Inter variable + Poppins 700, 73 KB,
-    subconjunto latin) y navy corregido a `#002369`. Verificado: cero peticiones a
-    la red al abrirla.
-  - **Falta:** el puente de datos (`armarPayloadPoliza`), el fallback de "sin
-    datos" —hoy la plantilla trae un caso demo—, el botón, y verificar que Pages
-    sirva el archivo en `docs/`.
+  - **Hecho:** fuentes embebidas (Poppins Regular/Bold/Italic, 30 KB, subconjunto
+    latin); el puente `armarPayloadPoliza()` con todo resuelto —la plantilla no
+    calcula—; el fallback de "sin datos" con su motivo (nunca demo); la paginación
+    de las tres hojas que se desbordan con su aserción permanente; la portada
+    réplica medida; y el **botón Imprimir** en el detalle — todos los estatus,
+    todos los roles incluido Viewer, con el banner fijo de los tres ajustes de
+    Chrome (Márgenes: Ninguno · Encabezados: apagados · **Gráficos de fondo:
+    ACTIVADO** — sin el tercero el navy desaparece y parece bug de la app).
+  - **Falta:** la geometría fina de la tabla contra las medidas (centros de
+    columna, paso 21.53 pt, cuerpos 7.2/6.2) y el aviso de captura por ancho de
+    concepto, que se calibra DESPUÉS de esa geometría, no antes.
   - **La pestaña se debe abrir SIN `noopener`** o no hereda el `sessionStorage` y
     llega vacía.
   - Las medidas reales del documento están en
@@ -482,6 +487,11 @@ clientes serían ~125 ms. Nunca va a ser el cuello de botella.
 - **Los arreglos de bugs se suben directo**, sin preguntar: probar, subir,
   verificar el build y reportar. Las **funciones nuevas** y los cambios de diseño
   sí se muestran antes de subir.
+- **Las funciones se trabajan en rama** (decidido 13-ago-2026): `main` es deploy
+  inmediato a Pages y el equipo ya tiene datos reales, así que un bloque a medias
+  no puede vivir ahí. La rama **se pushea aunque no se mergee** —el trabajo no
+  vive solo en una laptop— y se mergea a `main` por bloque completo, ya mostrado.
+  Los bugs siguen yendo directo a `main`.
 - **Probar en el sitio en vivo**, no solo leer el diff. Varios bugs se veían
   perfectos en el código y solo aparecieron al ejecutarlos.
 - **Para ver la app sin cuenta**, copiar `index.html` con `CONFIG_NUBE` vacío
