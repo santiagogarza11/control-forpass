@@ -1,6 +1,28 @@
-# Estado del módulo de pólizas — cierre de sesión 13-ago-2026
+# Estado del módulo de pólizas — al 17-ago-2026
 
-Traspaso para la sesión siguiente. Rama **`modulo-polizas`**, sin desplegar.
+Traspaso para la sesión siguiente. **Todo está en `main` y desplegado**, rama de
+trabajo `servicios-parciales` al día. Lo único sin confirmar es el último deploy
+(`a1cff59`, el descuento): el build de Pages falló por un problema de GitHub —no
+del código— y se relanzó sin alcanzar a verificarlo. Ver el punto 1 de Pendientes
+en `CLAUDE.md`.
+
+## Lo que se hizo desde el 14-ago
+
+| Bloque | Estado |
+|---|---|
+| **Fase 3B** | cerrada: las cuatro pólizas en Firestore, verificadas contra el servidor |
+| **Fase 5 · puente de datos** | `armarPayloadPoliza()`, fallback «Sin datos», paginación de las tres hojas |
+| **Fase 5 · portada** | réplica medida del PDF real, a ±0.5 pt |
+| **Fase 5 · botón Imprimir** | en el detalle, todos los estatus y roles, con barra de «Guardar como PDF» |
+| **Impresión sin ajustes** | `print-color-adjust:exact` — el navy y el calendario salen aunque «Gráficos de fondo» esté apagado |
+| **Servicios por unidad** | «4 de 5» con porqué obligatorio |
+| **Segurista** | fuera del seguimiento, nota «Incluye segurista» |
+| **Descuento** | porcentaje, Owner/Admin, siempre impreso, congelado por regla |
+| **Corrector de traslape** | mide lo dibujado y empuja lo que invada el pie; corre tras `fonts.ready` y en `beforeprint` |
+
+**Lo que queda de la Fase 5** es solo la geometría fina de la tabla. El documento
+ya imprime completo y correcto; la geometría lo dejaría *idéntico* al formato
+medido.
 
 > **Ojo con la lista de pendientes que traías.** Cuatro de los cinco puntos que
 > pediste anotar como abiertos **ya están cerrados en esta sesión** (bug de

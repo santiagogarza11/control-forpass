@@ -16,7 +16,7 @@ manual (`Control_Forpass_2.xlsx`) y sigue exportando a ese formato.
 | Datos y cuentas | Firebase, proyecto `control-de-forpass` |
 | Respaldo 3×/día | GitHub Actions → repo privado |
 
-**Todo es `index.html`** (~4,500 líneas): fuente Manrope, logo, estilos, lógica,
+**Todo es `index.html`** (~7,700 líneas): fuente Manrope, logo, estilos, lógica,
 animaciones y generador de Excel embebidos. Sin dependencias, sin build, sin
 `npm install`. Firestore y Auth por **REST con `fetch`**, sin SDK. Commit a
 `main` = deploy (1–3 min).
@@ -141,6 +141,16 @@ tocar cualquier cosa del módulo. Lo mínimo que hay que saber:
 - **Selector de módulo en el encabezado** (`estado.modulo`), donde antes estaba el
   `<h1>`. `render()` despacha por módulo y luego por vista; admin va antes de los
   dos. Cambiar de módulo es UN render.
+- **Hay UN descuento**, en porcentaje, a nivel de póliza y solo de Owner/Admin.
+  Nunca toca `totalRenglon()`, se guarda solo el %, **siempre se imprime como
+  renglón** y está congelado por regla igual que los precios. Ver POLIZAS.md.
+- **Servicios por unidad**: un renglón de 5 equipos se marca «4 de 5» con el
+  porqué obligatorio. Vive en `hechos`, fuera de `partidas`.
+- **El segurista no es un equipo**: se detecta por el concepto (`esSegurista`),
+  no cuenta en el seguimiento y el calendario lo anuncia como «Incluye segurista».
+- **El documento imprimible ya funciona de punta a punta**: botón Imprimir en el
+  detalle (todos los estatus, todos los roles), portada réplica medida, y el papel
+  sale bien **sin tocar un ajuste del diálogo** de Chrome.
 
 **Decisiones cerradas — no se reabren sin motivo nuevo:**
 
@@ -441,6 +451,47 @@ persona de la vigilancia de cuenta. Pintar la portada son 1.5 ms hoy; con 500
 clientes serían ~125 ms. Nunca va a ser el cuello de botella.
 
 ## Pendientes
+
+### Lo primero al abrir sesión (17-ago-2026)
+
+1. **Verificar que el deploy de `a1cff59` salió.** El build de Pages falló por un
+   problema de GitHub, no del código: no pudo descargar su propia acción
+   `jekyll-build-pages` (503 y luego 429). Se relanzó pero no se alcanzó a
+   confirmar. Comprobar:
+   ```bash
+   gh run list --limit 3
+   curl -s "https://santiagogarza11.github.io/control-forpass/?v=$(date +%s)" | grep -c 'id="pDescuento"'
+   ```
+   Debe decir `1`. Si no, relanzar con `gh run rerun <id>` o
+   `gh api -X POST repos/santiagogarza11/control-forpass/pages/builds`.
+   **Nada que arreglar en el código**: `main` y la rama están en `a1cff59` y todo
+   quedó verificado en local.
+
+2. **La rama de trabajo es `servicios-parciales`**, al día con `main`. Las
+   funciones van ahí y se mergean por bloque ya mostrado; los bugs, directo a
+   `main`.
+
+### Lo que sigue, en orden de valor
+
+1. **Dar de alta la primera cuenta del equipo.** Es lo que desbloquea la única
+   verificación importante que nunca se ha podido correr: **el congelado de
+   precios con un Analyst real**. Hoy Santiago es Owner y pasa por la primera
+   cláusula de la regla sin que se compare un solo campo, así que el 403 del
+   congelado —de `partidas` y ahora también del `descuento`— **jamás se ha visto
+   de verdad**. Admin → Crear cuenta; el flujo está completo.
+2. **Geometría fina de la tabla del documento (lo que queda de Fase 5).** Hoy usa
+   las proporciones de la plantilla, no los centros medidos: Cantidad 297.0 ·
+   Precio 354.2 · Total 415.3 · Frecuencia 474.4 · Total Mtto 531.4, paso de fila
+   21.53 pt como altura fija, cuerpos de 7.2 y 6.2 pt. **Al tocarla se mueve la
+   paginación**, así que hay que remedir los topes de 23 y 21 filas — el corrector
+   por medición ya protege el resultado, pero los topes conviene ajustarlos.
+   Después de eso, y solo después, el aviso de captura por ancho de concepto.
+3. **Fase 4 — tablero de pólizas.** La vista de «qué toca este mes» a nivel de
+   TODAS las pólizas, no de una. Hoy el calendario es por póliza.
+4. **Segundo documento: evidencia de servicios ejecutados.** El historial de
+   `hechos` ya da para el reporte que el cliente pide en auditoría —con el «4 de 5»
+   y su motivo—. Es otra plantilla y otra fase; se dejó fuera de la Fase 5 a
+   propósito.
 
 ### Módulo de pólizas — Fase 3B en adelante
 
