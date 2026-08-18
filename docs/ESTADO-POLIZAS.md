@@ -349,11 +349,15 @@ corregir, deshacer, que duplicar no hereda servicios, que borrar un renglón avi
 se lleva los suyos, que **editar la póliza no borra el historial**, permisos en tres
 niveles y Forpass intacto.
 
-### Fase 4 — tablero
+### Fase 4 — tablero: cerrada (18-ago-2026, rama `agenda-servicios`)
 
-Indicadores de pólizas en la portada de su módulo ya están (activas, en la calle,
-servicios del mes, atrasados). Falta el cruce con Forpass si se quiere una portada
-única, y la vista de "qué toca este mes" a nivel de todas las pólizas, no de una.
+Indicadores en la portada (ya estaban) + la **Agenda de servicios**: qué toca
+ahora a nivel de TODAS las pólizas, tres bloques por estado y adentro mes → sitio
+→ equipos, cada equipo un botón que abre el registro de servicio de siempre. Los
+dos indicadores de servicios la abren cuando traen algo. Verificado ejecutando:
+agenda e indicadores cuentan las mismas pólizas (`c.activa`) — 29=29, 32=32,
+339=339, y con una vencida inyectada 18=18. El cruce con Forpass en una portada
+única quedó fuera a propósito: nadie lo ha pedido.
 
 ### Servicios por unidad: hecho (14-ago-2026, 30 verificaciones)
 

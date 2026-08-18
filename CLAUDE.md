@@ -480,6 +480,14 @@ la rama `servicios-parciales` **ya no existe** —se mergeó a `main` por
 fast-forward, así que `main` es todo lo que tenía, pero nunca llegó a `origin`—.
 La próxima función arranca rama nueva.
 
+**Fase 4 cerrada el 18-ago** (rama `agenda-servicios`): la Agenda de servicios —
+qué toca AHORA en todas las pólizas, en tres bloques (Atrasados / Toca ahora /
+Programados) por mes y por sitio, con cada equipo como botón que abre el registro
+de siempre. La garantía verificada ejecutando: la agenda y los indicadores de la
+portada cuentan las MISMAS pólizas (`c.activa`) y dan los mismos números — con
+una vencida inyectada, 18=18 y desaparece de los dos lados. Los textos de
+«Admin u Owner» ahora dicen «un Admin» (pedido de Santiago, 7 lugares).
+
 **Fase 5 cerrada el 18-ago.** La geometría de la tabla ya va a los centros medidos
 —desviación **0.00 pt** en los siete—, el paso de fila en 21.53 uniforme, los cuerpos
 en 7.2 y 6.2, el calendario en su paso de 22.4 y el aviso de captura calibrado en 36
@@ -501,8 +509,13 @@ cero donde antes no había campo.
 
 ### Lo que sigue, en orden de valor
 
-1. **Fase 4 — tablero de pólizas.** La vista de «qué toca este mes» a nivel de
-   TODAS las pólizas, no de una. Hoy el calendario es por póliza.
+1. **Los 19 hallazgos del escaneo del 18-ago**, en su orden: el grave del
+   documento imprimible primero (el bloque de cierre se encima con el pie EN
+   SILENCIO con 19–20 renglones en la última hoja — NGK tiene 17 y con descuento
+   estaría a nada), luego los desfases interfaz/servidor y la cola. **Lista
+   completa con línea, causa y arreglo propuesto en
+   [docs/HALLAZGOS-18AGO.md](docs/HALLAZGOS-18AGO.md).** Salieron de 29 agentes
+   con verificación adversaria; ninguno es hueco de seguridad.
 2. **Segundo documento: evidencia de servicios ejecutados.** El historial de
    `hechos` ya da para el reporte que el cliente pide en auditoría —con el «4 de 5»
    y su motivo—. Es otra plantilla y otra fase; se dejó fuera de la Fase 5 a
