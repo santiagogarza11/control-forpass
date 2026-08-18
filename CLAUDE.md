@@ -525,9 +525,15 @@ cero donde antes no había campo.
     todos los roles incluido Viewer, con el banner fijo de los tres ajustes de
     Chrome (Márgenes: Ninguno · Encabezados: apagados · **Gráficos de fondo:
     ACTIVADO** — sin el tercero el navy desaparece y parece bug de la app).
-  - **Falta:** la geometría fina de la tabla contra las medidas (centros de
-    columna, paso 21.53 pt, cuerpos 7.2/6.2) y el aviso de captura por ancho de
-    concepto, que se calibra DESPUÉS de esa geometría, no antes.
+  - **Hecho el 18-ago, y con eso la fase cierra:** los siete centros de columna
+    con desviación **0.00 pt**, paso de fila 21.53 uniforme, cuerpos 7.2 y 6.2, el
+    calendario en su paso medido de 22.4, la columna de contenido en 119.6–561.4, y
+    el aviso de captura calibrado en **36 caracteres** midiendo lo dibujado. Topes
+    de 23 y 21 filas remedidos: se quedan.
+  - **Lo único que queda, anotado a propósito:** la tabla arranca **24.3 pt más
+    abajo** que el documento real. Parejo, así que no se ve torcida; subirla exige
+    rediseñar el encabezado de las cinco hojas porque la barra de metadatos
+    ocuparía el lugar del cuerpo.
   - **La pestaña se debe abrir SIN `noopener`** o no hereda el `sessionStorage` y
     llega vacía.
   - Las medidas reales del documento están en

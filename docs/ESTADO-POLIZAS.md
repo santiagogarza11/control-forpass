@@ -20,9 +20,17 @@ en `CLAUDE.md`.
 | **Descuento** | porcentaje, Owner/Admin, siempre impreso, congelado por regla |
 | **Corrector de traslape** | mide lo dibujado y empuja lo que invada el pie; corre tras `fonts.ready` y en `beforeprint` |
 
-**Lo que queda de la Fase 5** es solo la geometría fina de la tabla. El documento
-ya imprime completo y correcto; la geometría lo dejaría *idéntico* al formato
-medido.
+**La Fase 5 quedó cerrada el 18-ago-2026.** La geometría de la tabla ya va a los
+centros medidos —desviación **0.00 pt** en los siete—, con el paso de fila en 21.53
+uniforme, los cuerpos en 7.2 y 6.2 pt, el calendario en su paso de 22.4 (iba en 15)
+y la columna de contenido en 119.6–561.4 pt (el título iba 60 pt a la derecha de sus
+propias tablas). El aviso de captura por ancho de concepto quedó calibrado en **36
+caracteres**, midiendo lo dibujado. Verificado en las cuatro pólizas reales, antes y
+después de `beforeprint`: cero renglones perdidos, cero traslapes con el pie.
+
+Queda **una sola cosa anotada**: la tabla arranca 24.3 pt más abajo que el documento
+real. El desfase es parejo, así que no se ve torcida; corregirlo es rediseñar el
+encabezado de las cinco hojas. Detalle en `ESPECIFICACION-DOCUMENTO.md` §Lo aplicado.
 
 > **Ojo con la lista de pendientes que traías.** Cuatro de los cinco puntos que
 > pediste anotar como abiertos **ya están cerrados en esta sesión** (bug de
