@@ -441,7 +441,12 @@ button.mes{cursor:pointer;}
   border-radius:7px; font-family:inherit; font-size:12px; color:var(--ink); background:#fbfcfe; outline:none;}
 .tabla-renglones input:focus, .tabla-renglones select:focus{border-color:var(--accent); background:#fff;}
 /* El total va gris y de solo lectura porque NO se captura: se calcula. */
-.tabla-renglones input[readonly]{background:#f1f3f8; color:var(--navy); font-weight:700; text-align:right; cursor:default;}
+/* Apunta al TOTAL por su atributo, no a "cualquier readonly de la tabla": con lo
+   segundo, congelar las demás celdas les robaba este estilo y el concepto salía
+   alineado a la derecha y en negritas. */
+.tabla-renglones input[data-total]{background:#f1f3f8; color:var(--navy); font-weight:700; text-align:right; cursor:default;}
+/* Celda congelada: se ve inerte pero conserva su alineación y su peso. */
+.tabla-renglones input[readonly]:not([data-total]){background:#f1f3f8; color:#6b7186; cursor:not-allowed;}
 .tabla-renglones input[aria-invalid="true"]{border-color:var(--error); background:#fffafa;}
 .tabla-renglones .num{width:24px; color:var(--gray-claro); font-size:11px; text-align:right; padding-right:6px;}
 .tabla-renglones .mini{width:62px;}
@@ -571,6 +576,19 @@ table.tabla tr.tiene-notas > td{border-bottom:none; padding-bottom:2px;}
    vea distinto a los campos editables es parte del mensaje. */
 .partida .p-total input{font-weight:700; color:var(--navy);}
 .partida .aviso-cuadre{font-size:11px; color:var(--error); margin-top:5px; font-weight:600;}
+/* Aviso de póliza cerrada, arriba del formulario. Va en ámbar y no en rojo a
+   propósito: no es un error de quien captura, es el estado del documento. Los
+   campos apagados se ven apagados por el navegador; esto explica POR QUÉ. */
+.aviso-congelada{background:var(--alerta-suave); color:#8A5A0B; border:1px solid #F0DCB4;
+  border-radius:11px; padding:12px 14px; margin-bottom:16px; font-size:12.5px; line-height:1.6;}
+.aviso-congelada b{color:#6E480A;}
+/* Un campo que el servidor no va a dejar guardar se ve claramente inerte, para
+   que nadie teclee ahí y crea que se perdió su cambio. Solo :disabled, que es
+   exclusivamente este candado: los readonly de siempre —quién capturó un cobro o
+   un servicio— ya los viste `.campo input[readonly]` y no se les toca el cursor. */
+#modalCuerpo input:disabled, #modalCuerpo select:disabled{background:var(--neutro-suave);
+  color:#6b7186; cursor:not-allowed;}
+#modalCuerpo button:disabled{opacity:.45; cursor:not-allowed;}
 
 /* ---------- Aviso flotante ---------- */
 .toast{
@@ -1088,6 +1106,23 @@ const ETIQUETA_ESTATUS = {
   cotizacion:'Borrador', enviada:'En espera de confirmar', activa:'Activa',
   perdida:'No se cerró', cancelada:'Cancelada'
 };
+
+/* Los dos estatus en los que todavía se puede corregir TODO. Es la misma lista
+   que la cláusula 2 de `config/firestore.rules`: si una cambia, la otra también.
+   Fuera de estos dos el servidor congela `partidas`, la vigencia, la facturación
+   y el descuento. */
+const ESTATUS_ABIERTOS = ['cotizacion', 'enviada'];
+
+/* Congelada PARA QUIEN PREGUNTA. Owner y Admin pasan por la primera cláusula de
+   la regla, así que para ellos nunca lo está; para los demás el servidor va a
+   negar la escritura. Se pregunta por el usuario y no solo por la póliza a
+   propósito: enseñarle a un Analyst una casilla que el servidor le va a negar es
+   exactamente cómo se pierde una captura —el cambio se guarda local, se ve en
+   pantalla, sale un aviso culpando a su permiso, y al recargar ya no está—. Es el
+   mismo criterio que el descuento seguía desde el principio. */
+function polizaCongelada(p){
+  return !!p && !ESTATUS_ABIERTOS.includes(p.estatus) && !esAdmin();
+}
 
 /* Catálogo de equipos, con los textos tal cual salen en las cotizaciones.
 
@@ -5034,6 +5069,14 @@ function modalPoliza(id){
      no se arrastrara, editar una póliza borraría su historial de servicios. */
   let partidasTmp = (p ? p.partidas : []).map(x => Object.assign({}, x, { mesesServicio: x.mesesServicio.slice() }));
 
+  /* Lo que el servidor NO va a dejar guardar en esta póliza a esta persona. No es
+     cosmético: sin esto el formulario ofrece la tabla completa sobre una póliza
+     cerrada, y como los meses de servicio, el concepto y la marca viven DENTRO de
+     `partidas`, cualquier tecla ahí acaba en un 403. */
+  const congelada = polizaCongelada(p);
+  const soloL = congelada ? ' readonly' : '';
+  const bloq  = congelada ? ' disabled' : '';
+
   const opc = (lista, sel, texto, valor) => lista.map(o =>
     '<option value="' + esc(valor(o)) + '"' + (valor(o) === sel ? ' selected' : '') + '>' + esc(texto(o)) + '</option>').join('');
 
@@ -5044,7 +5087,16 @@ function modalPoliza(id){
   const v = p ? p.vendedor : { uid:sesion.uid || '', nombre:nombreDe(sesion), correo:sesion.correo || '', telefono:sesion.telefono || '' };
 
   const cuerpo =
-      '<div class="seccion"><h4>Datos de la póliza</h4>'
+      (congelada
+        ? '<div class="aviso-congelada">'
+          + '<b>Esta póliza ya está cerrada.</b> Los equipos, los precios, la vigencia y la '
+          + 'facturación quedaron congelados el día que se cerró, así que aquí se ven pero no '
+          + 'se editan. Lo que sí puedes corregir: el sitio, el folio, el vendedor, las fechas '
+          + 'de cotización y las notas. Para cambiar lo demás, un Admin u Owner tiene que '
+          + 'reabrirla.'
+          + '</div>'
+        : '')
+    + '<div class="seccion"><h4>Datos de la póliza</h4>'
     +   '<div class="fila2">'
     +     '<div class="campo"><label>Cliente *</label>'
     +       '<div class="cliente-zona">'
@@ -5064,7 +5116,7 @@ function modalPoliza(id){
     +   '<div class="fila2">'
     +     '<div class="campo"><label>Folio (opcional)</label>'
     +       '<input type="text" id="pFolio" placeholder="Ej. COT-2026-0041" value="' + esc(p ? p.folio : '') + '"></div>'
-    +     '<div class="campo"><label>Estatus</label><select id="pEstatus">'
+    +     '<div class="campo"><label>Estatus</label><select id="pEstatus"' + bloq + '>'
     /* Si esta póliza trae un estatus que ya no se ofrece —'perdida', de antes—,
        se agrega a la lista para que abrir el modal no se lo cambie en silencio. */
     +       opc(ESTATUS_OFRECIDOS.includes(p ? p.estatus : 'cotizacion')
@@ -5075,10 +5127,10 @@ function modalPoliza(id){
     +     '<div class="campo"><label>Fecha de la cotización</label>'
     +       '<input type="date" id="pCotizacion" value="' + esc(p ? p.fechaCotizacion : hoyISO()) + '"></div>'
     +     '<div class="campo"><label>Inicio de la vigencia</label>'
-    +       '<input type="date" id="pInicio" value="' + esc(p ? p.fechaInicio : hoyISO()) + '">'
+    +       '<input type="date" id="pInicio" value="' + esc(p ? p.fechaInicio : hoyISO()) + '"' + soloL + '>'
     +       '<div class="pista">Manda el calendario: los meses de servicio se cuentan desde aquí.</div></div>'
     +   '</div>'
-    +   '<div class="campo"><label>Facturación</label><select id="pFacturacion">'
+    +   '<div class="campo"><label>Facturación</label><select id="pFacturacion"' + bloq + '>'
     +     '<option value="anual"' + (!p || p.facturacion === 'anual' ? ' selected' : '') + '>Anual — un solo cobro</option>'
     +     '<option value="mensual"' + (p && p.facturacion === 'mensual' ? ' selected' : '') + '>Mensual — doce cobros</option>'
     +   '</select></div>'
@@ -5111,14 +5163,14 @@ function modalPoliza(id){
     + '<div class="seccion"><h4>Equipos cotizados</h4>'
     +   '<div class="busca-equipo">'
     +     '<input type="text" id="pBuscaEquipo" list="pCatalogoEquipos" autocomplete="off"'
-    +       ' placeholder="Escribe un equipo del catálogo y elígelo para agregarlo…">'
+    +       ' placeholder="Escribe un equipo del catálogo y elígelo para agregarlo…"' + bloq + '>'
     +     '<datalist id="pCatalogoEquipos">'
     +       catalogo().filter(e => e.activo).map(e => '<option value="' + esc(e.concepto) + '">').join('')
     +     '</datalist>'
     +     '<span class="cuantos-zona">'
-    +       '<button type="button" class="btn btn-suave btn-mini" id="btnOtroEquipo">' + ICONO.mas + 'Agregar otro</button>'
+    +       '<button type="button" class="btn btn-suave btn-mini" id="btnOtroEquipo"' + bloq + '>' + ICONO.mas + 'Agregar otro</button>'
     +       '<input type="number" id="pCuantos" class="cuantos" min="1" max="' + MAX_RENGLONES + '" step="1" value="1"'
-    +         ' title="Cuántos renglones vacíos agregar de un golpe" aria-label="Cuántos renglones agregar">'
+    +         ' title="Cuántos renglones vacíos agregar de un golpe" aria-label="Cuántos renglones agregar"' + bloq + '>'
     +     '</span>'
     +   '</div>'
     +   '<div class="chips-equipo" id="chipsEquipo"></div>'
@@ -5200,27 +5252,27 @@ function modalPoliza(id){
       const opc = arranquesDe(lim.frecuencia).map(a =>
         '<option value="' + a + '"' + (a === arranque ? ' selected' : '') + '>'
         + esc(etiquetaMesServicio(ini, a)) + '</option>').join('');
-      const arrHtml = '<select data-arranque>'
+      const arrHtml = '<select data-arranque' + bloq + '>'
               + (irregular ? '<option value="" selected>— a mano —</option>' : '')
               + opc + '</select>';
 
       const fila =
           '<tr data-idx="' + i + '"' + (irregular ? ' class="irregular"' : '') + '>'
         + '<td class="num">' + (i+1) + '</td>'
-        + '<td class="equipo"><input type="text" data-campo="concepto" value="' + esc(x.concepto) + '" placeholder="Nombre del equipo"></td>'
-        + '<td class="marca"><input type="text" data-campo="marca" value="' + esc(x.marca) + '" placeholder="—"></td>'
-        + '<td class="mini"><input type="number" min="1" step="1" data-campo="cantidad" value="' + x.cantidad + '"></td>'
-        + '<td class="med"><input type="text" inputmode="decimal" data-campo="precioUnitario" value="' + numero(x.precioUnitario) + '"></td>'
-        + '<td class="mini"><input type="number" min="1" max="' + MESES_POLIZA + '" step="1" data-campo="frecuencia" value="' + x.frecuencia + '"></td>'
+        + '<td class="equipo"><input type="text" data-campo="concepto" value="' + esc(x.concepto) + '" placeholder="Nombre del equipo"' + soloL + '></td>'
+        + '<td class="marca"><input type="text" data-campo="marca" value="' + esc(x.marca) + '" placeholder="—"' + soloL + '></td>'
+        + '<td class="mini"><input type="number" min="1" step="1" data-campo="cantidad" value="' + x.cantidad + '"' + soloL + '></td>'
+        + '<td class="med"><input type="text" inputmode="decimal" data-campo="precioUnitario" value="' + numero(x.precioUnitario) + '"' + soloL + '></td>'
+        + '<td class="mini"><input type="number" min="1" max="' + MESES_POLIZA + '" step="1" data-campo="frecuencia" value="' + x.frecuencia + '"' + soloL + '></td>'
         + '<td class="arr">' + arrHtml + '</td>'
         + '<td class="med"><input type="text" readonly data-total value=""></td>'
         + '<td class="acc">'
         +   '<button type="button" class="icono-mini' + (x._abierta ? ' on' : '') + '" data-meses-mano="' + i + '" '
-        +     'data-tip="Calendario">' + ICONO.calendario + '</button>'
+        +     'data-tip="Calendario"' + bloq + '>' + ICONO.calendario + '</button>'
         +   '<button type="button" class="icono-mini" data-duplicar="' + i + '" '
-        +     'data-tip="Duplicar">' + ICONO.respaldo + '</button>'
+        +     'data-tip="Duplicar"' + bloq + '>' + ICONO.respaldo + '</button>'
         +   '<button type="button" class="icono-mini" data-quitar="' + i + '" '
-        +     'data-tip="Borrar">' + ICONO.basura + '</button>'
+        +     'data-tip="Borrar"' + bloq + '>' + ICONO.basura + '</button>'
         + '</td>'
         + '</tr>';
 
@@ -5229,7 +5281,7 @@ function modalPoliza(id){
       if(!x._abierta) return fila;
       const casillas = Array.from({length:MESES_POLIZA}, (_,m)=>
         '<button type="button" class="mes' + (lim.mesesServicio.includes(m) ? ' serv' : '') + '" data-mes="' + m + '" '
-        + 'aria-pressed="' + (lim.mesesServicio.includes(m) ? 'true' : 'false') + '">'
+        + 'aria-pressed="' + (lim.mesesServicio.includes(m) ? 'true' : 'false') + '"' + bloq + '>'
         + esc(etiquetaMesServicio(ini, m)) + '</button>').join('');
       return fila
         + '<tr class="fila-meses" data-idx="' + i + '"><td></td><td colspan="8">'
@@ -5331,6 +5383,10 @@ function modalPoliza(id){
 
   /* Agrega un renglón y deja el cursor donde toca seguir capturando. */
   function agregarRenglon(base, foco){
+    /* Candado de respaldo. Los controles que llegan aquí ya van apagados, pero
+       agregar un renglón cambia `partidas` y en una póliza congelada eso es un
+       403: más vale que no haya un segundo camino. */
+    if(congelada) return;
     if(partidasTmp.length >= MAX_RENGLONES){
       aviso('Una cotización aguanta ' + MAX_RENGLONES + ' renglones. Ya no cabe otro.', true);
       return;
@@ -5448,6 +5504,10 @@ function modalPoliza(id){
   function pintarChips(){
     const caja = $('chipsEquipo');
     if(!caja) return;
+    /* En una póliza congelada no se agregan renglones, así que los chips no van.
+       Doce botones apagados son ruido; no enseñarlos dice lo mismo mejor. */
+    if(congelada){ caja.innerHTML = ''; caja.hidden = true; return; }
+    caja.hidden = false;
     const cuenta = {};
     datos.polizas.forEach(q => q.partidas.forEach(x => {
       if(x.catalogoId) cuenta[x.catalogoId] = (cuenta[x.catalogoId] || 0) + 1;

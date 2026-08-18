@@ -82,6 +82,18 @@ service cloud.firestore {
        pasaba 'activa' a 'cotizacion' dejando partidas igual (le pasaba la 3), y
        ya en 'cotizacion' la 2 le dejaba editar precios a gusto.
 
+       Por qué la cláusula 3 congela también la VIGENCIA, la FACTURACIÓN y la
+       FECHA DE CIERRE, medido el 18-ago-2026 con un Analyst real: ninguna de las
+       tres es un precio, pero las tres son el acuerdo. `fechaInicio` manda el
+       calendario —los meses de servicio son desfases desde ahí— así que moverla
+       corre TODOS los servicios de TODOS los renglones a la vez, sin error y sin
+       aviso: es la misma firma del bug que ya costó una vez. `facturacion`
+       convierte doce cobros en uno. Y `fechaCierre` es la marca que la pantalla
+       enseña como «precios congelados»: borrarla no descongela nada en el
+       servidor, nada más hace que la interfaz mienta. Siguen libres `vendedor`,
+       `sitioNombre`, `folio`, `notas` y las fechas de cotización y envío, que son
+       correcciones de texto que un capturista hace con razón.
+
        Por qué el descuento se lee con get(campo, 0) y no con punto: Firestore NO
        trata un campo ausente como vacío — tirar de él es un ERROR de evaluación,
        y un error en una regla es un rechazo. El descuento se agregó el 14-ago y
@@ -112,7 +124,10 @@ service cloud.firestore {
                     || (puedeEditar()
                         && request.resource.data.estatus == resource.data.estatus
                         && request.resource.data.partidas == resource.data.partidas
-                        && request.resource.data.get('descuento', 0) == resource.data.get('descuento', 0));
+                        && request.resource.data.get('descuento', 0) == resource.data.get('descuento', 0)
+                        && request.resource.data.get('fechaInicio', '') == resource.data.get('fechaInicio', '')
+                        && request.resource.data.get('facturacion', '') == resource.data.get('facturacion', '')
+                        && request.resource.data.get('fechaCierre', '') == resource.data.get('fechaCierre', ''));
 
       /* Borrar una póliza cerrada es la forma más burda de saltarse todo lo de
          arriba, así que también es de Owner y Admin. */
