@@ -480,6 +480,15 @@ la rama `servicios-parciales` **ya no existe** —se mergeó a `main` por
 fast-forward, así que `main` es todo lo que tenía, pero nunca llegó a `origin`—.
 La próxima función arranca rama nueva.
 
+**Fase 5 cerrada el 18-ago.** La geometría de la tabla ya va a los centros medidos
+—desviación **0.00 pt** en los siete—, el paso de fila en 21.53 uniforme, los cuerpos
+en 7.2 y 6.2, el calendario en su paso de 22.4 y el aviso de captura calibrado en 36
+caracteres midiendo lo dibujado. Los topes de 23 y 21 filas se remidieron y se
+quedan. Falta **una sola cosa, anotada a propósito**: la tabla arranca 24.3 pt más
+abajo que el documento real (parejo, así que no se ve torcida), y subirla exige
+rediseñar el encabezado de las cinco hojas. Ver
+`docs/ESPECIFICACION-DOCUMENTO.md` §Lo aplicado.
+
 **Cerrado el 18-ago:** el congelado de precios se ejerció por primera vez con un
 Analyst real y con un Viewer real, salieron dos bugs —la regla rechazaba también
 lo legítimo, y el formulario ofrecía lo que el servidor iba a negar—, los dos
@@ -492,16 +501,9 @@ cero donde antes no había campo.
 
 ### Lo que sigue, en orden de valor
 
-1. **Geometría fina de la tabla del documento (lo que queda de Fase 5).** Hoy usa
-   las proporciones de la plantilla, no los centros medidos: Cantidad 297.0 ·
-   Precio 354.2 · Total 415.3 · Frecuencia 474.4 · Total Mtto 531.4, paso de fila
-   21.53 pt como altura fija, cuerpos de 7.2 y 6.2 pt. **Al tocarla se mueve la
-   paginación**, así que hay que remedir los topes de 23 y 21 filas — el corrector
-   por medición ya protege el resultado, pero los topes conviene ajustarlos.
-   Después de eso, y solo después, el aviso de captura por ancho de concepto.
-2. **Fase 4 — tablero de pólizas.** La vista de «qué toca este mes» a nivel de
+1. **Fase 4 — tablero de pólizas.** La vista de «qué toca este mes» a nivel de
    TODAS las pólizas, no de una. Hoy el calendario es por póliza.
-3. **Segundo documento: evidencia de servicios ejecutados.** El historial de
+2. **Segundo documento: evidencia de servicios ejecutados.** El historial de
    `hechos` ya da para el reporte que el cliente pide en auditoría —con el «4 de 5»
    y su motivo—. Es otra plantilla y otra fase; se dejó fuera de la Fase 5 a
    propósito.

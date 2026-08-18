@@ -162,18 +162,24 @@
   .logo-tl{position:absolute;left:.62in;top:.42in;color:var(--brand-navy);}
   .wordmark-tr{position:absolute;right:.62in;top:.46in;color:var(--brand-navy);line-height:0;}
 
-  .eyebrow{position:absolute;left:1.55in;top:.78in;font-size:8.5px;color:#5C6673;letter-spacing:.1px;}
-  .h1{position:absolute;left:1.53in;top:.98in;right:.7in;
+  /* La columna de contenido va a lo MEDIDO: texto de 119.6 pt a 561.4 pt (margen
+     derecho 50.6, el mismo al que está anclado el tagline en las cuatro). Antes el
+     título iba en 111.6 pt y las tablas arrancaban en 51.84: las tablas empezaban
+     60 pt a la IZQUIERDA de su propio título. Eso era la proporción de la
+     plantilla, no el documento. Ver ESPECIFICACION-DOCUMENTO.md §Márgenes.
+     Ojo: la tinta de la esquina navy arranca en x=38 y NO se mueve con esto. */
+  .eyebrow{position:absolute;left:119.6pt;top:.78in;font-size:8.5px;color:#5C6673;letter-spacing:.1px;}
+  .h1{position:absolute;left:118.1pt;top:.98in;right:50.6pt;
       font-family:var(--font-body);font-weight:300;font-size:36px;line-height:1.06;
       letter-spacing:-.8px;color:var(--title);}
   .h1.two{font-size:33px;}
 
-  .metabar{position:absolute;left:1.55in;top:2.05in;font-size:9.5px;}
+  .metabar{position:absolute;left:119.6pt;top:2.05in;font-size:9.5px;}
   .metabar td{padding-right:56px;vertical-align:top;}
   .metabar .k{color:var(--label-blue);padding-bottom:3px;}
   .metabar .v{color:var(--text);}
 
-  .body{position:absolute;left:.72in;right:.72in;top:2.62in;}
+  .body{position:absolute;left:119.6pt;right:50.6pt;top:2.62in;}
 
   /* ---- Tablas ---- */
   /* Medido de las cuatro cotizaciones: TODAS las columnas van CENTRADAS —
@@ -183,16 +189,48 @@
      Ver docs/ESPECIFICACION-DOCUMENTO.md. */
   table.grid{width:100%;border-collapse:collapse;table-layout:fixed;}
   table.grid thead th{
-    font-size:8.5px;font-weight:700;color:#2B3341;text-align:center;
-    padding:6px 3px;border-bottom:1.2px solid var(--rule-strong);
+    font-size:6.2pt;font-weight:700;color:#2B3341;text-align:center;
+    padding:6px 0;border-bottom:1.2px solid var(--rule-strong);
   }
   /* padding horizontal 0 en el cuerpo: el concepto más ancho de las cuatro
      ocupa 125.4 pt de los 126.6 de su columna — 1.2 pt de holgura. Con 1 pt de
      padding por lado ya no cabría. */
-  table.grid tbody td{font-size:9.5px;padding:6px 0;border-bottom:1px solid var(--rule);
+  table.grid tbody td{font-size:6.2pt;padding:0;border-bottom:1px solid var(--rule);
     vertical-align:middle;text-align:center;}
-  table.grid thead th.cpt{width:29%;}
-  table.grid tbody td.cpt{text-align:left;padding-left:2px;}
+  table.grid tbody td.cpt{text-align:left;padding-left:0;}
+
+  /* ---- La tabla de renglones, a los centros MEDIDOS ----
+     Los cuatro PDF no dibujan una sola regla vertical, así que no dicen dónde
+     empieza una celda: lo que dicen son las LÍNEAS DE CENTRO de cada columna
+     (# 133.5 · Cantidad 297.0 · Precio 354.2 · Total 415.3 · Frecuencia 474.4 ·
+     Total Mtto 531.4) y que Concepto va a la izquierda arrancando en x=144.8 con
+     126.6 pt de ancho. Los bordes se reconstruyen en el punto medio entre centros
+     vecinos, y con eso los SIETE centros salen exactos, no aproximados:
+
+       #  22.6 → borde 144.8   Cantidad 51.2 → 322.6   Total    59.0 → 444.8
+       Concepto 126.6 → 271.4  Precio   63.2 → 385.8   Frecuencia 59.2 → 504.0
+                                                       Total Mtto 54.8 → 558.8
+
+     Suman 436.6 pt y la tabla arranca en 122.2 (2.6 pt dentro del cuerpo, que
+     empieza en 119.6). Al tocar esto se mueve la paginación: los topes de filas
+     por hoja se REMIDEN, no se heredan. */
+  table.grid:not(.desc){width:436.6pt;margin-left:2.6pt;}
+  /* Paso entre filas MEDIDO: 21.53 pt, altura fija. Antes lo definía el padding,
+     así que el paso cambiaba con el cuerpo de la letra. Si un concepto no cupiera
+     en su renglón la fila crece —envuelve, no se recorta— y de eso se encarga
+     evitarTraslapeConPie(); el aviso de captura por ancho existe para que casi
+     nunca pase. */
+  table.grid:not(.desc) tbody tr{height:21.53pt;}
+  /* Concepto y marca a 7.2 pt; las cifras a 6.2. Son dos cuerpos distintos en las
+     cuatro cotizaciones, no uno. */
+  table.grid:not(.desc) tbody td.cpt{font-size:7.2pt;line-height:1.05;}
+  /* Interlineado apretado en la celda del concepto para que el renglón que trae
+     marca CAIGA TAMBIÉN en 21.53. Con el interlineado por omisión, las dos líneas
+     apiladas pedían 21.75 y cinco de los 36 renglones de MXGT01 se salían del paso
+     medido: poco, pero el paso deja de ser uniforme y se come el margen de la
+     paginación. Los cuatro PDF nunca apilan —MXGT01 lleva Marca en columna
+     aparte—, así que apilarla es decisión nuestra y le toca caber. */
+  table.grid:not(.desc) tbody td.cpt .marca{line-height:1.05;}
   /* La marca pegada al concepto, en cuerpo más chico. Envuelve sola: la celda
      aguanta dos líneas y con eso el truncado es casi inalcanzable. */
   .marca{font-size:7.6px;color:#5C6673;}
@@ -202,7 +240,7 @@
   /* El número de renglón NO va en gris: medido en MXGT01, INOAC y NGK, va en
      #000000, exactamente igual que el concepto de su fila. El gris venía de la
      plantilla vieja y hacía que el renglón se leyera como secundario. */
-  .ix{width:22px;text-align:center;}
+  .ix{text-align:center;}   /* el ancho lo manda el colgroup medido */
 
   /* ---- Totales ---- */
   .totals{margin-top:16px;width:100%;}
@@ -226,7 +264,15 @@
   table.cal th{font-size:5.76pt;font-weight:600;color:#2B3341;padding:5px 0;text-align:center;
                white-space:nowrap;border-bottom:1.2px solid var(--rule-strong);}
   table.cal th.cpt{text-align:left;padding-left:7px;}
-  table.cal td{border-bottom:1px solid var(--rule);height:20px;padding:0;}
+  /* Paso vertical MEDIDO: 22.4 pt, con la celda marcada de 22.3 — o sea que la
+     celda llena su renglón y las de arriba y abajo se tocan, igual que se tocan
+     a lo ancho (celda 23.5 con paso 23.53). Iba en 20px = 15 pt, siete pt y medio
+     por renglón menos que el documento real: veintiún renglones apretados en
+     donde el original usa la hoja completa. Con el borde de 0.75 pt, 21.65 de
+     alto dan el paso: con border-collapse el borde va DENTRO del alto declarado,
+     así que se declara el paso completo y no el paso menos el borde (con 21.65 el
+     paso salía en 21.64 — medido, no supuesto). */
+  table.cal td{border-bottom:1px solid var(--rule);height:22.4pt;padding:0;}
   table.cal td.lbl{font-size:8px;padding:4px 7px;line-height:1.25;}
   table.cal td.ix{font-size:8px;text-align:right;padding-right:4px;}
   /* Separadores verticales de las columnas de mes. Los documentos de referencia
@@ -506,6 +552,11 @@ function pagePoliza(){
       ${sheetHead("Póliza de Mantenimiento")}
       <div class="body">
         <table class="grid" data-filas="${grupo.length}">
+          <colgroup>
+            <col style="width:22.6pt"><col style="width:126.6pt"><col style="width:51.2pt">
+            <col style="width:63.2pt"><col style="width:59pt"><col style="width:59.2pt">
+            <col style="width:54.8pt">
+          </colgroup>
           <thead><tr>
             <th class="ix">#</th><th class="cpt">Concepto</th>
             <th class="c">Cantidad</th><th class="c">Precio Unitario</th>

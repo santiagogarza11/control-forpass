@@ -2490,6 +2490,23 @@ function marcarServicio(p, partidaId, mes, det){
    cerrarse como activa. */
 const cuadraFrecuencia = x => x.mesesServicio.length === x.frecuencia;
 
+/* Cuántos caracteres de concepto caben en la columna del documento impreso.
+   Calibrado el 18-ago-2026 MIDIENDO lo dibujado, después de fijar la geometría
+   de la tabla —no antes, porque el ancho de la columna es lo que manda—: la
+   columna mide 126.6 pt a 7.2 pt de Poppins, y el concepto más ancho de las
+   cuatro cotizaciones reales, «Barra caliente de servicio eléctrica», ocupa
+   124.3 pt con 36 caracteres. O sea que 36 cabe con 2.3 pt de sobra y 37 ya es
+   territorio de nadie.
+
+   Es un PROXY y se avisa como tal: el ancho depende de las letras, no de
+   cuántas son —treinta y siete «i» caben y treinta y cinco «W» no—. Medir de
+   verdad pediría las métricas de Poppins dentro de la app, que usa Manrope. Y no
+   hace falta que sea exacto porque el documento no se rompe si falla: el
+   concepto ENVUELVE y el renglón crece, que se ve, y de la paginación se encarga
+   evitarTraslapeConPie(). Esto solo sirve para que casi nunca pase. */
+const CHARS_CONCEPTO_IMPRESO = 36;
+const conceptoCabeImpreso = x => (x.concepto || '').trim().length <= CHARS_CONCEPTO_IMPRESO;
+
 /* ---------------------- Los meses se calculan, no se pican ----------------------
    En las cotizaciones reales la frecuencia manda el intervalo: 3 servicios al año
    es cada 4 meses, 2 es cada 6, 12 es todos, 1 es una vez. Así que con la
@@ -5328,6 +5345,22 @@ function modalPoliza(id){
       /* No se regaña antes de que el usuario escriba nada: un renglón recién
          agregado está vacío por definición. */
       if(fr) fr.setAttribute('aria-invalid', (cuadra || !x._tocada) ? 'false' : 'true');
+      /* Ancho del concepto para el documento impreso. Se avisa, NO se bloquea:
+         es el mismo criterio que la frecuencia que no cuadra. */
+      const cp = nodo.querySelector('[data-campo="concepto"]');
+      if(cp){
+        const largo = (x.concepto || '').trim().length;
+        const cabe = conceptoCabeImpreso(x);
+        /* Sin el guardo de `_tocada` que sí usa la frecuencia, y a propósito: un
+           concepto de 40 caracteres no cabe igual si lo acaban de teclear que si
+           entró por el importador —y las cuatro pólizas reales entraron así—. Un
+           renglón nuevo trae el concepto vacío, así que nunca se regaña de gratis. */
+        cp.setAttribute('aria-invalid', cabe ? 'false' : 'true');
+        cp.title = cabe ? '' :
+          'Son ' + largo + ' caracteres y en el documento impreso caben unos '
+          + CHARS_CONCEPTO_IMPRESO + '. No se bloquea: si no cabe, el nombre se '
+          + 'parte en dos líneas y ese renglón queda más alto que los demás.';
+      }
       const cu = $('listaPartidas').querySelector('.fila-meses[data-idx="' + i + '"] [data-cuadre]');
       if(cu){
         cu.hidden = cuadra || !x._tocada;

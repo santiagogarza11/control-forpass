@@ -375,6 +375,96 @@ contenido, así que no traen desplazamiento de color.
 
 ---
 
+## Lo aplicado, y lo que se midió del resultado (18-ago-2026)
+
+Cierre de la Fase 5. Todo lo de abajo es **medido sobre lo dibujado**, no calculado:
+se renderizaron las cuatro pólizas reales y se leyeron las posiciones con
+`getBoundingClientRect`, convertidas a pt (la hoja es 8.5 in = 612 pt = 816 px, así
+que px × 0.75 = pt).
+
+### Los anchos de columna se reconstruyeron de los centros
+
+Los PDF no dibujan una sola regla vertical, así que no dicen dónde empieza una
+celda. Lo que sí dan son las **líneas de centro** y el arranque del Concepto. Los
+bordes salen en el **punto medio entre centros vecinos**, y con eso los siete
+centros se reproducen exactos:
+
+| Columna | Ancho | Borde derecho | Centro que produce |
+|---|---|---|---|
+| `#` | 22.6 | 144.8 | 133.5 ✓ |
+| Concepto | **126.6** | 271.4 | izquierda en 144.8 ✓ |
+| Cantidad | 51.2 | 322.6 | 297.0 ✓ |
+| Precio Unitario | 63.2 | 385.8 | 354.2 ✓ |
+| Total | 59.0 | 444.8 | 415.3 ✓ |
+| Frecuencia | 59.2 | 504.0 | 474.4 ✓ |
+| Total Mtto | 54.8 | 558.8 | 531.4 ✓ |
+
+Suman **436.6 pt** y la tabla arranca en **x = 122.2**.
+
+### Desviación de lo dibujado contra lo medido
+
+| | Objetivo | Dibujado | Δ |
+|---|---|---|---|
+| Los seis centros | — | — | **0.00 pt** en los seis |
+| Concepto: izquierda · ancho | 144.8 · 126.6 | 144.8 · 126.6 | **0.0** |
+| Paso de fila de la tabla | 21.53 | 21.53 uniforme | **0.00** |
+| Cuerpo concepto/marca | 7.2 pt | 7.2 pt | 0 |
+| Cuerpo de cifras | 6.2 pt | 6.2 pt | 0 |
+| Paso del calendario | 22.4 | 22.39 | 0.01 |
+| Celda marcada | 23.5 × 22.3 | 23.5 × 22.4 | 0.1 en alto |
+| Rejilla de 12 meses | 282.4 | 282.2 | 0.2 |
+
+**El paso de fila uniforme costó un ajuste que no estaba previsto.** Los renglones
+que traen marca apilan dos líneas, y con el interlineado por omisión pedían 21.75
+pt: cinco de los 36 de MXGT01 se salían del paso. Los cuatro PDF **nunca apilan**
+—MXGT01 lleva Marca en columna aparte—, así que apilarla es decisión nuestra y le
+toca caber: con `line-height:1.05` en la celda del concepto, los 36 renglones caen
+en 21.53 exacto.
+
+### La columna de contenido también estaba en las proporciones de la plantilla
+
+Iba el título en **x = 111.6** y las tablas arrancando en **x = 51.84**: las tablas
+empezaban 60 pt a la **izquierda** de su propio título. Ahora el bloque de
+contenido va de **119.6 a 561.4 pt**, que es lo medido (§Márgenes). Eso angostó el
+cuerpo de 508.3 a 441.8 pt, y por eso se remidieron también el calendario y la
+descripción: la etiqueta del calendario quedó en 145.6 pt y **ninguna envuelve**.
+
+### Los topes de paginación, remedidos
+
+| Hoja | Tope | Qué dice la medición |
+|---|---|---|
+| Tabla de renglones | **23** · se queda | con 23 sobran **12.5 pt** al pie, y una fila mide 21.53: la 24 no cabe |
+| Calendario | **21** · se queda | con 21 sobran **22.7 pt** y el paso es 22.39, así que la 22 entraría por **0.3 pt**. Eso no es margen: el tope sale del máximo observado en el documento real y ahí se queda |
+| Descripción | por altura | INOAC 12 en una hoja · NGK 13+2 · MXNL02 11+5 · MXGT01 15 |
+
+Verificado en las cuatro, con la aserción permanente y el corrector de traslape,
+antes y después de `beforeprint`: **cero renglones perdidos, cero traslapes con el
+pie, cero bandas rojas.**
+
+### El umbral del aviso de captura, calibrado al final
+
+Se calibra **después** de la geometría porque lo que manda es el ancho de la
+columna. Medido sobre lo dibujado: el concepto más ancho de las cuatro, «Barra
+caliente de servicio eléctrica», ocupa **124.3 pt de los 126.6** con **36
+caracteres** — 2.3 pt de holgura. El aviso salta a partir de **37**.
+
+Es un **proxy y se avisa como tal**: el ancho depende de las letras, no de cuántas
+son. Medir de verdad pediría las métricas de Poppins dentro de la app, que va en
+Manrope. Y no hace falta que sea exacto, porque si falla el concepto **envuelve** y
+el renglón crece —se ve— y de la paginación se encarga `evitarTraslapeConPie()`.
+
+### Lo que NO se movió, y por qué
+
+**El origen vertical de la tabla sigue 24.3 pt abajo de lo medido**: la primera fila
+cae en **y = 207.8** y el documento real la tiene en **183.5** (última en 681.4
+contra 657.1 — el mismo desfase, parejo). Subirla exige mover el bloque de
+encabezado completo, porque la barra de metadatos ocupa de 147.6 a ~172 pt y el
+cuerpo tendría que empezar en ~164: se encimarían. Eso es rediseñar el encabezado de
+las cinco hojas, no afinar la tabla, y **el desfase es parejo así que el documento
+no se ve torcido** — solo empieza más abajo. Queda anotado como lo que es.
+
+---
+
 ## Resumen de lo no extraíble
 
 | Dato | Por qué |
