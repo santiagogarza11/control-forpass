@@ -3774,7 +3774,7 @@ function vistaPrecios(){
      +   '<h2>Lista de precios</h2>'
      +   '<p>' + numero(lista.length) + ' ' + plural(lista.length,'equipo','equipos')
      +   (puede ? ' · los precios de aquí se sugieren al cotizar y siempre se pueden cambiar en el renglón'
-              : ' · solo un Owner o un Admin puede cambiarlos') + '</p>'
+              : ' · solo un Admin puede cambiarlos') + '</p>'
      + '</div><div class="acciones">'
      +   (puede ? '<button type="button" class="btn btn-primario" data-accion="nuevo-equipo">' + ICONO.mas + 'Agregar equipo</button>' : '')
      + '</div></div>';
@@ -3789,7 +3789,7 @@ function vistaPrecios(){
     h += '<div class="aviso" style="border-left-color:var(--gray)">' + ICONO.info
        + '<div>Esta lista todavía no está guardada en el servidor: es la de arranque, sacada de las '
        + 'cotizaciones de MXGT01, MXNL02, INOAC y NGK. '
-       + (puede ? 'Guárdala para que la vea todo el equipo, o cambia cualquier precio y se guarda sola.' : 'Un Owner o Admin la va a guardar.')
+       + (puede ? 'Guárdala para que la vea todo el equipo, o cambia cualquier precio y se guarda sola.' : 'Un Admin la va a guardar.')
        + (puede ? '<div style="margin-top:9px"><button type="button" class="btn btn-verde btn-mini" data-accion="guardar-catalogo">'
                   + ICONO.cheque + 'Guardar la lista en el servidor</button></div>' : '')
        + '</div></div>';
@@ -4188,7 +4188,7 @@ function exigirPermiso(){
 /* Para lo que toca toda la base de golpe: solo Owner y Admin. */
 function exigirAdmin(quePasa){
   if(esAdmin()) return true;
-  aviso('Solo un Owner o un Admin puede ' + quePasa + '.', true);
+  aviso('Solo un Admin puede ' + quePasa + '.', true);
   return false;
 }
 /* Redibuja sin perder el cursor del buscador. El id se recibe para que sirva a
@@ -5392,7 +5392,7 @@ function modalPoliza(id){
           + '<b>Esta póliza ya está cerrada.</b> Los equipos, los precios, la vigencia y la '
           + 'facturación quedaron congelados el día que se cerró, así que aquí se ven pero no '
           + 'se editan. Lo que sí puedes corregir: el sitio, el folio, el vendedor, las fechas '
-          + 'de cotización y las notas. Para cambiar lo demás, un Admin u Owner tiene que '
+          + 'de cotización y las notas. Para cambiar lo demás, un Admin tiene que '
           + 'reabrirla.'
           + '</div>'
         : '')
@@ -5446,7 +5446,7 @@ function modalPoliza(id){
           + '</div>'
         : (p && p.descuento
             ? '<div class="campo"><label>Descuento</label>'
-              + '<input type="text" value="' + p.descuento + '% — solo un Admin u Owner lo cambia" readonly>'
+              + '<input type="text" value="' + p.descuento + '% — solo un Admin lo cambia" readonly>'
               + '</div>'
             : ''))
     + '</div>'
@@ -6320,7 +6320,7 @@ async function modalEncargado(sitioId){
 
   const actual = s.encargado || { uid:'', nombre:'', correo:'' };
   let cuerpo = '<p class="pista" style="margin:0 0 14px">Quién de nuestro equipo tiene este sitio a su cargo. '
-             + 'Lo van a ver todos, pero solo un Owner o Admin lo puede cambiar.</p>';
+             + 'Lo van a ver todos, pero solo un Admin lo puede cambiar.</p>';
 
   if(cuentas && cuentas.length){
     const opciones = cuentas
@@ -7150,7 +7150,7 @@ $('archivoRestaurar').addEventListener('change', ev=>{
     try{ d = JSON.parse(lector.result); }
     catch(e){ aviso('El archivo no es un respaldo JSON válido.', true); return; }
     if(!d || !Array.isArray(d.clientes) || !Array.isArray(d.sitios)){ aviso('El archivo no tiene el formato esperado.', true); return; }
-    if(!esAdmin()){ aviso('Solo un Owner o un Admin puede restaurar un respaldo.', true); return; }
+    if(!esAdmin()){ aviso('Solo un Admin puede restaurar un respaldo.', true); return; }
     /* Un respaldo anterior al módulo de pólizas no trae la llave. No se exige
        arriba a propósito: es un archivo viejo, no un archivo roto. */
     const dPolizas = Array.isArray(d.polizas) ? d.polizas : [];
