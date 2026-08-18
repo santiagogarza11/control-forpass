@@ -224,17 +224,20 @@ portada, que dice «MXGT01».
 
 ## Huecos conocidos
 
-- **La regla de congelado de precios nunca se ejerció de verdad.** Un Owner pasa
-  por la primera cláusula sin llegar a comparar `partidas`, así que el 403 no se
-  ha visto. **Hace falta una cuenta Analyst.** La señal indirecta sí está
-  verificada: lo que se reenvía es idéntico a lo guardado, y esa comparación es más
-  estricta que la de Firestore.
+- ~~**La regla de congelado de precios nunca se ejerció de verdad.**~~ **Ejercida
+  el 18-ago-2026** con la cuenta Analyst `test1` sobre Prolec en `activa`: los
+  cuatro intentos de romperla rebotaron y los dos legítimos pasaron. Encontró un
+  bug que solo se podía ver así —la comparación del descuento reventaba en las
+  pólizas que no traían el campo, y el servidor rechazaba todo, incluso lo
+  legítimo—, arreglado en `d1313a9` y publicado en la consola. Detalle en
+  `docs/POLIZAS.md` §Congelado de precios. **Falta el rol Viewer.**
 - **`http://localhost:8000/*` sigue autorizado** en las restricciones del `apiKey`
   en Google Cloud. Se puso para probar en local. Quitarlo cuando ya no se use — no
   es una barrera de seguridad real (se pasa forjando el `Referer`), pero sobra.
 - **Las reglas de `catalogo` pueden no estar publicadas.** Si el botón "Guardar la
   lista en el servidor" rebota, es eso: el bloque está en `config/firestore.rules`.
-- **Nada está desplegado.** ~2,300 líneas nuevas en `index.html`, solo en la rama.
+- ~~**Nada está desplegado.**~~ Renglón viejo: todo está en `main` y desplegado
+  desde el 14-ago. La rama `servicios-parciales` ya no existe.
 
 ---
 

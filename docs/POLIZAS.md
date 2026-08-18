@@ -364,6 +364,30 @@ descongela).
 > la pantalla para marcarlos no existía todavía. **Cualquier cosa que se capture
 > sobre una póliza viva tiene que ir FUERA de `partidas`.**
 
+> **Ejercido de verdad el 18-ago-2026**, con la cuenta Analyst `test1` y Prolec en
+> `activa`. Rebotaron los cuatro intentos de romperlo: subir un precio, subir una
+> cantidad, meter 30% de descuento y descongelar pasando `activa` a `cotizacion`.
+> Pasaron los dos que debían: reescribir el documento idéntico y marcar un
+> servicio ejecutado, este último por el camino real de la app —`marcarServicio` +
+> `guardarPoliza` + la cola— sin un solo aviso de error. Nada se movió en el
+> servidor.
+>
+> **Y salió un bug que solo se podía ver así:** la cláusula 3 comparaba el
+> descuento con acceso por punto, y en una regla de Firestore **un campo ausente no
+> es vacío, es un error de evaluación — o sea un rechazo**. Ninguna de las seis
+> pólizas guardadas antes del 14-ago tenía el campo, así que el servidor rechazaba
+> TODO sobre una póliza cerrada, incluida la reescritura idéntica: un Analyst no
+> podía capturar una OC ni marcar un servicio. Arreglado con
+> `get('descuento', 0)` en las dos puntas. **Todo campo nuevo que se compare en la
+> cláusula 3 va con `get()`** — ahí un error estorba a quien sí tiene permiso,
+> mientras que en la cláusula 2 y en el `create` fallar cerrado es lo correcto.
+>
+> **Lo que la cláusula 3 NO congela**, medido el mismo día: `fechaInicio`,
+> `facturacion`, `fechaCierre`, `vendedor` y `sitioNombre`. Ningún precio se mueve,
+> pero mover la vigencia corre el calendario completo y borrar `fechaCierre` hace
+> que la pantalla diga «precios congelados» donde ya no lo dice el servidor. Está
+> anotado como decisión abierta en `CLAUDE.md`.
+
 **La bitácora es la evidencia**: ya era inmutable por regla (`allow update,
 delete: if false`), así que el `precioAnual` del momento de cierre queda ahí y
 nadie —ni un Owner— lo puede editar. Sin agregar un campo ni una regla.

@@ -252,6 +252,26 @@ tapado y nadie lo vio, así que sí hay que animar el siguiente.
 
 ## Trampas conocidas (ya nos mordieron)
 
+- **En una regla de Firestore, un campo ausente NO es vacío: es un ERROR, y un
+  error deniega.** La cláusula 3 del congelado comparaba
+  `request.resource.data.descuento == resource.data.descuento` con acceso por
+  punto. El descuento se agregó el 14-ago y **ninguna de las seis pólizas que ya
+  existían lo tenía guardado**, así que la comparación reventaba y el servidor
+  rechazaba TODO sobre una póliza cerrada —incluso reescribir el documento sin
+  cambiar un solo valor—. Un Analyst no podía capturar una OC ni marcar un
+  servicio: justo el único momento en que se marcan. Se arregló con
+  `get('descuento', 0)` en las dos puntas. **La regla general:** en la cláusula 3
+  un error de evaluación estorba a quien SÍ tiene permiso, así que ahí todo campo
+  va con `get()`; en la cláusula 2, en el `create` y en `/usuarios` un error
+  deniega a quien no debía pasar y fallar cerrado es lo correcto. Cualquier campo
+  nuevo al nivel de la póliza que se compare en la cláusula 3 va con `get()`.
+- **Firestore no devuelve las llaves de un mapa en orden estable.** Dos lecturas
+  seguidas del MISMO documento sin cambios dan `JSON.stringify` distintos. Por eso
+  «`partidas` sale byte por byte igual» no es literal: comparadas canónicamente
+  —ordenando llaves— sí son idénticas, y a la regla le da igual porque compara
+  valores, no texto. Verificar idempotencia comparando cadenas crudas **produce
+  falsas alarmas**: en la sesión del 18-ago dijo dos veces que las partidas habían
+  cambiado cuando el `updateTime` ni se había movido.
 - **Al agregar una colección hay que tocar SIETE lugares**, y el respaldo es el
   que se olvida. Con `polizas`: las reglas (a mano en la consola), `datos`,
   `cargar()`, `limpiarSesionYDatos()`, `bajarDeLaNube()`, `subirTodo()`, el
@@ -452,33 +472,32 @@ clientes serían ~125 ms. Nunca va a ser el cuello de botella.
 
 ## Pendientes
 
-### Lo primero al abrir sesión (17-ago-2026)
+### Lo primero al abrir sesión (18-ago-2026)
 
-1. **Verificar que el deploy de `a1cff59` salió.** El build de Pages falló por un
-   problema de GitHub, no del código: no pudo descargar su propia acción
-   `jekyll-build-pages` (503 y luego 429). Se relanzó pero no se alcanzó a
-   confirmar. Comprobar:
-   ```bash
-   gh run list --limit 3
-   curl -s "https://santiagogarza11.github.io/control-forpass/?v=$(date +%s)" | grep -c 'id="pDescuento"'
-   ```
-   Debe decir `1`. Si no, relanzar con `gh run rerun <id>` o
-   `gh api -X POST repos/santiagogarza11/control-forpass/pages/builds`.
-   **Nada que arreglar en el código**: `main` y la rama están en `a1cff59` y todo
-   quedó verificado en local.
+**Nada urgente.** Lo de la sesión anterior quedó cerrado: el deploy de `a1cff59`
+sí salió (build `built` sobre `c2afd65`, y el sitio en vivo trae `pDescuento`), y
+la rama `servicios-parciales` **ya no existe** —se mergeó a `main` por
+fast-forward, así que `main` es todo lo que tenía, pero nunca llegó a `origin`—.
+La próxima función arranca rama nueva.
 
-2. **La rama de trabajo es `servicios-parciales`**, al día con `main`. Las
-   funciones van ahí y se mergean por bloque ya mostrado; los bugs, directo a
-   `main`.
+**No hay nada a medias en el servidor.** La prueba del congelado del 18-ago dejó
+Prolec como estaba; lo único que cambió es que ya tiene `descuento: 0`, que es un
+cero donde antes no había campo.
 
 ### Lo que sigue, en orden de valor
 
-1. **Dar de alta la primera cuenta del equipo.** Es lo que desbloquea la única
-   verificación importante que nunca se ha podido correr: **el congelado de
-   precios con un Analyst real**. Hoy Santiago es Owner y pasa por la primera
-   cláusula de la regla sin que se compare un solo campo, así que el 403 del
-   congelado —de `partidas` y ahora también del `descuento`— **jamás se ha visto
-   de verdad**. Admin → Crear cuenta; el flujo está completo.
+1. **Decidir si el congelado se extiende más allá del precio.** Medido el
+   18-ago con un Analyst real: sobre una póliza activa un Analyst **puede** mover
+   `fechaInicio`, `facturacion`, `fechaCierre`, `vendedor` y `sitioNombre`. Ningún
+   precio se mueve, así que el congelado cumple lo que dice —pero mover la
+   vigencia **corre el calendario completo** (los meses de servicio son desfases
+   desde ahí), `facturacion` convierte doce cobros en uno, y `fechaCierre` es la
+   marca que la interfaz enseña como «precios congelados»: borrarla no descongela
+   nada en el servidor, nada más hace que la pantalla mienta. Recomendación:
+   agregar `fechaInicio`, `facturacion` y `fechaCierre` a la cláusula 3 —los tres
+   con `get()`— y dejar `vendedor`, `sitioNombre`, `folio` y `notas` libres, que
+   son correcciones de texto legítimas. **Es función, no bug: va en rama y se
+   muestra antes de mergear.**
 2. **Geometría fina de la tabla del documento (lo que queda de Fase 5).** Hoy usa
    las proporciones de la plantilla, no los centros medidos: Cantidad 297.0 ·
    Precio 354.2 · Total 415.3 · Frecuencia 474.4 · Total Mtto 531.4, paso de fila
@@ -520,9 +539,11 @@ clientes serían ~125 ms. Nunca va a ser el cuello de botella.
     de los cuatro PDF, con lo no extraíble marcado como tal.
 - **Decidir qué mensual imprime el documento.** El nominal no cuadra por doce; o
   lleva nota al pie, o imprime la última mensualidad aparte. Es decisión comercial.
-- **El 403 del congelado no se ha visto de verdad.** Un Owner pasa por la primera
-  cláusula sin comparar partidas, así que hace falta una cuenta Analyst — se
-  desbloquea con el pendiente de las dos cuentas.
+- **El 403 del congelado ya se vio de verdad** (18-ago-2026, cuenta Analyst
+  `test1`). Los cuatro intentos de romperlo rebotaron: subir un precio, subir una
+  cantidad, meter 30% de descuento, y el brinco en dos pasos pasando `activa` a
+  `cotizacion`. Y de paso salió el bug de arriba: la regla rechazaba también lo
+  legítimo. Lo que **no** está probado es el rol Viewer contra el servidor.
 - **Excel de pólizas: no existe y no se tocó a propósito.** Si algún día se agrega
   una hoja, las letras de columna se calculan con `letraCol()`, nunca a mano, y el
   total del renglón va como fórmula, no tecleado.
@@ -536,13 +557,12 @@ clientes serían ~125 ms. Nunca va a ser el cuello de botella.
   **dos** listas o el login truena: restricciones de la llave en Google Cloud
   **y** *Authorized domains* de Firebase Auth. Orden obligatorio: DNS primero,
   Pages después.
-- **Falta probar con dos cuentas.** El cambio de contraseña contra Firebase y el
-  bloqueo de accesos no se han probado de punta a punta: hacen falta dos cuentas
-  (nadie se puede bloquear a sí mismo). Se desbloquea al dar de alta a la primera
-  persona del equipo.
-- **Dar de alta al equipo** desde Admin → Crear cuenta. Hoy solo existe el Owner
-  de Santiago. El flujo ya está completo: se crea la cuenta, se pasa la
-  contraseña, y el tablero mismo le recomienda cambiarla.
+- **El equipo ya está dado de alta** (verificado en el servidor el 18-ago): seis
+  cuentas — Santiago (Owner), Roberto y Marcelo (Admin), `test1` y Victor
+  (Analyst), Pablo (Viewer). Todas con `activo` y `rol` bien puestos.
+- **Falta probar el bloqueo y el cambio de contraseña de punta a punta.** Ya hay
+  con qué (nadie se puede bloquear a sí mismo, y ahora sobran cuentas), pero no se
+  ha hecho.
 - **Outfit para los titulares.** La marca usa dos tipografías (Camber/Outfit para
   títulos, Manrope para cuerpo); hoy todo es Manrope. Camber es de paga; Outfit es
   el respaldo libre que el propio CSS de forguard.com declara. ~18 KB.
