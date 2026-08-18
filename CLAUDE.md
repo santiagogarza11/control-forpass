@@ -480,34 +480,28 @@ la rama `servicios-parciales` **ya no existe** —se mergeó a `main` por
 fast-forward, así que `main` es todo lo que tenía, pero nunca llegó a `origin`—.
 La próxima función arranca rama nueva.
 
+**Cerrado el 18-ago:** el congelado de precios se ejerció por primera vez con un
+Analyst real y con un Viewer real, salieron dos bugs —la regla rechazaba también
+lo legítimo, y el formulario ofrecía lo que el servidor iba a negar—, los dos
+arreglados, desplegados y verificados. El congelado ahora cubre además la
+vigencia, la facturación y la fecha de cierre. Reglas pegadas en la consola.
+
 **No hay nada a medias en el servidor.** La prueba del congelado del 18-ago dejó
 Prolec como estaba; lo único que cambió es que ya tiene `descuento: 0`, que es un
 cero donde antes no había campo.
 
 ### Lo que sigue, en orden de valor
 
-1. **Decidir si el congelado se extiende más allá del precio.** Medido el
-   18-ago con un Analyst real: sobre una póliza activa un Analyst **puede** mover
-   `fechaInicio`, `facturacion`, `fechaCierre`, `vendedor` y `sitioNombre`. Ningún
-   precio se mueve, así que el congelado cumple lo que dice —pero mover la
-   vigencia **corre el calendario completo** (los meses de servicio son desfases
-   desde ahí), `facturacion` convierte doce cobros en uno, y `fechaCierre` es la
-   marca que la interfaz enseña como «precios congelados»: borrarla no descongela
-   nada en el servidor, nada más hace que la pantalla mienta. Recomendación:
-   agregar `fechaInicio`, `facturacion` y `fechaCierre` a la cláusula 3 —los tres
-   con `get()`— y dejar `vendedor`, `sitioNombre`, `folio` y `notas` libres, que
-   son correcciones de texto legítimas. **Es función, no bug: va en rama y se
-   muestra antes de mergear.**
-2. **Geometría fina de la tabla del documento (lo que queda de Fase 5).** Hoy usa
+1. **Geometría fina de la tabla del documento (lo que queda de Fase 5).** Hoy usa
    las proporciones de la plantilla, no los centros medidos: Cantidad 297.0 ·
    Precio 354.2 · Total 415.3 · Frecuencia 474.4 · Total Mtto 531.4, paso de fila
    21.53 pt como altura fija, cuerpos de 7.2 y 6.2 pt. **Al tocarla se mueve la
    paginación**, así que hay que remedir los topes de 23 y 21 filas — el corrector
    por medición ya protege el resultado, pero los topes conviene ajustarlos.
    Después de eso, y solo después, el aviso de captura por ancho de concepto.
-3. **Fase 4 — tablero de pólizas.** La vista de «qué toca este mes» a nivel de
+2. **Fase 4 — tablero de pólizas.** La vista de «qué toca este mes» a nivel de
    TODAS las pólizas, no de una. Hoy el calendario es por póliza.
-4. **Segundo documento: evidencia de servicios ejecutados.** El historial de
+3. **Segundo documento: evidencia de servicios ejecutados.** El historial de
    `hechos` ya da para el reporte que el cliente pide en auditoría —con el «4 de 5»
    y su motivo—. Es otra plantilla y otra fase; se dejó fuera de la Fase 5 a
    propósito.
