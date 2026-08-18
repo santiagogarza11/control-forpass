@@ -305,6 +305,43 @@ button.encargado:focus-visible{outline:2px solid var(--accent); outline-offset:2
 .i-ok{background:var(--ok-suave); color:#2c7a4e; border-color:#c5e6d3;}
 .i-alerta{background:var(--alerta-suave); color:#9a6a15; border-color:#f0dcb4;}
 .i-error{background:var(--error-suave); color:#a5322e; border-color:#f0cbc9;}
+
+/* ---- Agenda de servicios (Fase 4) ----
+   Tres bloques por estado, y adentro mes → sitio → equipos. El color vive en el
+   filo izquierdo del bloque y no en cada chip: con veinte equipos en pantalla,
+   veinte chips de color no dicen nada y cansan. */
+.agenda-bloque{background:#fff; border:1px solid var(--line); border-left:3px solid var(--neutro);
+  border-radius:14px; padding:16px 18px 6px; margin-bottom:16px; box-shadow:var(--sombra-suave);}
+.agenda-bloque.a-error {border-left-color:var(--error);}
+.agenda-bloque.a-alerta{border-left-color:var(--alerta);}
+.agenda-cabeza h3{font-size:14.5px; color:var(--navy); display:flex; align-items:center; gap:8px;}
+.agenda-cabeza .pista{margin:3px 0 0;}
+.agenda-cuenta{background:var(--neutro-suave); color:#5d6479; font-size:11.5px; font-weight:700;
+  border-radius:999px; padding:1px 9px;}
+.a-error .agenda-cuenta {background:var(--error-suave);  color:#a5322e;}
+.a-alerta .agenda-cuenta{background:var(--alerta-suave); color:#9a6a15;}
+.agenda-mes{margin-top:14px;}
+.agenda-mes-tit{font-size:11px; font-weight:800; letter-spacing:.7px; text-transform:uppercase;
+  color:#5d6479; padding-bottom:7px; border-bottom:1px solid var(--line);}
+.agenda-sitio{padding:11px 0 12px; border-bottom:1px solid var(--line);}
+.agenda-sitio:last-child{border-bottom:0;}
+.agenda-sitio-tit{background:none; border:0; padding:0; cursor:pointer; font-family:inherit;
+  font-size:13px; font-weight:700; color:var(--navy); display:flex; align-items:center; gap:7px;
+  margin-bottom:8px;}
+.agenda-sitio-tit:hover{color:#2c7a4e;}
+.agenda-sitio-tit span{font-weight:500; color:var(--gray);}
+.agenda-cuenta-mini{background:var(--neutro-suave); color:#5d6479; font-size:10.5px; font-weight:700;
+  border-radius:999px; padding:0 7px;}
+.agenda-equipos{display:flex; flex-wrap:wrap; gap:7px;}
+/* El equipo es el botón que registra el servicio. Se ve como lo que es —algo que
+   se pica— y no como una etiqueta de adorno. */
+.agenda-eq{font-family:inherit; font-size:12px; color:var(--gray); background:var(--bg);
+  border:1px solid var(--line); border-radius:9px; padding:5px 10px; cursor:pointer;
+  transition:border-color .12s, background .12s;}
+.agenda-eq b{font-weight:700; color:var(--navy);}
+.agenda-eq:hover{border-color:var(--accent); background:#fff;}
+.agenda-eq.inerte{cursor:default;}
+.agenda-eq.inerte:hover{border-color:var(--line); background:var(--bg);}
 .i-neutro{background:var(--neutro-suave); color:#5c6273; border-color:#dfe3ee;}
 .i-info{background:#EEF2FB; color:var(--navy); border-color:#c9d4ec;}
 
@@ -2661,6 +2698,93 @@ function calcularPoliza(p){
            noCuadran, cerrable, estado, tono, activa };
 }
 
+/* ==================== La agenda de servicios (Fase 4) ====================
+   El calendario de `modalCalendario` contesta «qué toca en ESTA póliza». Esto
+   contesta la pregunta que de verdad organiza la semana: «qué toca AHORA, en
+   todas». Son preguntas distintas y por eso es vista y no modal — se vuelve a
+   ella todo el día.
+
+   Dos decisiones que la sostienen:
+
+   · **El estado lo calcula `calcularPoliza`, no esta función.** Los meses de
+     servicio son DESFASES desde la vigencia de cada póliza, así que «atrasado» se
+     mide contra los meses cumplidos de SU póliza, no contra el calendario. Si aquí
+     se comparara 'AAAA-MM' con el mes de hoy, una póliza que arrancó el día 15
+     daría atrasado el día 1 del mes siguiente y la agenda diría un número y los
+     indicadores de la portada otro. Se reusa el mismo juicio para que los dos
+     cuadren siempre; el mes de calendario se usa solo para AGRUPAR.
+   · **Se agrupa por estado y dentro por mes**, no al revés. «Atrasados» y «Toca
+     ahora» suman exactamente lo que dicen los dos indicadores de la portada, y eso
+     se puede verificar. Agrupando solo por mes, un servicio que «toca ahora» de una
+     póliza que arrancó a media mes caería en la casilla del mes pasado y se leería
+     como atrasado.
+
+   El segurista no genera trabajo —es presencia, no mantenimiento— así que no entra
+   como pendiente; se cuenta aparte para poder anunciarlo. */
+function agendaServicios(){
+  const atrasados = [], ahora = [], proximos = [], hechos = [];
+  let seguristas = 0;
+
+  datos.polizas.forEach(p=>{
+    const c = calcularPoliza(p);
+    /* Solo pólizas VIVAS — el mismo `c.activa` (estatus activa Y vigente) que usa
+       resumirPolizas. La primera versión incluía las activas ya vencidas y sus
+       meses sin marcar salían aquí como atrasados mientras el indicador de la
+       portada decía cero: dos números distintos para la misma pregunta. El
+       criterio ya estaba decidido en el semáforo —una póliza vencida es
+       «Terminada», no «atrasada»— y la agenda lo sigue. */
+    if(!c.activa) return;
+    const cli = clientePorId(p.clienteId);
+    p.partidas.forEach(x=>{
+      if(esSegurista(x)){ seguristas += x.mesesServicio.length; return; }
+      x.mesesServicio.forEach(m=>{
+        const inicioMes = sumarMeses(p.fechaInicio, m);
+        const det = servicioDetalle(p, x, m);
+        const it = {
+          polizaId:p.id, poliza:p, partida:x, mes:m,
+          cliente: cli ? cli.nombre : '', titulo: tituloPoliza(p),
+          clave: inicioMes.slice(0,7),
+          etiquetaMes: etiquetaMesServicio(p.fechaInicio, m),
+          det,
+          /* Parcial: se atendieron algunas unidades del renglón y falta el resto.
+             `hechas` se materializa en normalizarPoliza, así que aquí ya existe. */
+          parcial: !!det && det.hechas < x.cantidad
+        };
+        if(det) hechos.push(it);
+        else if(m < c.mesesCumplidos) atrasados.push(it);
+        else if(m === c.mesActual)    ahora.push(it);
+        else if(m > c.mesActual)      proximos.push(it);
+        /* Un mes anterior al actual que además está hecho ya cayó en `hechos`; no
+           hay cuarto caso. */
+      });
+    });
+  });
+
+  /* Orden: lo más viejo primero en lo que ya se debe, lo más cercano primero en lo
+     que viene. Es el orden en que se trabaja. */
+  const porFecha = (a,b)=> a.clave < b.clave ? -1 : a.clave > b.clave ? 1
+                         : a.titulo.localeCompare(b.titulo,'es');
+  atrasados.sort(porFecha); ahora.sort(porFecha); proximos.sort(porFecha);
+  return { atrasados, ahora, proximos, hechos, seguristas };
+}
+
+/* Agrupa una lista de la agenda por mes de calendario y, dentro, por póliza. Así
+   una visita cubre varios equipos del mismo sitio en el mismo viaje, que es como
+   se trabaja de verdad. */
+function agruparAgenda(lista){
+  const meses = [];
+  lista.forEach(it=>{
+    let mes = meses.find(g => g.clave === it.clave);
+    if(!mes){ mes = { clave:it.clave, etiqueta:it.etiquetaMes, sitios:[] }; meses.push(mes); }
+    let sitio = mes.sitios.find(g => g.polizaId === it.polizaId);
+    if(!sitio){ sitio = { polizaId:it.polizaId, titulo:it.titulo, cliente:it.cliente, equipos:[] }; mes.sitios.push(sitio); }
+    sitio.equipos.push(it);
+  });
+  meses.forEach(g => g.sitios.forEach(si =>
+    si.equipos.sort((a,b)=> (a.partida.concepto||'').localeCompare(b.partida.concepto||'','es'))));
+  return meses;
+}
+
 /* ==================== El puente hacia el documento imprimible ====================
    armarPayloadPoliza() entrega TODO resuelto. La plantilla formatea y concatena:
    no multiplica, no divide, no calcula módulos y no decide títulos.
@@ -2871,7 +2995,11 @@ function polizaPorId(id){ return datos.polizas.find(p => p.id === id); }
    ese producto se está. Son dos ejes distintos a propósito: el panel de admin es
    de la app entera y vive fuera de los dos módulos. */
 const estado = { modulo:'forpass', vista:'clientes', clienteId:null, polizaId:null,
-                 busca:'', filtro:'todos', sitioFiltro:'', encargadoFiltro:'' };
+                 busca:'', filtro:'todos', sitioFiltro:'', encargadoFiltro:'',
+                 /* Cuántos meses adelante enseña la agenda. Hace falta un tope:
+                    MXGT01 sola son ~108 servicios al año, y cinco pólizas activas
+                    llenarían la pantalla de trabajo que no es de ahora. */
+                 horizonte:2 };
 
 /* Se recuerda el último módulo para abrir donde te quedaste. Es preferencia de
    pantalla, no información: va en localStorage y no viaja al servidor. */
@@ -3296,7 +3424,15 @@ function resumirPolizas(lista){
 /* Nombre presentable de una póliza: el sitio manda porque es lo que se imprime. */
 function tituloPoliza(p){
   const cli = clientePorId(p.clienteId);
-  return (p.sitioNombre || p.folio || 'Póliza') + (cli ? ' · ' + cli.nombre : '');
+  const sitio = p.sitioNombre || p.folio || 'Póliza';
+  if(!cli) return sitio;
+  /* La misma regla que el documento impreso: si el sitio ya trae el nombre del
+     cliente adentro —«Prolec» / «Prolec Planta 1»— repetirlo es ruido. En la
+     agenda se veía triple: «Prolec Planta 1 · Prolec · Prolec». Buscar por el
+     nombre del cliente sigue funcionando: si el título lo omite es porque el
+     sitio ya empieza con él. */
+  if(llaveTexto(sitio).startsWith(llaveTexto(cli.nombre))) return sitio;
+  return sitio + ' · ' + cli.nombre;
 }
 
 function vistaPolizas(){
@@ -3310,6 +3446,10 @@ function vistaPolizas(){
      + '</div><div class="acciones">'
      /* Mientras no haya pólizas, el único botón es el del estado vacío: dos
         "Nueva cotización" en la misma pantalla es preguntar lo mismo dos veces. */
+     +   (datos.polizas.some(p => p.estatus === 'activa')
+          ? '<button type="button" class="btn btn-suave btn-mini" data-accion="ver-agenda" '
+            + 'title="Qué mantenimientos tocan, en todas las pólizas">' + ICONO.calendario + 'Agenda</button>'
+          : '')
      +   '<button type="button" class="btn btn-suave btn-mini" data-accion="ver-precios">' + ICONO.credencial + 'Lista de precios</button>'
      /* Las cotizaciones viejas ya existen en JSON: se cargan, no se recapturan. */
      +   (puedeEditar()
@@ -3326,10 +3466,12 @@ function vistaPolizas(){
      + tarjetaKpi('En espera de confirmar', numero(r.enLaCalle),
          r.enLaCalle ? dinero(r.montoEnLaCalle) + ' esperando respuesta' : 'Nada enviado sin contestar',
          r.esperaLarga ? 'k-alerta' : '')
+     /* Se ofrecen para abrir SOLO cuando hay algo que ver: un «Ver cuáles» con cero
+        adentro decepciona, y es la misma regla que siguen los de cobranza. */
      + tarjetaKpi('Servicios este mes', numero(r.tocanEsteMes), 'Mantenimientos que tocan y siguen sin hacerse',
-         r.tocanEsteMes ? 'k-alerta' : '')
+         r.tocanEsteMes ? 'k-alerta' : '', r.tocanEsteMes ? 'ver-agenda-pendiente' : '')
      + tarjetaKpi('Servicios atrasados', numero(r.atrasados), 'Meses ya cumplidos sin registrar',
-         r.atrasados ? 'k-error' : '')
+         r.atrasados ? 'k-error' : '', r.atrasados ? 'ver-agenda-pendiente' : '')
      + '</div>';
 
   h += avisoLocal();
@@ -3747,6 +3889,122 @@ function modalEquipo(id){
   };
 }
 
+/* ===================== VISTA: agenda de servicios =====================
+   Contesta «qué toca ahora, en todas las pólizas». Ver agendaServicios() para el
+   porqué de agrupar por estado y no por mes. */
+function vistaAgenda(){
+  const ag = agendaServicios();
+  const q = estado.busca.trim().toLowerCase();
+  const coincide = it => !q
+    || (it.titulo || '').toLowerCase().includes(q)
+    || (it.cliente || '').toLowerCase().includes(q)
+    || (it.partida.concepto || '').toLowerCase().includes(q);
+
+  const atrasados = ag.atrasados.filter(coincide);
+  const ahora     = ag.ahora.filter(coincide);
+  /* El horizonte se cuenta en meses de calendario desde el actual. */
+  const tope = mesMasN(hoyISO(), estado.horizonte);
+  const proximos = ag.proximos.filter(coincide)
+    .filter(it => estado.horizonte === 0 || it.clave <= tope);
+
+  const pendientes = atrasados.length + ahora.length;
+  const sitiosTocados = new Set(atrasados.concat(ahora).map(it => it.polizaId)).size;
+
+  let h = botonRegresarPolizas();
+
+  h += '<div class="titulo-zona"><div>'
+     +   '<h2>Agenda de servicios</h2>'
+     +   '<p>' + (pendientes
+          ? numero(pendientes) + ' ' + plural(pendientes,'servicio','servicios') + ' por atender en '
+            + numero(sitiosTocados) + ' ' + plural(sitiosTocados,'sitio','sitios')
+            + (atrasados.length ? ' · ' + numero(atrasados.length) + ' ya atrasado' + (atrasados.length===1?'':'s') : '')
+          : 'Nada pendiente ahora mismo')
+     +   '</p>'
+     + '</div></div>';
+
+  if(!ag.atrasados.length && !ag.ahora.length && !ag.proximos.length){
+    /* Sin pólizas activas no hay agenda que enseñar, y decirlo es más útil que una
+       pantalla vacía: lo que falta es cerrar una cotización, no capturar aquí. */
+    h += vistaVacia('calendario', 'Todavía no hay servicios programados',
+          'La agenda se llena con las pólizas activas. Cierra una cotización como activa y sus '
+          + 'mantenimientos aparecen aquí, mes por mes.', '', '');
+    return h;
+  }
+
+  h += '<div class="barra-busca">'
+     +   '<input type="search" id="buscaAgenda" placeholder="Buscar por sitio, cliente o equipo…" value="' + esc(estado.busca) + '">'
+     +   '<select id="horizonteAgenda">'
+     +     '<option value="0"' + (estado.horizonte === 0 ? ' selected' : '') + '>Solo lo pendiente</option>'
+     +     '<option value="2"' + (estado.horizonte === 2 ? ' selected' : '') + '>Y los próximos 2 meses</option>'
+     +     '<option value="6"' + (estado.horizonte === 6 ? ' selected' : '') + '>Y los próximos 6 meses</option>'
+     +     '<option value="12"' + (estado.horizonte === 12 ? ' selected' : '') + '>Todo el año</option>'
+     +   '</select>'
+     + '</div>';
+
+  h += bloqueAgenda('Atrasados', atrasados, 'error',
+        'Su mes ya se cumplió completo y nadie los registró.');
+  h += bloqueAgenda('Toca ahora', ahora, 'alerta',
+        'El mes en curso de su póliza. Todavía no están atrasados.');
+  if(estado.horizonte !== 0){
+    h += bloqueAgenda('Programados', proximos, 'neutro',
+          'Lo que viene, para planear la ruta.');
+  }
+
+  if(ag.seguristas){
+    h += '<p class="pista" style="margin-top:18px">Además hay ' + numero(ag.seguristas) + ' '
+       + plural(ag.seguristas,'mes con segurista incluido','meses con segurista incluido')
+       + '. No llevan registro de mantenimiento: es presencia, no equipo.</p>';
+  }
+  return h;
+}
+
+/* Un bloque de la agenda: mes → sitio → equipos. Cada equipo es el botón que abre
+   el registro del servicio, el MISMO modal del calendario por póliza — al guardar
+   hace render() y esta vista se repinta con el servicio ya marcado. */
+function bloqueAgenda(titulo, lista, tono, explica){
+  if(!lista.length) return '';
+  const puede = puedeEditar();
+  let h = '<div class="agenda-bloque a-' + tono + '">'
+        + '<div class="agenda-cabeza"><h3>' + esc(titulo)
+        +   ' <span class="agenda-cuenta">' + numero(lista.length) + '</span></h3>'
+        + '<p class="pista">' + esc(explica) + '</p></div>';
+
+  agruparAgenda(lista).forEach(mes=>{
+    h += '<div class="agenda-mes"><div class="agenda-mes-tit">' + esc(mes.etiqueta) + '</div>';
+    mes.sitios.forEach(si=>{
+      const n = si.equipos.length;
+      h += '<div class="agenda-sitio">'
+         /* `data-poliza` es el mismo atributo de las tarjetas de la lista, así que
+            lo abre el manejador que ya existe: no hace falta uno nuevo. */
+         +   '<button type="button" class="agenda-sitio-tit" data-poliza="' + esc(si.polizaId) + '" '
+         +     'title="Abrir la póliza">' + esc(si.titulo)
+         +     ' <span class="agenda-cuenta-mini">' + n + '</span></button>'
+         +   '<div class="agenda-equipos">';
+      si.equipos.forEach(it=>{
+        const x = it.partida;
+        const etq = esc(x.concepto || 'Equipo')
+          + (x.cantidad > 1 ? ' <b>×' + x.cantidad + '</b>' : '');
+        /* Los mismos tres atributos que usan los chips del detalle, para que los
+           abra el manejador de [data-servicio] que ya está puesto. Al guardar hace
+           cerrarModal() y render(), así que la agenda se repinta con el servicio
+           ya marcado sin que haya que devolver a ninguna parte. */
+        const atrib = 'data-servicio="' + esc(it.polizaId) + '" data-partida="' + esc(x.id) + '" '
+                    + 'data-mes="' + it.mes + '"';
+        h += puede
+          ? '<button type="button" class="agenda-eq" ' + atrib + ' title="Registrar que ya se hizo">' + etq + '</button>'
+          : '<span class="agenda-eq inerte">' + etq + '</span>';
+      });
+      h += '</div></div>';
+    });
+    h += '</div>';
+  });
+  return h + '</div>';
+}
+
+/* 'AAAA-MM' n meses después del mes de una fecha. Con texto, como todas las fechas
+   de aquí: `Date` corre los días por zona horaria. */
+function mesMasN(iso, n){ return sumarMeses(iso.slice(0,8) + '01', n).slice(0,7); }
+
 function botonRegresarPolizas(){
   return '<div style="margin-bottom:14px">'
        + '<button type="button" class="btn btn-suave btn-mini" data-accion="ir-polizas">'
@@ -3759,6 +4017,19 @@ function botonRegresarPolizas(){
 function irAPrecios(){
   animarTarjetas = false;          /* es una tabla, no una reja de tarjetas */
   estado.vista = 'precios'; estado.polizaId = null; estado.busca = '';
+  render();
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+/* La agenda se abre de tres lados: el botón de la portada y los dos indicadores
+   de servicios. Desde los indicadores llega en «solo lo pendiente», porque eso es
+   lo que la persona picó — enseñarle además tres meses de futuro entierra lo que
+   venía a ver. */
+function irAAgenda(soloPendiente){
+  animarTarjetas = false;         /* son bloques con listas, no una reja de tarjetas */
+  estado.vista = 'agenda';
+  estado.polizaId = null;
+  estado.busca = '';
+  if(soloPendiente) estado.horizonte = 0;
   render();
   window.scrollTo({ top:0, behavior:'smooth' });
 }
@@ -3780,7 +4051,10 @@ function vistaVacia(icono, titulo, texto, accion, textoBoton){
   return '<div class="vacio">'
        +   '<div class="v-icono">' + ICONO[icono] + '</div>'
        +   '<h3>' + esc(titulo) + '</h3><p>' + esc(texto) + '</p>'
-       +   '<button type="button" class="btn btn-primario" data-accion="' + accion + '">' + ICONO.mas + esc(textoBoton) + '</button>'
+       /* Sin acción no se dibuja el botón: un botón vacío es peor que ninguno.
+          Lo pide el estado vacío de la agenda, donde lo que falta —cerrar una
+          cotización como activa— se hace en otra pantalla. */
+       +   (accion ? '<button type="button" class="btn btn-primario" data-accion="' + accion + '">' + ICONO.mas + esc(textoBoton) + '</button>' : '')
        + '</div>';
 }
 
@@ -3829,6 +4103,7 @@ function render(){
       estado.vista === 'admin'    ? vistaAdmin()
     : estado.modulo === 'polizas' ? (estado.vista === 'poliza' ? vistaPoliza()
                                     : estado.vista === 'precios' ? vistaPrecios()
+                                    : estado.vista === 'agenda'  ? vistaAgenda()
                                     : vistaPolizas())
     : (estado.vista === 'cliente' ? vistaCliente() : vistaClientes());
 
@@ -3840,6 +4115,14 @@ function render(){
     const fp = $('filtroPoliza');
     fp.value = estado.filtro;
     fp.addEventListener('change', ()=>{ estado.filtro = fp.value; render(); });
+  }
+  const ba = $('buscaAgenda');
+  if(ba){
+    /* Con su propio id: renderConservandoFoco lo necesita o el foco se va al
+       buscador de Forpass. Es la trampa que ya está documentada. */
+    ba.addEventListener('input', ()=>{ estado.busca = ba.value; renderConservandoFoco(ba, 'buscaAgenda'); });
+    const ha = $('horizonteAgenda');
+    if(ha) ha.addEventListener('change', ()=>{ estado.horizonte = parseInt(ha.value,10) || 0; render(); });
   }
   const b = $('buscaCliente');
   if(b){
@@ -6658,6 +6941,8 @@ $('vista').addEventListener('click', ev=>{
     else if(a === 'nueva-poliza'){ if(exigirPermiso()) modalPoliza(null); }
     else if(a === 'importar-polizas'){ if(exigirPermiso()) $('archivoPolizas').click(); }
     else if(a === 'ver-precios') irAPrecios();
+    else if(a === 'ver-agenda') irAAgenda(false);
+    else if(a === 'ver-agenda-pendiente') irAAgenda(true);
     else if(a === 'nuevo-equipo') modalEquipo(null);
     else if(a === 'guardar-catalogo') sembrarCatalogo();
     else if(a === 'editar-poliza'){ if(exigirPermiso()) modalPoliza(estado.polizaId); }
