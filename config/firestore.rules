@@ -80,7 +80,22 @@ service cloud.firestore {
        Por qué la cláusula 3 compara también el estatus y no solo las partidas:
        comparando solo partidas, el candado se brincaba en dos pasos —el analyst
        pasaba 'activa' a 'cotizacion' dejando partidas igual (le pasaba la 3), y
-       ya en 'cotizacion' la 2 le dejaba editar precios a gusto. --- */
+       ya en 'cotizacion' la 2 le dejaba editar precios a gusto.
+
+       Por qué el descuento se lee con get(campo, 0) y no con punto: Firestore NO
+       trata un campo ausente como vacío — tirar de él es un ERROR de evaluación,
+       y un error en una regla es un rechazo. El descuento se agregó el 14-ago y
+       ninguna de las pólizas que ya existían lo tenía guardado, así que la
+       cláusula 3 reventaba y un Analyst NO podía capturar una OC ni marcar un
+       servicio en una póliza cerrada: 403 al reescribir el documento sin cambiar
+       un solo valor. Medido el 18-ago-2026 con una cuenta Analyst real, que es la
+       primera vez que estas cláusulas se ejercieron.
+
+       La lección, para el siguiente campo que se agregue al nivel de la póliza:
+       aquí un error de evaluación estorba a quien SÍ tiene permiso. En la cláusula
+       2, en el create y en /usuarios un error deniega a quien no debía pasar, y
+       ahí fallar cerrado es lo correcto — por eso solo esta cláusula necesita
+       get(). Cualquier campo nuevo que se compare en la cláusula 3 va con get(). */
     match /polizas/{id} {
       allow read: if conAcceso();
 
@@ -97,7 +112,7 @@ service cloud.firestore {
                     || (puedeEditar()
                         && request.resource.data.estatus == resource.data.estatus
                         && request.resource.data.partidas == resource.data.partidas
-                        && request.resource.data.descuento == resource.data.descuento);
+                        && request.resource.data.get('descuento', 0) == resource.data.get('descuento', 0));
 
       /* Borrar una póliza cerrada es la forma más burda de saltarse todo lo de
          arriba, así que también es de Owner y Admin. */
