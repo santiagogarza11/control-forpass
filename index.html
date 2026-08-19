@@ -1355,7 +1355,16 @@ function normalizarCliente(c){
     contacto: c.contacto || '',
     notas: c.notas || '',
     /* Logo del cliente ya reducido, guardado dentro del propio registro. */
-    logo: typeof c.logo === 'string' && c.logo.startsWith('data:image/') ? c.logo : ''
+    logo: typeof c.logo === 'string' && c.logo.startsWith('data:image/') ? c.logo : '',
+    /* De dónde nació: '' es Forpass (y todo lo anterior a este campo), 'polizas'
+       es un cliente dado de alta para cotizarle una póliza. Existe porque la
+       lista de Forpass filtraba por DATOS (¿tiene sitios? ¿tiene pólizas?) y no
+       por intención: un cliente recién creado desde Pólizas no tiene ni una cosa
+       ni la otra, así que aparecía en la reja de Forpass hasta que su póliza se
+       guardara — y para siempre, si la captura se cancelaba. La colección sigue
+       siendo UNA (decisión cerrada: una empresa con kioscos y pólizas es un
+       registro con un solo logo); esto solo dice en qué lista estorba menos. */
+    origen: c.origen === 'polizas' ? 'polizas' : ''
   };
 }
 
@@ -2470,7 +2479,11 @@ function polizasDeCliente(id){ return datos.polizas.filter(q => q.clienteId === 
    El que no tiene NADA sí aparece en Forpass: ahí es donde se crean, y esconderlo
    mientras le capturas el primer sitio sería peor. */
 function clientesDeForpass(){
-  return datos.clientes.filter(c => sitiosDe(c.id).length || !polizasDeCliente(c.id).length);
+  /* Con sitios siempre entra (tiene kioscos, es de aquí aunque también tenga
+     pólizas). Sin sitios entra solo si no tiene pólizas Y no nació en el módulo
+     de pólizas: el recién creado desde allá ya no se asoma aquí. */
+  return datos.clientes.filter(c =>
+    sitiosDe(c.id).length || (!polizasDeCliente(c.id).length && c.origen !== 'polizas'));
 }
 function clientePorId(id){ return datos.clientes.find(c => c.id === id); }
 function sitioPorId(id){ return datos.sitios.find(s => s.id === id); }
@@ -6027,7 +6040,7 @@ function modalPoliza(id){
       aviso('Ese cliente ya existía; lo seleccioné.');
       return;
     }
-    const nuevo = normalizarCliente({ id:nuevoId(), nombre });
+    const nuevo = normalizarCliente({ id:nuevoId(), nombre, origen:'polizas' });
     datos.clientes.push(nuevo);
     guardarCliente(nuevo, 'creó');
     /* Se repinta solo el select, no el modal: repintar tiraría la captura. */
@@ -6390,7 +6403,7 @@ function confirmarImportacion(escogidas){
     if(r.poliza.clienteId) return;
     const llave = llaveTexto(r.nombreCliente);
     if(!creados.has(llave)){
-      const c = normalizarCliente({ nombre: r.nombreCliente });
+      const c = normalizarCliente({ nombre: r.nombreCliente, origen:'polizas' });
       datos.clientes.push(c);
       guardarCliente(c, 'creó');
       creados.set(llave, c);
