@@ -21,6 +21,12 @@ el arreglo propuesto. Las líneas son del código al 18-ago (rama
 
 ### 1. El bloque de cierre (Precio Anual + notas) se encima con el pie y el corrector nunca lo mueve; con 19–20 renglones el traslape sale impreso EN SILENCIO
 
+> ✅ **Resuelto el 18-ago-2026**, mismo día del escaneo. El corrector ahora mide
+> también el final del bloque de cierre y manda filas a una hoja nueva mientras
+> invada; la aserción cuenta además `.note` y `.totals`. Verificado con nueve
+> casos (17–42 renglones, con y sin descuento): cero invasiones, cero bandas
+> falsas, y los casos normales (17, 36) no se movieron.
+
 `plantilla_poliza_forguard.html:808`
 
 - **Cómo se ve:** Probado en navegador con payloads reales: una póliza cuya última hoja de tabla trae 19 o 20 renglones imprime las notas (Vigencia, «Precio más Iva», la cláusula de los doce meses) ENCIMA del bloque de Teléfono/Correo/Oficinas del pie —16 y 45 px de invasión medidos— sin banda roja, sin error en consola y con «Documento completo» reportado. Con 21 a 23 renglones el traslape alcanza a las filas de la tabla de totales y entonces sí sale la banda roja «NO LO MANDES»… sobre una póliza perfectamente válida, sin que el corrector pueda arreglarla. Con descuento activo (dos filas más en el cierre) el problema empieza ~2 renglones antes. Aplica también a pólizas multipágina: 42 renglones dejan 19 en la última hoja (42 = 23+19) y caen en el caso silencioso.

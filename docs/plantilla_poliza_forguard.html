@@ -830,21 +830,58 @@ function evitarTraslapeConPie(){
         hubo = true;
       }
     }
-  }
-  /* El bloque de cierre de la tabla tiene que acabar en la ÚLTIMA hoja de la
-     tabla: si el corrector creó una hoja nueva después, se lo lleva. */
-  const cierres = document.querySelectorAll('.totals');
-  if(cierres.length){
-    const cierre = cierres[cierres.length - 1];
-    const notas = cierre.parentNode.querySelector('.note');
-    const tablas = document.querySelectorAll('table.grid:not(.desc)');
-    const ultimaTabla = tablas[tablas.length - 1];
-    const cuerpoDeLaUltima = ultimaTabla && ultimaTabla.closest('.body');
-    if(cuerpoDeLaUltima && cierre.parentNode !== cuerpoDeLaUltima){
-      cuerpoDeLaUltima.appendChild(cierre);
-      if(notas) cuerpoDeLaUltima.appendChild(notas);
+
+    /* Las filas pueden caber TODAS y aun así el papel salir roto: el bloque de
+       cierre —Precio Anual y las notas— vive DESPUÉS de la tabla, y aquí solo
+       se medían filas. Con 19 o 20 renglones en la última hoja las notas se
+       imprimían ENCIMA del teléfono del pie, sin banda y sin error (medido:
+       12.3 pt de invasión); con 21–23, las filas de totales disparaban la banda
+       roja sobre una póliza perfectamente válida que el corrector nunca iba a
+       arreglar. Se mide el FINAL del cierre (las notas si hay, si no los
+       totales) y, mientras invada, la última fila de la última hoja de la
+       tabla se va a una hoja nueva; reubicarCierre() se lleva el cierre detrás
+       en la siguiente vuelta y el while remide. Con descuento el cierre trae
+       dos filas más y el umbral se adelanta ~2 renglones: por eso se mide, no
+       se calibra otro tope a mano. */
+    const c = reubicarCierre();
+    if(c){
+      const hojaCierre = hojaDe(c.cierre);
+      const pieCierre = hojaCierre && hojaCierre.querySelector('.footwrap');
+      const fin = (c.notas || c.cierre).getBoundingClientRect().bottom;
+      if(pieCierre && fin > pieCierre.getBoundingClientRect().top - 4){
+        const cuerpos = document.querySelectorAll('table.grid:not(.desc) tbody');
+        const ultimo = cuerpos[cuerpos.length - 1];
+        const filas = ultimo ? [...ultimo.children] : [];
+        /* Con una sola fila no se mueve nada: quedaría una tabla vacía, y si un
+           cierre no cabe ni con una fila el problema es de otro tamaño — lo va
+           a gritar la aserción, que ahora sí cuenta el cierre. */
+        if(filas.length >= 2){
+          const nueva = nuevaHojaComo(hojaDe(ultimo), 'table.grid:not(.desc)', 'table.grid:not(.desc) tbody');
+          nueva.querySelector('table.grid:not(.desc) tbody').appendChild(filas[filas.length - 1]);
+          hubo = true;
+        }
+      }
     }
   }
+  reubicarCierre();   /* por si la última vuelta creó hoja y el while ya no remidió */
+}
+
+/* El bloque de cierre de la tabla tiene que acabar en la ÚLTIMA hoja de la
+   tabla: si el corrector creó una hoja nueva después, se lo lleva. Devuelve el
+   cierre y las notas para que quien llama pueda medirlos ya reubicados. */
+function reubicarCierre(){
+  const cierres = document.querySelectorAll('.totals');
+  if(!cierres.length) return null;
+  const cierre = cierres[cierres.length - 1];
+  let notas = cierre.parentNode.querySelector('.note');
+  const tablas = document.querySelectorAll('table.grid:not(.desc)');
+  const ultimaTabla = tablas[tablas.length - 1];
+  const cuerpoDeLaUltima = ultimaTabla && ultimaTabla.closest('.body');
+  if(cuerpoDeLaUltima && cierre.parentNode !== cuerpoDeLaUltima){
+    cuerpoDeLaUltima.appendChild(cierre);
+    if(notas) cuerpoDeLaUltima.appendChild(notas);
+  }
+  return { cierre, notas };
 }
 
 /* --- La aserción que se queda para siempre ---
@@ -878,8 +915,14 @@ function verificarRenglonesImpresos(){
     pg.querySelectorAll('.body tbody tr').forEach(tr => {
       if(tr.getBoundingClientRect().bottom > techo + 1) encimadas++;
     });
+    /* Las notas del cierre son un <ul>, no filas: para este conteo eran
+       invisibles, y por eso el traslape con 19–20 renglones salía impreso EN
+       SILENCIO. El bloque de totales entra completo por la misma razón. */
+    pg.querySelectorAll('.body .note, .body .totals').forEach(el => {
+      if(el.getBoundingClientRect().bottom > techo + 1) encimadas++;
+    });
   });
-  if(encimadas) mal.push({ que:'filas encimadas con el pie', impreso: encimadas, esperado: 0 });
+  if(encimadas) mal.push({ que:'bloques encimados con el pie', impreso: encimadas, esperado: 0 });
 
   if(!mal.length){ console.info('Documento completo:', pruebas.map(p=>`${p.que} ${p.impreso}/${p.esperado}`).join(' · ') + ' · sin traslapes'); return true; }
 

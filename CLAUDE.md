@@ -509,10 +509,10 @@ cero donde antes no había campo.
 
 ### Lo que sigue, en orden de valor
 
-1. **Los 19 hallazgos del escaneo del 18-ago**, en su orden: el grave del
-   documento imprimible primero (el bloque de cierre se encima con el pie EN
-   SILENCIO con 19–20 renglones en la última hoja — NGK tiene 17 y con descuento
-   estaría a nada), luego los desfases interfaz/servidor y la cola. **Lista
+1. **Los 18 hallazgos restantes del escaneo del 18-ago** (el grave del documento
+   imprimible ya quedó resuelto y verificado el mismo día): siguen los desfases
+   interfaz/servidor —«Cancelada» y el borrado ofrecidos a un Analyst, el guardado
+   de activas que exige Admin hasta para reeditar— y los dos de la cola. **Lista
    completa con línea, causa y arreglo propuesto en
    [docs/HALLAZGOS-18AGO.md](docs/HALLAZGOS-18AGO.md).** Salieron de 29 agentes
    con verificación adversaria; ninguno es hueco de seguridad.
