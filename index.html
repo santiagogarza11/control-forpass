@@ -348,6 +348,14 @@ button.encargado:focus-visible{outline:2px solid var(--accent); outline-offset:2
   padding:12px 14px 10px; margin-top:10px;}
 .cliente-nuevo .campo{margin-bottom:8px;}
 .cliente-nuevo-botones{display:flex; justify-content:flex-end; gap:8px; margin-top:10px;}
+/* El puente al otro módulo: se lee como un enlace, no como un botón de acción —
+   no cambia nada, solo lleva. */
+.enlace-modulo{font-family:inherit; font-size:11.5px; font-weight:600; color:var(--navy-2);
+  background:var(--neutro-suave); border:1px solid var(--line); border-radius:8px;
+  padding:2px 8px; margin-left:8px; cursor:pointer; display:inline-flex; align-items:center;
+  gap:5px; vertical-align:middle;}
+.enlace-modulo svg{width:13px; height:13px;}
+.enlace-modulo:hover{border-color:var(--accent); color:var(--navy);}
 .agenda-eq.inerte{cursor:default;}
 .agenda-eq.inerte:hover{border-color:var(--line); background:var(--bg);}
 .i-neutro{background:var(--neutro-suave); color:#5c6273; border-color:#dfe3ee;}
@@ -3102,6 +3110,44 @@ function guardarModulo(){ try{ localStorage.setItem(LLAVE_MODULO, estado.modulo)
    selector y el arranque no se desincronicen. */
 function inicioDelModulo(){ return estado.modulo === 'polizas' ? 'polizas' : 'clientes'; }
 
+/* Salto de la póliza a su kiosco en Forpass, y de regreso. Es la única razón
+   por la que los dos módulos comparten la colección de clientes: cuando la misma
+   dirección tiene kiosco Y póliza, poder verlas juntas. Antes `sitioId` solo
+   pintaba un «(con kiosco Forpass)» en gris — un selector completo a cambio de un
+   paréntesis— y ahora es el puente.
+
+   Se arma a mano en vez de reusar irAModulo(): esa función limpia clienteId y
+   sitioFiltro para no arrastrar filtros entre módulos, que es justo lo que aquí
+   hace falta conservar. UN solo render, como manda la casa. */
+function irAlSitioDeForpass(sitioId){
+  const s = sitioPorId(sitioId);
+  if(!s){ aviso('Ese kiosco ya no existe en Forpass.', true); return; }
+  estado.modulo = 'forpass';
+  guardarModulo();
+  estado.vista = 'cliente';
+  estado.clienteId = s.clienteId;
+  estado.polizaId = null;
+  estado.busca = ''; estado.filtro = 'todos';
+  estado.sitioFiltro = sitioId;          /* se abre en SU kiosco, no en toda la lista */
+  estado.encargadoFiltro = '';
+  animarTarjetas = true;
+  render();
+  window.scrollTo({ top:0, behavior:'smooth' });
+  aviso('Este es el kiosco Forpass de ' + s.nombre + '. Su póliza está en el otro módulo.');
+}
+
+/* El camino de regreso: del kiosco a la póliza que lo cubre. */
+function irALaPolizaDelSitio(sitioId){
+  const pol = datos.polizas.find(q => q.sitioId === sitioId);
+  if(!pol){ aviso('Ese kiosco no tiene póliza de mantenimiento ligada.', true); return; }
+  estado.modulo = 'polizas';
+  guardarModulo();
+  estado.clienteId = null;
+  estado.busca = ''; estado.filtro = 'todos';
+  estado.sitioFiltro = ''; estado.encargadoFiltro = '';
+  entrarPoliza(pol.id);
+}
+
 function irAModulo(m){
   if(!MODULOS.includes(m) || m === estado.modulo) return;   /* clic en la que ya está: nada */
   estado.modulo = m;
@@ -3438,6 +3484,13 @@ function tarjetaSitio(s, i){
        +             'title="Ver el plan de pagos mes por mes" aria-label="Plan de pagos de ' + esc(s.nombre) + '">'
        +             '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>'
        +           '</button>'
+       /* El puente de vuelta, solo si este kiosco tiene póliza ligada: de aquí
+          se brinca a su mantenimiento y de allá se regresa. */
+       +           (datos.polizas.some(q => q.sitioId === s.id)
+                    ? '<button type="button" class="icono-btn" data-ir-poliza-sitio="' + esc(s.id) + '" '
+                      + 'title="Ver su póliza de mantenimiento" aria-label="Póliza de ' + esc(s.nombre) + '">'
+                      + ICONO.credencial + '</button>'
+                    : '')
        +         '</span>'
        +       '</div>'
        +       '<div class="t-sub">'
@@ -3725,7 +3778,13 @@ function vistaPoliza(){
          : '')
      + '</b></div>'
      + '<div class="c-fila"><span>Sitio</span><b>' + esc(p.sitioNombre || '—')
-     +   (sitio ? ' <span class="pista" style="display:inline">(con kiosco Forpass)</span>' : '') + '</b></div>'
+     /* Con kiosco ligado, el paréntesis gris se vuelve el puente al otro módulo.
+        Sin kiosco no se dibuja nada: un botón muerto es peor que ninguno. */
+     +   (sitio
+          ? ' <button type="button" class="enlace-modulo" data-ir-sitio="' + esc(sitio.id) + '" '
+            + 'title="Ver su kiosco Forpass: mensualidad, pagos y vigencia">'
+            + ICONO.credencial + 'Ver su kiosco Forpass</button>'
+          : '') + '</b></div>'
      + '<div class="c-fila"><span>Fecha de cotización</span><b>' + fmtFecha(p.fechaCotizacion) + '</b></div>'
      + (p.fechaEnvio ? '<div class="c-fila"><span>Enviada</span><b>' + fmtFecha(p.fechaEnvio)
          + (c.diasEsperando !== null && p.estatus === 'enviada' ? ' · ' + c.diasEsperando + ' ' + plural(c.diasEsperando,'día','días') + ' esperando' : '') + '</b></div>' : '')
@@ -5577,9 +5636,11 @@ function modalPoliza(id){
     +       '<input type="text" id="pSitioNombre" placeholder="Ej. MXNL02" value="' + esc(p ? p.sitioNombre : '') + '">'
     +       '<div class="pista">Es lo que sale impreso. Se guarda como texto para que sobreviva aunque el sitio no exista en Forpass.</div></div>'
     +   '</div>'
-    +   '<div class="campo"><label>Ligar a un sitio de Forpass (opcional)</label>'
+    +   '<div class="campo"><label>Ligar a un kiosco de Forpass (opcional)</label>'
     +     '<select id="pSitioId"></select>'
-    +     '<div class="pista">Solo si esa cafetería también tiene kiosco. Hay pólizas en sitios sin Forpass.</div></div>'
+    +     '<div class="pista">Si esta cafetería también tiene kiosco, ligarlos pone un botón para brincar '
+    +       'entre su póliza y su kiosco. El importador los liga solo cuando el nombre coincide; '
+    +       'aquí se corrige el caso en que no coincidió. Hay pólizas en sitios sin Forpass.</div></div>'
     +   '<div class="fila2">'
     +     '<div class="campo"><label>Folio (opcional)</label>'
     +       '<input type="text" id="pFolio" placeholder="Ej. COT-2026-0041" value="' + esc(p ? p.folio : '') + '"></div>'
@@ -7323,6 +7384,14 @@ $('vista').addEventListener('click', ev=>{
       });
     return;
   }
+
+  /* Los dos puentes entre módulos. Van ANTES de [data-cliente] y [data-poliza]:
+     el de la tarjeta del sitio vive dentro de una tarjeta clicable, así que si
+     se dejara al final, el clic caería en «abrir el cliente». */
+  const irS = t.closest('[data-ir-sitio]');
+  if(irS){ irAlSitioDeForpass(irS.dataset.irSitio); return; }
+  const irP = t.closest('[data-ir-poliza-sitio]');
+  if(irP){ irALaPolizaDelSitio(irP.dataset.irPolizaSitio); return; }
 
   const tar = t.closest('[data-cliente]');
   if(tar){ entrarCliente(tar.dataset.cliente); return; }
