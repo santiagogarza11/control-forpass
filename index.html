@@ -1356,15 +1356,17 @@ function normalizarCliente(c){
     notas: c.notas || '',
     /* Logo del cliente ya reducido, guardado dentro del propio registro. */
     logo: typeof c.logo === 'string' && c.logo.startsWith('data:image/') ? c.logo : '',
-    /* De dónde nació: '' es Forpass (y todo lo anterior a este campo), 'polizas'
-       es un cliente dado de alta para cotizarle una póliza. Existe porque la
-       lista de Forpass filtraba por DATOS (¿tiene sitios? ¿tiene pólizas?) y no
-       por intención: un cliente recién creado desde Pólizas no tiene ni una cosa
-       ni la otra, así que aparecía en la reja de Forpass hasta que su póliza se
-       guardara — y para siempre, si la captura se cancelaba. La colección sigue
-       siendo UNA (decisión cerrada: una empresa con kioscos y pólizas es un
-       registro con un solo logo); esto solo dice en qué lista estorba menos. */
-    origen: c.origen === 'polizas' ? 'polizas' : ''
+    /* ¿Este cliente incluye Forpass? Es la casilla que se marca en su ficha,
+       porque hay cuentas que contratan póliza sin kioscos y al revés — pedido
+       de Santiago. Tres estados a propósito: 'si' y 'no' son la decisión
+       explícita del equipo; '' es un cliente de antes de que existiera la
+       casilla, y con él la lista de Forpass decide como siempre lo hizo (por
+       sus datos). Materializar un sí/no aquí sería inventar la respuesta: esta
+       función es pura y no puede ver los sitios ni las pólizas del cliente.
+       La colección sigue siendo UNA (decisión cerrada: una empresa con kioscos
+       y pólizas es un registro con un solo logo); esto solo dice en qué lista
+       aparece. */
+    usaForpass: c.usaForpass === 'si' ? 'si' : c.usaForpass === 'no' ? 'no' : ''
   };
 }
 
@@ -2479,11 +2481,14 @@ function polizasDeCliente(id){ return datos.polizas.filter(q => q.clienteId === 
    El que no tiene NADA sí aparece en Forpass: ahí es donde se crean, y esconderlo
    mientras le capturas el primer sitio sería peor. */
 function clientesDeForpass(){
-  /* Con sitios siempre entra (tiene kioscos, es de aquí aunque también tenga
-     pólizas). Sin sitios entra solo si no tiene pólizas Y no nació en el módulo
-     de pólizas: el recién creado desde allá ya no se asoma aquí. */
+  /* Con kioscos CAPTURADOS siempre entra: esconder un cliente con sitios
+     dejaría sus sitios inalcanzables, así que el dato le gana a la casilla.
+     Sin sitios manda la casilla de su ficha; y si es un cliente de antes de la
+     casilla (''), se decide como siempre: entra mientras no tenga pólizas. */
   return datos.clientes.filter(c =>
-    sitiosDe(c.id).length || (!polizasDeCliente(c.id).length && c.origen !== 'polizas'));
+    sitiosDe(c.id).length
+    || c.usaForpass === 'si'
+    || (c.usaForpass === '' && !polizasDeCliente(c.id).length));
 }
 function clientePorId(id){ return datos.clientes.find(c => c.id === id); }
 function sitioPorId(id){ return datos.sitios.find(s => s.id === id); }
@@ -4696,7 +4701,24 @@ function modalCliente(id){
     + '<div class="campo"><label>Contacto (opcional)</label>'
     +   '<input type="text" id="cContacto" placeholder="Ej. Juan Pérez · compras@cliente.com" value="' + esc(c ? c.contacto : '') + '"></div>'
     + '<div class="campo"><label>Notas (opcional)</label>'
-    +   '<textarea id="cNotas" placeholder="Condiciones comerciales, forma de pago, etc.">' + esc(c ? c.notas : '') + '</textarea></div>';
+    +   '<textarea id="cNotas" placeholder="Condiciones comerciales, forma de pago, etc.">' + esc(c ? c.notas : '') + '</textarea></div>'
+    /* La casilla que decide en qué lista vive. Prendida por omisión al crear
+       desde Forpass (ahí se está capturando un cliente de kioscos); al editar,
+       enseña la decisión guardada — y para un cliente de antes de la casilla,
+       lo que la lista ya hacía con él, para que marcarla no lo mueva de lugar
+       sin querer. Con kioscos capturados la lista lo enseña aunque la casilla
+       esté apagada: el dato manda, y la pista lo dice. */
+    + (() => {
+        const prendida = !c ? true
+          : c.usaForpass === 'si' ? true
+          : c.usaForpass === 'no' ? false
+          : (sitiosDe(c.id).length > 0 || !polizasDeCliente(c.id).length);
+        return '<label class="casilla"><input type="checkbox" id="cUsaForpass"' + (prendida ? ' checked' : '') + '> '
+          + 'Incluye Forpass</label>'
+          + '<div class="pista">Prendida, el cliente aparece en la lista de Forpass aunque todavía no tenga kioscos. '
+          + 'Apagada, solo vive en Pólizas — hay cuentas con póliza y sin Forpass, y al revés. '
+          + 'Un cliente con kioscos capturados aparece en Forpass de todos modos.</div>';
+      })();
 
   const pie = '<button type="button" class="btn btn-suave" data-modal="cancelar">Cancelar</button>'
             + '<button type="button" class="btn btn-primario" data-modal="guardar">' + (c ? 'Guardar cambios' : 'Agregar cliente') + '</button>';
@@ -4808,14 +4830,17 @@ function modalCliente(id){
       }catch(e){ aviso(e.message, true); return; }
     }
 
+    /* Al guardar, la decisión queda EXPLÍCITA ('si'/'no'): un cliente de antes
+       de la casilla se gradúa del estado heredado en cuanto alguien lo edita. */
+    const usa = $('cUsaForpass').checked ? 'si' : 'no';
     let reg;
     if(c){
       c.nombre = nombre; c.contacto = $('cContacto').value.trim(); c.notas = $('cNotas').value.trim();
-      c.logo = logoTmp;
+      c.logo = logoTmp; c.usaForpass = usa;
       reg = c;
     }else{
       reg = normalizarCliente({ id:nuevoId(), nombre, contacto:$('cContacto').value.trim(),
-                                notas:$('cNotas').value.trim(), logo:logoTmp });
+                                notas:$('cNotas').value.trim(), logo:logoTmp, usaForpass: usa });
       datos.clientes.push(reg);
     }
     guardarCliente(reg, c ? 'editó' : 'creó');
@@ -6040,7 +6065,7 @@ function modalPoliza(id){
       aviso('Ese cliente ya existía; lo seleccioné.');
       return;
     }
-    const nuevo = normalizarCliente({ id:nuevoId(), nombre, origen:'polizas' });
+    const nuevo = normalizarCliente({ id:nuevoId(), nombre, usaForpass:'no' });
     datos.clientes.push(nuevo);
     guardarCliente(nuevo, 'creó');
     /* Se repinta solo el select, no el modal: repintar tiraría la captura. */
@@ -6403,7 +6428,7 @@ function confirmarImportacion(escogidas){
     if(r.poliza.clienteId) return;
     const llave = llaveTexto(r.nombreCliente);
     if(!creados.has(llave)){
-      const c = normalizarCliente({ nombre: r.nombreCliente, origen:'polizas' });
+      const c = normalizarCliente({ nombre: r.nombreCliente, usaForpass:'no' });
       datos.clientes.push(c);
       guardarCliente(c, 'creó');
       creados.set(llave, c);
