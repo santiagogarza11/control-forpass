@@ -509,15 +509,9 @@ cero donde antes no había campo.
 
 ### Lo que sigue, en orden de valor
 
-1. **Cerrar los 3 hallazgos que quedan del escaneo del 18-ago** (16 de 19 ya
-   resueltos y verificados ejecutando — ver
-   [docs/HALLAZGOS-18AGO.md](docs/HALLAZGOS-18AGO.md)):
-   - **Pegar las reglas** de `config/firestore.rules` en la consola: congelan el
-     `encargado` de sitios para quien no es Admin. Hasta pegarlas, ese candado
-     sigue siendo solo de interfaz.
-   - **Los dos del Excel** (la fecha de captura sale en UTC, y «Primer pago» /
-     «Valor del contrato» van tecleados en vez de fórmulas): esperan que Santiago
-     levante su regla de «no tocar el generador de Excel».
+1. ~~Los hallazgos del escaneo del 18-ago~~ **Los 19 quedaron resueltos y
+   verificados el 19-ago** — ver [docs/HALLAZGOS-18AGO.md](docs/HALLAZGOS-18AGO.md).
+   Las reglas nuevas (candado de `encargado` en sitios) ya están pegadas.
 2. **Segundo documento: evidencia de servicios ejecutados.** El historial de
    `hechos` ya da para el reporte que el cliente pide en auditoría —con el «4 de 5»
    y su motivo—. Es otra plantilla y otra fase; se dejó fuera de la Fase 5 a

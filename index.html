@@ -2393,6 +2393,18 @@ function plural(n, uno, muchos){ return n === 1 ? uno : muchos; }
 /* Serial de fecha de Excel (1899-12-30 = 0). */
 function serialExcel(iso){ return Math.round((aUTC(iso) - Date.UTC(1899,11,30)) / 86400000); }
 
+/* La fecha LOCAL de un timestamp de captura. Los `cuando` de pagosDetalle se
+   guardan con toISOString(), que es UTC: recortarles los primeros diez
+   caracteres da la fecha de Londres, no la de Monterrey (UTC−6) — un pago
+   capturado en la tarde-noche salía en el Excel fechado al día siguiente,
+   distinto de lo que la pantalla enseña con fechaHora(). Aquí sí se usa `Date`,
+   pero solo para CONVERTIR a hora local, no para aritmética de meses. */
+function fechaLocalISO(iso){
+  const d = new Date(iso);
+  if(isNaN(d)) return '';
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
 /* ========================== CÁLCULOS DEL SITIO ========================== */
 /* Un solo lugar donde se decide todo lo que la tarjeta y el Excel muestran. */
 function calcular(s){
@@ -7492,9 +7504,10 @@ function planoHoja(filasSitios){
 
   const iMes0 = fijas.length;                 /* primera columna de mes */
   const i = {
-    inicio:6, vigencia:7, mes0:iMes0, mesN:iMes0 + nMeses - 1,
+    mensualidad:5, inicio:6, vigencia:7, mes0:iMes0, mesN:iMes0 + nMeses - 1,
     pagados:iMes0 + nMeses, pendientes:iMes0 + nMeses + 1,
     debio:iMes0 + nMeses + 2, estatus:iMes0 + nMeses + 3,
+    onboarding:iMes0 + nMeses + 4, viaticos:iMes0 + nMeses + 5,
     proximo:iMes0 + nMeses + 8
   };
   /* Letra de columna a partir del índice (0 → A). */
@@ -7542,8 +7555,16 @@ function construirHoja(filasSitios){
     celdas.push(cX('IF(' + U + '>=' + W + ',"Al día","Atrasado")', c.atrasadas > 0 ? 'Atrasado' : 'Al día', 5));
     celdas.push(cN(s.incOnboarding ? s.onboarding : 0, 7));
     celdas.push(cN(s.incViaticos ? s.viaticos : 0, 7));
-    celdas.push(cN(c.primerPago, 7));       /* mensualidad + onboarding + viáticos */
-    celdas.push(cN(c.valorContrato, 7));
+    /* Fórmulas vivas, no números tecleados: la fila de instrucciones promete
+       que «las columnas calculadas se actualizan solas» y estas dos eran las
+       únicas que no cumplían — corregir una mensualidad en el Excel las dejaba
+       diciendo el valor viejo. El valor del contrato puede ir como mensualidad
+       × meses + extras porque todos los meses cobran lo mismo y los extras van
+       completos en el pago 1: es la misma suma que montos[], expresada como
+       fórmula. Las letras salen de L(), nunca a mano. */
+    const M = L(i.mensualidad) + n, O = L(i.onboarding) + n, V = L(i.viaticos) + n;
+    celdas.push(cX(M + '+' + O + '+' + V, c.primerPago, 7));
+    celdas.push(cX(M + '*' + s.meses + '+' + O + '+' + V, c.valorContrato, 7));
     celdas.push(c.proximo ? cF(c.proximo, 6) : cT('Cubierto', 5));
     /* Días restantes: fórmula viva contra la fecha de «Próximo pago». */
     celdas.push(c.proximo ? cX(L(i.proximo) + n + '-TODAY()', c.diasRest, 5) : cT('—', 5));
@@ -7620,7 +7641,7 @@ function construirHojaPagos(filasSitios){
         cT(pagado ? (d.facturado ? 'Sí' : 'No') : '', 5),
         cT(pagado ? (d.oc || '(sin OC)') : '', 4),
         cT(pagado ? (d.quien || '') : '', 4),
-        d.cuando ? cF(String(d.cuando).slice(0, 10), 6) : cT('', 5)
+        (d.cuando && fechaLocalISO(d.cuando)) ? cF(fechaLocalISO(d.cuando), 6) : cT('', 5)
       ]);
     }
   });
