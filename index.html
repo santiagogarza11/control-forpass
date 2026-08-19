@@ -343,6 +343,11 @@ button.encargado:focus-visible{outline:2px solid var(--accent); outline-offset:2
 /* Parcial: ámbar, la misma señal que su chip en el detalle de la póliza. */
 .agenda-eq.parcial{background:var(--alerta-suave); border-color:#F0DCB4;}
 .agenda-eq.parcial b{color:#9a6a15;}
+/* El alta de cliente en línea, dentro del modal de la cotización. */
+.cliente-nuevo{background:var(--neutro-suave); border:1px solid var(--line); border-radius:11px;
+  padding:12px 14px 10px; margin-top:10px;}
+.cliente-nuevo .campo{margin-bottom:8px;}
+.cliente-nuevo-botones{display:flex; justify-content:flex-end; gap:8px; margin-top:10px;}
 .agenda-eq.inerte{cursor:default;}
 .agenda-eq.inerte:hover{border-color:var(--line); background:var(--bg);}
 .i-neutro{background:var(--neutro-suave); color:#5c6273; border-color:#dfe3ee;}
@@ -5548,6 +5553,25 @@ function modalPoliza(id){
     +           'title="Dar de alta un cliente sin salir de aquí">' + ICONO.mas + 'Nuevo</button>'
     +       '</div>'
     +       '<div class="pista">Hay clientes con póliza y sin ningún kiosco Forpass. Si no está en la lista, créalo aquí.</div>'
+    /* El alta del cliente va EN LÍNEA, dentro de este mismo modal — no en la
+       ficha completa, porque el sistema de modales es de uno a la vez y abrirla
+       encima borraría la captura de la cotización en curso (la trampa
+       documentada de confirmar()/abrirModal). Antes era un window.prompt que
+       solo pedía el nombre, y la casilla de «Incluye Forpass» quedaba en OTRA
+       ventana que había que ir a buscar después: pedido de Santiago, todo en
+       una. El logo sí queda para después (el recortador es la ficha completa);
+       el aviso al crear lo dice. */
+    +     '<div id="zonaClienteNuevo" class="cliente-nuevo" hidden>'
+    +       '<div class="campo"><label>Nombre del cliente nuevo *</label>'
+    +         '<input type="text" id="ncNombre" placeholder="Ej. Mercado Libre" autocomplete="off"></div>'
+    +       '<label class="casilla"><input type="checkbox" id="ncUsaForpass"> Incluye Forpass</label>'
+    +       '<div class="pista">Préndela si también va a tener kioscos: así aparece en la lista de Forpass desde ya. '
+    +         'Apagada, vive solo en Pólizas. Se puede cambiar después en su ficha.</div>'
+    +       '<div class="cliente-nuevo-botones">'
+    +         '<button type="button" class="btn btn-suave btn-mini" id="ncCancelar">Cancelar</button>'
+    +         '<button type="button" class="btn btn-primario btn-mini" id="ncCrear">Crear y seleccionar</button>'
+    +       '</div>'
+    +     '</div>'
     +     '</div>'
     +     '<div class="campo"><label>Sitio *</label>'
     +       '<input type="text" id="pSitioNombre" placeholder="Ej. MXNL02" value="' + esc(p ? p.sitioNombre : '') + '">'
@@ -6055,25 +6079,34 @@ function modalPoliza(id){
      kiosco, y mandar al usuario al módulo de Forpass a crearlo rompía la captura. */
   $('btnClienteNuevo').addEventListener('click', ()=>{
     if(!exigirPermiso()) return;
-    /* window.prompt y no un modal: confirmar()/abrirModal reemplazan #modalCuerpo
-       y eso borraría toda la captura en curso. */
-    const nombre = (window.prompt('Nombre del cliente nuevo:') || '').trim();
-    if(!nombre) return;
+    const z = $('zonaClienteNuevo');
+    z.hidden = !z.hidden;
+    if(!z.hidden){ $('ncNombre').value = ''; $('ncUsaForpass').checked = false; $('ncNombre').focus(); }
+  });
+  $('ncCancelar').addEventListener('click', ()=>{ $('zonaClienteNuevo').hidden = true; });
+  $('ncCrear').addEventListener('click', ()=>{
+    const nombre = $('ncNombre').value.trim();
+    if(!nombre){ $('ncNombre').setAttribute('aria-invalid','true'); $('ncNombre').focus(); aviso('Falta el nombre del cliente.', true); return; }
     const ya = datos.clientes.find(c => c.nombre.toLowerCase() === nombre.toLowerCase());
     if(ya){
-      $('pCliente').value = ya.id; pintarSitios(); refrescarResumen();
+      $('pCliente').value = ya.id; $('zonaClienteNuevo').hidden = true;
+      pintarSitios(); refrescarResumen();
       aviso('Ese cliente ya existía; lo seleccioné.');
       return;
     }
-    const nuevo = normalizarCliente({ id:nuevoId(), nombre, usaForpass:'no' });
+    const nuevo = normalizarCliente({ id:nuevoId(), nombre,
+      usaForpass: $('ncUsaForpass').checked ? 'si' : 'no' });
     datos.clientes.push(nuevo);
     guardarCliente(nuevo, 'creó');
     /* Se repinta solo el select, no el modal: repintar tiraría la captura. */
     $('pCliente').innerHTML = datos.clientes.slice()
       .sort((x,y)=> x.nombre.localeCompare(y.nombre,'es'))
       .map(c => '<option value="' + esc(c.id) + '"' + (c.id === nuevo.id ? ' selected' : '') + '>' + esc(c.nombre) + '</option>').join('');
+    $('zonaClienteNuevo').hidden = true;
     pintarSitios(); refrescarResumen();
-    aviso(nombre + ' dado de alta y seleccionado. Su logo se sube desde el detalle de la póliza.');
+    aviso(nombre + ' dado de alta y seleccionado'
+      + ($('ncUsaForpass').checked ? ' — ya aparece también en Forpass.' : '.')
+      + ' Su logo se sube desde el detalle de la póliza.');
   });
 
   $('pCliente').addEventListener('change', ()=>{ pintarSitios(); refrescarResumen(); });
