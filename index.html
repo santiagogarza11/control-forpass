@@ -8092,7 +8092,9 @@ $('formAcceso').addEventListener('submit', async ev=>{
       salirSilencioso();
     }else if(/BLOQUEADO/.test(m)){
       errorAcceso('Tu cuenta está bloqueada. Pide a un administrador que la reactive.');
-      salirSilencioso();
+      /* También aquí con los datos: si intenta entrar y está bloqueada, la copia
+         local de una sesión anterior no se le queda en el navegador. */
+      salirSilencioso(true);
     }else{
       errorAcceso(m);
     }
@@ -8102,10 +8104,30 @@ $('formAcceso').addEventListener('submit', async ev=>{
 });
 
 /* Limpia la sesión sin redibujar ni mover al usuario de pantalla. */
-function salirSilencioso(){
+/* Salida sin persiana. Con `tambienLosDatos` se lleva además la copia local de
+   la base, y esa decisión NO es cosmética: al bloquear a alguien, su navegador
+   se quedaba con ~74 KB de clientes, sitios, pólizas, precios y cobranza —
+   ilegibles en pantalla porque ya no hay sesión, pero ahí, en esa laptop, para
+   siempre y a un devtools de distancia. El logout normal SÍ limpiaba
+   (limpiarSesionYDatos); a esta ruta se le había olvidado, y es justo la que se
+   usa cuando alguien deja la empresa.
+
+   Quién pide qué, y por qué no es lo mismo:
+     · BLOQUEADO  → sí se limpia. Sale de leer SU PROPIA ficha y ver activo:false;
+       no hay forma de que sea un falso positivo.
+     · SIN_PERMISO → NO se limpia. Un 403 puede venir de una regla sin publicar
+       —ya pasó, está en las trampas conocidas— y borrarle la copia local por un
+       error nuestro le quitaría su respaldo sin deberla. */
+function salirSilencioso(tambienLosDatos){
   detenerVigilancia();
-  Object.assign(sesion, { correo:null, uid:null, idToken:null, refreshToken:null, expira:0, rol:null, nombre:'' });
+  Object.assign(sesion, { correo:null, uid:null, idToken:null, refreshToken:null, expira:0, rol:null, nombre:'', telefono:'' });
   try{ localStorage.removeItem(LLAVE_SESION); }catch(e){}
+  if(tambienLosDatos){
+    datos = { v:1, clientes:[], sitios:[], polizas:[], catalogo:[] };
+    try{ localStorage.removeItem(LLAVE); }catch(e){}
+    estado.vista = inicioDelModulo(); estado.clienteId = null; estado.polizaId = null;
+    sincronizado = false;
+  }
 }
 
 $('aOtraCuenta').addEventListener('click', ()=>{
@@ -8270,7 +8292,8 @@ function manejarFalloDeArranque(e){
     render(); return;
   }
   if(/BLOQUEADO/.test(m)){
-    salirSilencioso();
+    /* Con los datos: una cuenta bloqueada no se queda con la copia de la base. */
+    salirSilencioso(true);
     mostrarAcceso('Tu cuenta está bloqueada. Pide a un administrador que la reactive.');
     render(); return;
   }
