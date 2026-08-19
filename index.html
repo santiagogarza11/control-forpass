@@ -2494,14 +2494,23 @@ function polizasDeCliente(id){ return datos.polizas.filter(q => q.clienteId === 
    El que no tiene NADA sí aparece en Forpass: ahí es donde se crean, y esconderlo
    mientras le capturas el primer sitio sería peor. */
 function clientesDeForpass(){
-  /* Con kioscos CAPTURADOS siempre entra: esconder un cliente con sitios
-     dejaría sus sitios inalcanzables, así que el dato le gana a la casilla.
-     Sin sitios manda la casilla de su ficha; y si es un cliente de antes de la
-     casilla (''), se decide como siempre: entra mientras no tenga pólizas. */
-  return datos.clientes.filter(c =>
-    sitiosDe(c.id).length
-    || c.usaForpass === 'si'
-    || (c.usaForpass === '' && !polizasDeCliente(c.id).length));
+  return datos.clientes.filter(c => {
+    /* Con kioscos CAPTURADOS siempre entra: esconder un cliente con sitios
+       dejaría sus sitios inalcanzables, así que el dato le gana a la casilla. */
+    if(sitiosDe(c.id).length) return true;
+    /* Un cliente que NO TIENE NADA —ni kioscos ni pólizas— también entra
+       siempre, apagada la casilla o no. Ya estaba escrito en POLIZAS.md («ahí es
+       donde se crean») y la primera versión de la casilla lo rompió: un cliente
+       con «Incluye Forpass» apagado y sin ninguna póliza desaparecía de Forpass
+       y tampoco salía en Pólizas —ese módulo lista pólizas, no clientes—, así
+       que quedaba invisible en los dos lados, imposible de abrir y de borrar.
+       Pasó de verdad con un cliente de prueba: se contaba como «más solo con
+       póliza» sin tener una. Mientras no tenga nada, su lugar es aquí. */
+    if(!polizasDeCliente(c.id).length) return true;
+    /* Ya tiene pólizas: manda la casilla de su ficha. Y si es un cliente de
+       antes de la casilla (''), se decide como siempre: se queda fuera. */
+    return c.usaForpass === 'si';
+  });
 }
 function clientePorId(id){ return datos.clientes.find(c => c.id === id); }
 function sitioPorId(id){ return datos.sitios.find(s => s.id === id); }
