@@ -340,6 +340,9 @@ button.encargado:focus-visible{outline:2px solid var(--accent); outline-offset:2
   transition:border-color .12s, background .12s;}
 .agenda-eq b{font-weight:700; color:var(--navy);}
 .agenda-eq:hover{border-color:var(--accent); background:#fff;}
+/* Parcial: ámbar, la misma señal que su chip en el detalle de la póliza. */
+.agenda-eq.parcial{background:var(--alerta-suave); border-color:#F0DCB4;}
+.agenda-eq.parcial b{color:#9a6a15;}
 .agenda-eq.inerte{cursor:default;}
 .agenda-eq.inerte:hover{border-color:var(--line); background:var(--bg);}
 .i-neutro{background:var(--neutro-suave); color:#5c6273; border-color:#dfe3ee;}
@@ -1840,7 +1843,10 @@ async function vaciarCola(){
            la cuenta cuando lo que faltaba era publicar una regla. Se saca, se
            dice CUÁL fue, y se sigue con las demás. */
         if(/SIN_PERMISO/.test(String(e.message || ''))){
-          cola.shift();
+          /* Solo si sigue siendo la MISMA operación: si el usuario volvió a
+             guardar este registro durante el intento, encolar() ya la
+             reemplazó y quitarla aquí tiraría la versión nueva sin mandarla. */
+          if(cola[0] === op) cola.shift();
           guardarCola();
           aviso('El servidor rechazó un cambio en «' + op.coleccion + '». Se quedó guardado aquí, pero no subió. '
               + (op.coleccion === 'catalogo'
@@ -1850,7 +1856,14 @@ async function vaciarCola(){
         }
         throw e;
       }
-      cola.shift();
+      /* Mismo cuidado que arriba, y este sí mordió: dos guardados rápidos del
+         mismo registro (marcar un pago e inmediatamente palomear «facturado»).
+         encolar() reemplaza en la cola la operación del mismo registro, así que
+         durante el await de escribirNube cola[0] puede dejar de ser `op`: el
+         shift ciego quitaba la versión NUEVA —que nunca viajó— y el servidor se
+         quedaba con la vieja. El siguiente refresco pisaba la copia local con
+         eso y el segundo guardado se perdía sin ningún aviso. */
+      if(cola[0] === op) cola.shift();
       guardarCola();
       pintarEstadoNube();
     }
@@ -1884,6 +1897,14 @@ async function bajarDeLaNube(){
   ]);
   if(!cl.length && !si.length && !po.length
      && (datos.clientes.length || datos.sitios.length || datos.polizas.length)) return 'vacia';
+  /* La descarga tarda —cuatro lecturas paginadas— y el guardia de quien llama
+     revisa la cola ANTES de arrancarla: una captura hecha DENTRO de esa ventana
+     quedaba pisada en pantalla y en la copia local por la versión del servidor,
+     hasta el siguiente refresco. Y en el arranque con cola pendiente de una
+     sesión sin internet era peor: se pisaba la copia local antes de subir. Con
+     cambios pendientes se sigue trabajando con la copia local; el siguiente
+     refresco, ya con la cola vacía, descarga limpio. */
+  if(cola.length || vaciando) return 'ok';
   datos = { v:1, clientes: cl.map(normalizarCliente), sitios: si.map(normalizarSitio),
             polizas: po.map(normalizarPoliza), catalogo: eq.map(normalizarEquipo) };
   guardarLocal();
@@ -1992,12 +2013,32 @@ function avisoRespaldo(){
        + '<b>Respaldo JSON</b> ahora mismo por si acaso.</div></div>';
 }
 
-/* Sube todo lo que hay local (para la primera vez o al restaurar un respaldo). */
+/* Sube todo lo que hay local (para la primera vez o al restaurar un respaldo).
+   Filtrando por ROL: en modo local esAdmin() dice que sí a todo, así que un
+   Analyst puede traer en el navegador cosas que el servidor no le va a aceptar
+   —el catálogo es de Admin, y una póliza solo puede nacerle en estatus abierto—.
+   Encolarlas era sembrarle 403 en la primera conexión, con el aviso culpando a
+   las reglas. Se avisa qué se quedó local para que un Admin haga esa subida. */
 function subirTodo(){
   datos.clientes.forEach(c => encolar({ tipo:'poner', coleccion:'clientes', id:c.id, obj:c }));
   datos.sitios.forEach(s => encolar({ tipo:'poner', coleccion:'sitios', id:s.id, obj:s }));
-  datos.polizas.forEach(p => encolar({ tipo:'poner', coleccion:'polizas', id:p.id, obj:p }));
-  if(datos.catalogo.length) encolar({ tipo:'poner', coleccion:'catalogo', id:'lista', obj:{ equipos: datos.catalogo } });
+  /* `puedeCat` y no `admin`: ese nombre ya lo ocupa la caché del panel. */
+  const puedeCat = esAdmin();
+  let fuera = 0;
+  datos.polizas.forEach(p => {
+    if(puedeCat || ESTATUS_ABIERTOS.includes(p.estatus)){
+      encolar({ tipo:'poner', coleccion:'polizas', id:p.id, obj:p });
+    } else fuera++;
+  });
+  if(datos.catalogo.length && puedeCat){
+    encolar({ tipo:'poner', coleccion:'catalogo', id:'lista', obj:{ equipos: datos.catalogo } });
+  }
+  if(!puedeCat && (fuera || datos.catalogo.length)){
+    aviso('Se subió lo tuyo. ' + (fuera ? fuera + ' ' + plural(fuera,'póliza cerrada','pólizas cerradas') + ' ' : '')
+        + (fuera && datos.catalogo.length ? 'y ' : '')
+        + (datos.catalogo.length ? 'la lista de precios ' : '')
+        + 'se quedaron solo en este navegador: subirlas es de un Admin.', true);
+  }
 }
 
 /* ============================== BITÁCORA ==============================
@@ -2848,6 +2889,14 @@ function armarPayloadPoliza(p){
     titulo: { lineas: p.estatus === 'activa'
                 ? ['Póliza de', 'Mtto Prev.']
                 : ['Cotización', 'Póliza de', 'Mtto Prev.'] },
+    /* Los textos de las hojas INTERIORES también cambian con el estatus: la
+       portada ya decía «Póliza de Mtto Prev.» pero adentro cada hoja seguía
+       diciendo «Cotización de Servicios Extras» y «Concepto Cotizado:» — un
+       contrato activo presentándose como cotización. Resueltos aquí porque la
+       plantilla no calcula: formatea y concatena. */
+    textos: p.estatus === 'activa'
+      ? { eyebrow: 'Póliza de Servicios Extras', conceptoEtiqueta: 'Concepto Contratado:' }
+      : { eyebrow: 'Cotización de Servicios Extras', conceptoEtiqueta: 'Concepto Cotizado:' },
 
     /* sitioNombre es lo que se imprime, SIEMPRE: es texto guardado y sobrevive a
        que el sitio se borre del módulo de Forpass. */
@@ -3462,9 +3511,9 @@ function vistaPolizas(){
      + '</div></div>';
 
   h += '<div class="kpis">'
-     + tarjetaKpi('Pólizas activas', numero(r.activas), dinero(r.valorActivo) + ' al año', r.activas ? 'k-ok' : '')
+     + tarjetaKpi('Pólizas activas', numero(r.activas), dineroCent(r.valorActivo) + ' al año', r.activas ? 'k-ok' : '')
      + tarjetaKpi('En espera de confirmar', numero(r.enLaCalle),
-         r.enLaCalle ? dinero(r.montoEnLaCalle) + ' esperando respuesta' : 'Nada enviado sin contestar',
+         r.enLaCalle ? dineroCent(r.montoEnLaCalle) + ' esperando respuesta' : 'Nada enviado sin contestar',
          r.esperaLarga ? 'k-alerta' : '')
      /* Se ofrecen para abrir SOLO cuando hay algo que ver: un «Ver cuáles» con cero
         adentro decepciona, y es la misma regla que siguen los de cobranza. */
@@ -3551,7 +3600,9 @@ function vistaPolizas(){
          +   '</div>'
          +   '<div class="t-chips">' + chips + '</div>'
          +   '<div class="t-datos">'
-         +     '<div class="t-dato"><div class="d-label">Precio anual</div><div class="d-valor">' + dinero(c.precioAnual) + '</div></div>'
+         /* Al centavo, como el detalle: la tarjeta decía $737,135 y adentro
+            $737,134.80 — dos números para la misma póliza. */
+         +     '<div class="t-dato"><div class="d-label">Precio anual</div><div class="d-valor">' + dineroCent(c.precioAnual) + '</div></div>'
          +     '<div class="t-dato"><div class="d-label">Servicios</div><div class="d-valor">' + c.hechos + ' de ' + c.programados + '</div></div>'
          +   '</div>'
          +   '<div class="t-pie">'
@@ -3565,7 +3616,13 @@ function vistaPolizas(){
             el calendario y el documento sí los tiene: son lectura. */
          +     (puedeEditar()
                 ? '<button type="button" class="btn btn-suave btn-mini" data-editar-poliza="' + esc(p.id) + '" title="Editar póliza">' + ICONO.lapiz + '</button>'
-                  + '<button type="button" class="btn btn-peligro btn-mini" data-borrar-poliza="' + esc(p.id) + '" title="Eliminar póliza">' + ICONO.basura + '</button>'
+                : '')
+         /* Borrar es de Admin SIEMPRE: la regla del servidor niega todo delete
+            de pólizas a quien no lo es, sin importar el estatus. El botón se le
+            ofrecía a un Analyst, la póliza desaparecía de su pantalla, y el 403
+            la resucitaba al recargar. */
+         +     (esAdmin()
+                ? '<button type="button" class="btn btn-peligro btn-mini" data-borrar-poliza="' + esc(p.id) + '" title="Eliminar póliza">' + ICONO.basura + '</button>'
                 : '')
          +   '</div>'
          + '</div>';
@@ -3923,11 +3980,26 @@ function vistaAgenda(){
      + '</div></div>';
 
   if(!ag.atrasados.length && !ag.ahora.length && !ag.proximos.length){
-    /* Sin pólizas activas no hay agenda que enseñar, y decirlo es más útil que una
-       pantalla vacía: lo que falta es cerrar una cotización, no capturar aquí. */
-    h += vistaVacia('calendario', 'Todavía no hay servicios programados',
-          'La agenda se llena con las pólizas activas. Cierra una cotización como activa y sus '
-          + 'mantenimientos aparecen aquí, mes por mes.', '', '');
+    /* Tres vacíos distintos, tres verdades distintas. El mensaje único de
+       «cierra una cotización» mentía cuando SÍ había activas: con todo el año
+       registrado sugería que faltaba vender, y con una activa vencida ni
+       mencionaba que lo que toca es renovar. */
+    const activas = datos.polizas.filter(q => calcularPoliza(q).activa).length;
+    const vencidas = datos.polizas.filter(q => q.estatus === 'activa' && !calcularPoliza(q).vigente).length;
+    if(activas){
+      h += vistaVacia('calendario', 'Todo registrado',
+            'Las ' + (activas === 1 ? 'póliza activa tiene' : activas + ' pólizas activas tienen')
+            + ' todos sus servicios del año registrados. Nada pendiente.', '', '');
+    } else if(vencidas){
+      h += vistaVacia('calendario', 'No hay pólizas vigentes',
+            (vencidas === 1 ? 'Hay una póliza activa cuya vigencia ya terminó'
+              : 'Hay ' + vencidas + ' pólizas activas cuya vigencia ya terminó')
+            + '. Renovarla la regresa a la agenda; sus servicios viven en su detalle.', '', '');
+    } else {
+      h += vistaVacia('calendario', 'Todavía no hay servicios programados',
+            'La agenda se llena con las pólizas activas. Cierra una cotización como activa y sus '
+            + 'mantenimientos aparecen aquí, mes por mes.', '', '');
+    }
     return h;
   }
 
@@ -3945,6 +4017,13 @@ function vistaAgenda(){
         'Su mes ya se cumplió completo y nadie los registró.');
   h += bloqueAgenda('Toca ahora', ahora, 'alerta',
         'El mes en curso de su póliza. Todavía no están atrasados.');
+  /* Los parciales son meses YA registrados a los que les faltaron unidades
+     («4 de 5»). No cuentan como pendientes —el indicador tampoco los cuenta, y
+     la agenda cuadra con el indicador— pero esconderlos era dar por atendido lo
+     que no se terminó: se calculaba `parcial` y no lo leía nadie. Van aparte,
+     con su fracción, y picarlos abre el registro para completarlo o corregirlo. */
+  h += bloqueAgenda('Parciales', ag.hechos.filter(it => it.parcial).filter(coincide), 'neutro',
+        'Registrados con unidades faltantes. No cuentan como pendientes; pícalos para corregir el registro.');
   if(estado.horizonte !== 0){
     h += bloqueAgenda('Programados', proximos, 'neutro',
           'Lo que viene, para planear la ruta.');
@@ -3983,16 +4062,21 @@ function bloqueAgenda(titulo, lista, tono, explica){
       si.equipos.forEach(it=>{
         const x = it.partida;
         const etq = esc(x.concepto || 'Equipo')
-          + (x.cantidad > 1 ? ' <b>×' + x.cantidad + '</b>' : '');
+          + (it.parcial
+              ? ' <b>' + it.det.hechas + ' de ' + x.cantidad + '</b>'
+              : (x.cantidad > 1 ? ' <b>×' + x.cantidad + '</b>' : ''));
         /* Los mismos tres atributos que usan los chips del detalle, para que los
            abra el manejador de [data-servicio] que ya está puesto. Al guardar hace
            cerrarModal() y render(), así que la agenda se repinta con el servicio
            ya marcado sin que haya que devolver a ninguna parte. */
         const atrib = 'data-servicio="' + esc(it.polizaId) + '" data-partida="' + esc(x.id) + '" '
                     + 'data-mes="' + it.mes + '"';
+        const tip = it.parcial
+          ? (it.det.motivo ? 'Faltó: ' + it.det.motivo + ' — abre el registro para corregirlo' : 'Abrir el registro')
+          : 'Registrar que ya se hizo';
         h += puede
-          ? '<button type="button" class="agenda-eq" ' + atrib + ' title="Registrar que ya se hizo">' + etq + '</button>'
-          : '<span class="agenda-eq inerte">' + etq + '</span>';
+          ? '<button type="button" class="agenda-eq' + (it.parcial ? ' parcial' : '') + '" ' + atrib + ' title="' + esc(tip) + '">' + etq + '</button>'
+          : '<span class="agenda-eq inerte' + (it.parcial ? ' parcial' : '') + '" title="' + esc(tip) + '">' + etq + '</span>';
       });
       h += '</div></div>';
     });
@@ -5064,7 +5148,13 @@ function modalServicioPoliza(polizaId, partidaId, mes, vuelveAlCalendario){
      propone dentro de él, no "hoy", que puede caer en otro mes. */
   const inicioMes = sumarMeses(p.fechaInicio, mes);
   const hoy = hoyISO();
-  const dentroDelMes = diasEntre(inicioMes, hoy) >= 0 && diasEntre(hoy, sumarMeses(p.fechaInicio, mes+1)) > 0;
+  /* El mismo juez que la agenda y el calendario: mesesTranscurridos. La versión
+     anterior usaba el intervalo [inicio, inicio+1 mes) con sumarMeses, y en
+     pólizas que arrancan el 29/30/31 el recorte de fin de mes (31-ene + 1 mes =
+     28-feb) las desalineaba justo en el día frontera: la agenda decía «toca
+     ahora» y este modal proponía una fecha de un mes atrás. La definición del
+     mes vive en UN lugar. */
+  const dentroDelMes = diasEntre(inicioMes, hoy) >= 0 && mesesTranscurridos(p.fechaInicio, hoy) === mes;
   const propuesta = (det && det.cuando) || (dentroDelMes ? hoy : inicioMes);
 
   const cuerpo =
@@ -5242,9 +5332,12 @@ function modalCalendario(id){
   if(!p) return;
   const c = calcularPoliza(p);
   const hoy = hoyISO();
-  /* En qué mes de la vigencia estamos, para marcar "este mes". */
-  const mesActual = diasEntre(p.fechaInicio, hoy) < 0 ? -1
-    : Math.min(MESES_POLIZA - 1, mesesTranscurridos(p.fechaInicio, hoy));
+  /* En qué mes de la vigencia estamos, para marcar "este mes". El -1 cubre las
+     DOS puntas: antes de arrancar y después de terminar. Sin la segunda, una
+     póliza vencida marcaba su mes 12 como «este mes» para siempre — el clamp a
+     MESES_POLIZA-1 congelaba el resaltado en el último mes. */
+  const trans = mesesTranscurridos(p.fechaInicio, hoy);
+  const mesActual = (diasEntre(p.fechaInicio, hoy) < 0 || trans >= MESES_POLIZA) ? -1 : trans;
 
   const marcable = puedeEditar();
   const meses = Array.from({length:MESES_POLIZA}, (_,m)=>{
@@ -5417,11 +5510,21 @@ function modalPoliza(id){
     +     '<div class="campo"><label>Folio (opcional)</label>'
     +       '<input type="text" id="pFolio" placeholder="Ej. COT-2026-0041" value="' + esc(p ? p.folio : '') + '"></div>'
     +     '<div class="campo"><label>Estatus</label><select id="pEstatus"' + bloq + '>'
-    /* Si esta póliza trae un estatus que ya no se ofrece —'perdida', de antes—,
-       se agrega a la lista para que abrir el modal no se lo cambie en silencio. */
-    +       opc(ESTATUS_OFRECIDOS.includes(p ? p.estatus : 'cotizacion')
-                ? ESTATUS_OFRECIDOS : ESTATUS_OFRECIDOS.concat(p.estatus),
-             p ? p.estatus : 'cotizacion', e=>ETIQUETA_ESTATUS[e], e=>e) + '</select></div>'
+    /* Las opciones dependen del ROL: la regla del servidor solo deja a un
+       Analyst mover el estatus entre 'cotizacion' y 'enviada' — 'activa' y
+       'cancelada' le rebotan con 403. Antes se le ofrecían las cuatro, marcaba
+       «Cancelada» porque el cliente dijo que no, veía la póliza cancelada en
+       pantalla, y al recargar seguía viva: la captura se perdía con un aviso
+       genérico. Es la misma regla que el descuento: no se ofrece lo que el
+       servidor va a negar. Si la póliza trae un estatus fuera de la lista
+       —'perdida' de antes, o una cerrada que un admin le pidió tocar— se agrega
+       para que abrir el modal no se lo cambie en silencio. */
+    +       (() => {
+              const base = esAdmin() ? ESTATUS_OFRECIDOS : ESTATUS_ABIERTOS;
+              const actual = p ? p.estatus : 'cotizacion';
+              return opc(base.includes(actual) ? base : base.concat(actual),
+                actual, e=>ETIQUETA_ESTATUS[e], e=>e);
+            })() + '</select></div>'
     +   '</div>'
     +   '<div class="fila2">'
     +     '<div class="campo"><label>Fecha de la cotización</label>'
@@ -5960,7 +6063,13 @@ function modalPoliza(id){
     const noCuadran = limpias.filter(x => !cuadraFrecuencia(x));
     /* Al intentar guardar sí se destapan todos los avisos: ya no es prematuro. */
     if(noCuadran.length){ partidasTmp.forEach(x => { x._tocada = true; }); refrescar(); }
-    if(f.estatus === 'activa'){
+    /* Admin solo para la TRANSICIÓN. Antes el gate era `estatus === 'activa'` a
+       secas, y a un Analyst que reeditaba una activa —corregir el sitio o las
+       notas, exactamente lo que el aviso de congelada le promete— lo detenía
+       «Solo un Admin puede cerrar una póliza». La regla del servidor sí
+       distingue: la cláusula 3 le acepta la reescritura mientras lo congelado
+       salga idéntico, y de eso ya se encarga el formulario apagado. */
+    if(f.estatus === 'activa' && (!p || p.estatus !== 'activa')){
       if(!exigirAdmin('cerrar una póliza como activa')) return;
       if(noCuadran.length){
         aviso('No se puede cerrar: ' + noCuadran.length + ' ' + plural(noCuadran.length,'renglón no cuadra','renglones no cuadran') + ' entre meses y servicios al año.', true);
@@ -6644,6 +6753,19 @@ function modalPerfil(){
     +   loQuePuedeHacer(rol).map(x => '<li>' + esc(x) + '</li>').join('')
     + '</ul>'
 
+    /* El teléfono se guarda en la ficha del usuario y las cotizaciones lo
+       imprimen junto al vendedor. La regla del servidor deja que cada quien
+       actualice el suyo desde siempre — lo que no había era el campo: el dato
+       era imposible de capturar y las pólizas salían sin celular. */
+    + '<h4 style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--navy); font-weight:700; margin:22px 0 10px">'
+    +   'Mi teléfono</h4>'
+    + '<div class="campo"><label for="pfTelefono">Celular</label>'
+    +   '<div class="cliente-zona">'
+    +     '<input type="text" id="pfTelefono" inputmode="tel" placeholder="811 60 71 051" value="' + esc(sesion.telefono || '') + '">'
+    +     '<button type="button" class="btn btn-suave btn-mini" id="pfGuardaTel">Guardar</button>'
+    +   '</div>'
+    +   '<div class="pista">Sale impreso en tus cotizaciones, junto a tu nombre. Solo tú lo puedes cambiar.</div></div>'
+
     + '<h4 style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--navy); font-weight:700; margin:22px 0 10px">'
     +   'Cambiar mi contraseña</h4>'
     + (claveRevisada && claveEsInicial
@@ -6664,6 +6786,27 @@ function modalPerfil(){
   abrirModal('Mi cuenta', cuerpo,
       '<button type="button" class="btn btn-suave" data-modal="cancelar">Cerrar</button>'
     + '<button type="button" class="btn btn-primario" data-modal="guardar">Cambiar contraseña</button>');
+
+  $('pfGuardaTel').addEventListener('click', async ()=>{
+    const tel = $('pfTelefono').value.trim();
+    const btn = $('pfGuardaTel');
+    btn.disabled = true; btn.textContent = 'Guardando…';
+    try{
+      /* PATCH de SOLO este campo, como ultimoAcceso: la regla del propio
+         usuario exige hasOnly(['ultimoAcceso','telefono']) — mandar la ficha
+         completa por escribirNube rebotaría con 403. */
+      await pedirNube('/usuarios/' + encodeURIComponent(sesion.uid) + '?updateMask.fieldPaths=telefono', {
+        method:'PATCH', body: JSON.stringify({ fields:{ telefono:{ stringValue: tel } } })
+      });
+      sesion.telefono = tel;
+      guardarSesion && guardarSesion();
+      aviso(tel ? 'Teléfono guardado. Va a salir en tus próximas cotizaciones.' : 'Teléfono borrado.');
+    }catch(e){
+      aviso('No se pudo guardar el teléfono: ' + e.message, true);
+    }finally{
+      btn.disabled = false; btn.textContent = 'Guardar';
+    }
+  });
 
   $('pfPorCorreo').addEventListener('click', async ()=>{
     try{
@@ -7076,10 +7219,11 @@ $('vista').addEventListener('click', ev=>{
     if(!exigirPermiso()) return;
     const pol = polizaPorId(boP.dataset.borrarPoliza);
     if(!pol) return;
-    /* Borrar una póliza cerrada es la forma más burda de saltarse el congelado de
-       precios, así que en el servidor es de Owner/Admin. Se corta aquí también
-       para no encolar un cambio que va a rebotar con 403 sin explicación. */
-    if(pol.estatus === 'activa' && !exigirAdmin('eliminar una póliza activa')) return;
+    /* Borrar pólizas es de Admin sin importar el estatus: así lo dice la regla
+       del servidor (`allow delete: if esAdmin()`), porque borrar una cerrada es
+       la forma más burda de saltarse el congelado. Se corta aquí también para
+       no encolar un cambio que va a rebotar con 403 sin explicación. */
+    if(!exigirAdmin('eliminar una póliza')) return;
     const c = calcularPoliza(pol);
     confirmar('Eliminar póliza',
       'Se va a eliminar la póliza de <b>' + esc(pol.sitioNombre || pol.folio || 'sin nombre') + '</b>'
@@ -7927,7 +8071,16 @@ async function refrescarDesdeNube(){
     const antes = JSON.stringify(datos);
     await bajarDeLaNube();
     sincronizado = true;
-    if(JSON.stringify(datos) !== antes) render();
+    if(JSON.stringify(datos) !== antes){
+      /* Si el foco está en un buscador, el render se lo robaba: el texto
+         sobrevivía (vive en estado.busca) pero el cursor se iba, a media
+         palabra. Se repinta conservándolo, con el id del buscador ACTIVO —
+         renderConservandoFoco necesita el suyo, es la trampa documentada. */
+      const foco = document.activeElement;
+      const BUSCADORES = ['buscaCliente', 'buscaEquipo', 'buscaPoliza', 'buscaAgenda'];
+      if(foco && BUSCADORES.includes(foco.id)) renderConservandoFoco(foco, foco.id);
+      else render();
+    }
   }catch(e){
     if(/SIN_SESION|SESION_VENCIDA/.test(String(e.message))) salir(true);
   }

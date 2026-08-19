@@ -39,9 +39,22 @@ service cloud.firestore {
       allow read:  if conAcceso();
       allow write: if puedeEditar();
     }
+    /* --- Sitios ---
+       El encargado —quién de Forguard lleva la cuenta— lo asigna solo un Admin.
+       Ese candado vivía únicamente en la interfaz: con su token, un Analyst
+       podía reasignarse sitios por REST y el servidor lo aceptaba. Ahora el
+       campo está congelado para quien no es Admin, con get() en las dos puntas
+       por la lección del descuento: los sitios viejos pueden no traer el campo,
+       y un campo ausente leído con punto es un ERROR que rechaza también lo
+       legítimo. Crear exige encargado vacío: nadie se asigna al capturar. */
     match /sitios/{id} {
       allow read:  if conAcceso();
-      allow write: if puedeEditar();
+      allow create: if esAdmin()
+                    || (puedeEditar() && request.resource.data.get('encargado', '') == '');
+      allow update: if esAdmin()
+                    || (puedeEditar()
+                        && request.resource.data.get('encargado', '') == resource.data.get('encargado', ''));
+      allow delete: if puedeEditar();
     }
 
     /* --- Pólizas de mantenimiento preventivo ---

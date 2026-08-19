@@ -509,13 +509,15 @@ cero donde antes no había campo.
 
 ### Lo que sigue, en orden de valor
 
-1. **Los 18 hallazgos restantes del escaneo del 18-ago** (el grave del documento
-   imprimible ya quedó resuelto y verificado el mismo día): siguen los desfases
-   interfaz/servidor —«Cancelada» y el borrado ofrecidos a un Analyst, el guardado
-   de activas que exige Admin hasta para reeditar— y los dos de la cola. **Lista
-   completa con línea, causa y arreglo propuesto en
-   [docs/HALLAZGOS-18AGO.md](docs/HALLAZGOS-18AGO.md).** Salieron de 29 agentes
-   con verificación adversaria; ninguno es hueco de seguridad.
+1. **Cerrar los 3 hallazgos que quedan del escaneo del 18-ago** (16 de 19 ya
+   resueltos y verificados ejecutando — ver
+   [docs/HALLAZGOS-18AGO.md](docs/HALLAZGOS-18AGO.md)):
+   - **Pegar las reglas** de `config/firestore.rules` en la consola: congelan el
+     `encargado` de sitios para quien no es Admin. Hasta pegarlas, ese candado
+     sigue siendo solo de interfaz.
+   - **Los dos del Excel** (la fecha de captura sale en UTC, y «Primer pago» /
+     «Valor del contrato» van tecleados en vez de fórmulas): esperan que Santiago
+     levante su regla de «no tocar el generador de Excel».
 2. **Segundo documento: evidencia de servicios ejecutados.** El historial de
    `hechos` ya da para el reporte que el cliente pide en auditoría —con el «4 de 5»
    y su motivo—. Es otra plantilla y otra fase; se dejó fuera de la Fase 5 a

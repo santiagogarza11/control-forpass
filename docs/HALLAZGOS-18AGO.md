@@ -8,6 +8,13 @@ De 27 hallazgos crudos: 18 confirmados + 1 encontrado a mano = **19**, y 2
 refutados con evidencia. Cero hallazgos de inyección de HTML: todo lo capturado
 pasa por `esc()`.
 
+> ✅ **Barrida del 19-ago-2026:** de los 19, **16 están resueltos y verificados
+> ejecutando** (el grave del documento el 18-ago; los otros 15 el 19-ago, rama
+> `hallazgos-restantes`). Quedan TRES: el candado de encargado (#servidor) ya
+> está escrito en `config/firestore.rules` y **solo falta pegarlo en la
+> consola**, y los dos del Excel (fecha UTC y celdas tecleadas) esperan que
+> Santiago levante su regla de «no tocar el generador de Excel».
+
 **Ninguno es hueco de seguridad** — el servidor siempre gana. Los de permisos
 son capturas que se pierden con un aviso confuso: la clase de bug donde la
 interfaz ofrece lo que el servidor va a negar.
