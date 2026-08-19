@@ -35,9 +35,17 @@ service cloud.firestore {
     function puedeEditar() { return conAcceso() && rol() in ['owner', 'admin', 'analyst']; }
 
     /* --- Información del tablero --- */
+    /* --- Clientes ---
+       Crear y corregir es el trabajo del día: lo hace cualquiera que pueda
+       editar. BORRAR es de Admin para arriba (decidido el 19-ago-2026): un
+       cliente se lleva de golpe sus sitios con su historial de pagos y sus OC, y
+       —como la colección de clientes es UNA sola para los dos módulos— también
+       deja huérfana su póliza de mantenimiento. No hay deshacer. */
     match /clientes/{id} {
-      allow read:  if conAcceso();
-      allow write: if puedeEditar();
+      allow read:   if conAcceso();
+      allow create: if puedeEditar();
+      allow update: if puedeEditar();
+      allow delete: if esAdmin();
     }
     /* --- Sitios ---
        El encargado —quién de Forguard lleva la cuenta— lo asigna solo un Admin.
@@ -54,7 +62,9 @@ service cloud.firestore {
       allow update: if esAdmin()
                     || (puedeEditar()
                         && request.resource.data.get('encargado', '') == resource.data.get('encargado', ''));
-      allow delete: if puedeEditar();
+      /* Igual que el cliente: borrar un sitio se lleva su historial de pagos y
+         sus órdenes de compra. Capturar y corregir, cualquiera; eliminar, Admin. */
+      allow delete: if esAdmin();
     }
 
     /* --- Pólizas de mantenimiento preventivo ---

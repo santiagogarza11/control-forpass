@@ -3322,7 +3322,14 @@ function vistaClientes(){
          +     '<button type="button" class="btn btn-suave btn-mini" data-ver="' + esc(c.id) + '">Ver sitios →</button>'
          +     '<span class="espacio"></span>'
          +     '<button type="button" class="btn btn-suave btn-mini" data-editar-cliente="' + esc(c.id) + '" title="Editar cliente">' + ICONO.lapiz + '</button>'
-         +     '<button type="button" class="btn btn-peligro btn-mini" data-borrar-cliente="' + esc(c.id) + '" title="Eliminar cliente">' + ICONO.basura + '</button>'
+         /* Borrar del tablero es de Admin para arriba, decidido por Santiago el
+            19-ago-2026: capturar y corregir es el trabajo del día —cualquiera con
+            permiso de editar lo hace— pero eliminar un registro ya creado se lleva
+            de golpe su historial y no hay deshacer. Un cliente arrastra además sus
+            sitios, y con la colección compartida, su póliza de mantenimiento. */
+         +     (esAdmin()
+                ? '<button type="button" class="btn btn-peligro btn-mini" data-borrar-cliente="' + esc(c.id) + '" title="Eliminar cliente">' + ICONO.basura + '</button>'
+                : '')
          +   '</div>'
          + '</div>';
   }).join('') + '</div>';
@@ -3524,7 +3531,11 @@ function tarjetaSitio(s, i){
        +     (c.proximo ? '<button type="button" class="btn btn-verde btn-mini" data-marcar="' + esc(s.id) + '">' + ICONO.cheque + 'Marcar pagada</button>' : '')
        +     '<span class="espacio"></span>'
        +     '<button type="button" class="btn btn-suave btn-mini" data-editar-sitio="' + esc(s.id) + '">' + ICONO.lapiz + 'Editar</button>'
-       +     '<button type="button" class="btn btn-peligro btn-mini" data-borrar-sitio="' + esc(s.id) + '" title="Eliminar sitio">' + ICONO.basura + '</button>'
+       /* Mismo criterio que el cliente: borrar un sitio se lleva su historial de
+          pagos y sus OC, y eso no se deshace. */
+       +     (esAdmin()
+              ? '<button type="button" class="btn btn-peligro btn-mini" data-borrar-sitio="' + esc(s.id) + '" title="Eliminar sitio">' + ICONO.basura + '</button>'
+              : '')
        +   '</div>'
        + '</div>';
 }
@@ -7261,7 +7272,9 @@ $('vista').addEventListener('click', ev=>{
 
   const boC = t.closest('[data-borrar-cliente]');
   if(boC){
-    if(!exigirPermiso()) return;
+    /* El botón ya no se le pinta a un Analyst; esto corta el camino por teclado o
+       por un DOM viejo, y evita encolar un cambio que el servidor va a rebotar. */
+    if(!exigirAdmin('eliminar un cliente')) return;
     const c = clientePorId(boC.dataset.borrarCliente);
     const n = sitiosDe(c.id).length;
     confirmar('Eliminar cliente',
@@ -7283,7 +7296,7 @@ $('vista').addEventListener('click', ev=>{
 
   const boS = t.closest('[data-borrar-sitio]');
   if(boS){
-    if(!exigirPermiso()) return;
+    if(!exigirAdmin('eliminar un sitio')) return;
     const s = sitioPorId(boS.dataset.borrarSitio);
     confirmar('Eliminar sitio', 'Se va a eliminar el sitio <b>' + esc(s.nombre) + '</b> y su historial de pagos. Esta acción no se puede deshacer.',
       'Sí, eliminar', ()=>{
