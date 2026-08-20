@@ -382,7 +382,8 @@ button.encargado:focus-visible{outline:2px solid var(--accent); outline-offset:2
   cursor:default;
   display:grid; place-items:center; transition:background .12s, border-color .12s, color .12s, transform .1s;
 }
-.mes:hover{border-color:var(--accent); color:var(--accent);}
+/* El resaltado al pasar encima, solo donde SÍ se puede picar. */
+button.mes:hover{border-color:var(--accent); color:var(--accent);}
 button.mes{cursor:pointer;}
 .mes.pagado{background:var(--ok); border-color:var(--ok); color:#fff;}
 .mes.pagado:hover{background:#35935c; border-color:#35935c; color:#fff;}
@@ -3243,7 +3244,12 @@ function vistaClientes(){
      +   (soloPoliza ? ' · ' + numero(soloPoliza) + ' más solo con póliza' : '') + '</p>'
      + '</div><div class="acciones">'
      +   barraHerramientas()
-     +   '<button type="button" class="btn btn-primario" data-accion="nuevo-cliente">' + ICONO.mas + 'Agregar cliente</button>'
+     /* A un Viewer no se le ofrece nada de captura: el módulo de pólizas ya
+        seguía esta regla (botón si puede editar, texto si no) y Forpass se había
+        quedado atrás — ofrecía lápices y «Agregar» que al picarlos contestaban
+        «Tu cuenta es Viewer: no puede hacer cambios». Un callejón sin salida
+        cada vez. Ver la regla de oro en CLAUDE.md. */
+     +   (puedeEditar() ? '<button type="button" class="btn btn-primario" data-accion="nuevo-cliente">' + ICONO.mas + 'Agregar cliente</button>' : '')
      + '</div></div>';
 
   h += '<div class="kpis">'
@@ -3262,7 +3268,9 @@ function vistaClientes(){
   h += avisoLocal();
 
   if(!mios.length){
-    h += vistaVacia('edificio','Todavía no hay clientes','Agrega tu primer cliente y después registra los sitios con sus Forpass, mensualidad y vigencia.','nuevo-cliente','Agregar cliente');
+    h += puedeEditar()
+      ? vistaVacia('edificio','Todavía no hay clientes','Agrega tu primer cliente y después registra los sitios con sus Forpass, mensualidad y vigencia.','nuevo-cliente','Agregar cliente')
+      : vistaVacia('edificio','Todavía no hay clientes','Cuando alguien del equipo dé de alta el primer cliente, va a aparecer aquí.','','');
     return h;
   }
 
@@ -3330,7 +3338,9 @@ function vistaClientes(){
          +   '<div class="t-pie">'
          +     '<button type="button" class="btn btn-suave btn-mini" data-ver="' + esc(c.id) + '">Ver sitios →</button>'
          +     '<span class="espacio"></span>'
-         +     '<button type="button" class="btn btn-suave btn-mini" data-editar-cliente="' + esc(c.id) + '" title="Editar cliente">' + ICONO.lapiz + '</button>'
+         +     (puedeEditar()
+                ? '<button type="button" class="btn btn-suave btn-mini" data-editar-cliente="' + esc(c.id) + '" title="Editar cliente">' + ICONO.lapiz + '</button>'
+                : '')
          /* Borrar del tablero es de Admin para arriba, decidido por Santiago el
             19-ago-2026: capturar y corregir es el trabajo del día —cualquiera con
             permiso de editar lo hace— pero eliminar un registro ya creado se lleva
@@ -3385,7 +3395,7 @@ function vistaCliente(){
      +   (c.contacto ? ' · ' + esc(c.contacto) : '') + '</p>'
      + '</div></div><div class="acciones">'
      +   '<button type="button" class="btn btn-suave btn-mini" data-accion="excel-cliente">' + ICONO.excel + 'Excel de este cliente</button>'
-     +   '<button type="button" class="btn btn-primario" data-accion="nuevo-sitio">' + ICONO.mas + 'Agregar sitio</button>'
+     +   (puedeEditar() ? '<button type="button" class="btn btn-primario" data-accion="nuevo-sitio">' + ICONO.mas + 'Agregar sitio</button>' : '')
      + '</div></div>';
 
   /* Filtros: siempre presentes en cuanto haya al menos un sitio, para que la
@@ -3430,7 +3440,9 @@ function vistaCliente(){
      + '</div>';
 
   if(!todos.length){
-    h += vistaVacia('credencial','Este cliente aún no tiene sitios','Registra un sitio (por ejemplo MXCD13) con sus Forpass, la mensualidad, la vigencia y si incluyó viáticos u onboarding.','nuevo-sitio','Agregar sitio');
+    h += puedeEditar()
+      ? vistaVacia('credencial','Este cliente aún no tiene sitios','Registra un sitio (por ejemplo MXCD13) con sus Forpass, la mensualidad, la vigencia y si incluyó viáticos u onboarding.','nuevo-sitio','Agregar sitio')
+      : vistaVacia('credencial','Este cliente aún no tiene sitios','Cuando alguien del equipo registre el primer kiosco, va a aparecer aquí con su mensualidad y su vigencia.','','');
     return h;
   }
 
@@ -3467,9 +3479,14 @@ function tarjetaSitio(s, i){
     const detalle = 'Mensualidad ' + (idx+1) + ' · ' + fecha + ' · ' + dinero(c.montos[idx])
                   + (idx === 0 && c.extras ? ' (incluye onboarding y viáticos)' : '')
                   + (p ? ' · pagada' : ' · sin pagar');
-    return '<button type="button" class="mes ' + cl + '" data-pago="' + esc(s.id) + '" data-idx="' + idx + '" '
-         + 'title="' + esc(detalle) + '" aria-label="' + esc(detalle) + '" '
-         + 'aria-pressed="' + (p ? 'true' : 'false') + '">' + (idx+1) + '</button>';
+    /* El mismo molde que las casillas de cobro de una póliza: para quien no
+       captura son texto, no botones — se ven igual y dicen lo mismo en el
+       globito, pero no invitan a picarlas para que las rechacen. */
+    return puedeEditar()
+      ? '<button type="button" class="mes ' + cl + '" data-pago="' + esc(s.id) + '" data-idx="' + idx + '" '
+        + 'title="' + esc(detalle) + '" aria-label="' + esc(detalle) + '" '
+        + 'aria-pressed="' + (p ? 'true' : 'false') + '">' + (idx+1) + '</button>'
+      : '<span class="mes ' + cl + '" title="' + esc(detalle) + '" aria-label="' + esc(detalle) + '">' + (idx+1) + '</span>';
   }).join('');
 
   /* Etiqueta del encargado, asomando por el borde de arriba. Todos la ven;
@@ -3537,9 +3554,11 @@ function tarjetaSitio(s, i){
        +   (s.notas ? '<div class="t-nota">' + esc(s.notas) + '</div>' : '')
 
        +   '<div class="t-pie">'
-       +     (c.proximo ? '<button type="button" class="btn btn-verde btn-mini" data-marcar="' + esc(s.id) + '">' + ICONO.cheque + 'Marcar pagada</button>' : '')
+       +     (c.proximo && puedeEditar() ? '<button type="button" class="btn btn-verde btn-mini" data-marcar="' + esc(s.id) + '">' + ICONO.cheque + 'Marcar pagada</button>' : '')
        +     '<span class="espacio"></span>'
-       +     '<button type="button" class="btn btn-suave btn-mini" data-editar-sitio="' + esc(s.id) + '">' + ICONO.lapiz + 'Editar</button>'
+       +     (puedeEditar()
+              ? '<button type="button" class="btn btn-suave btn-mini" data-editar-sitio="' + esc(s.id) + '">' + ICONO.lapiz + 'Editar</button>'
+              : '')
        /* Mismo criterio que el cliente: borrar un sitio se lleva su historial de
           pagos y sus OC, y eso no se deshace. */
        +     (esAdmin()
