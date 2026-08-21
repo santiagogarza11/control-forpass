@@ -3812,8 +3812,11 @@ function vistaPoliza(){
      +   (cli ? avatarCliente(cli, 28) : '')
      +   esc(cli ? cli.nombre : '—')
      +   (cli && puedeEditar()
+         /* El globito aclara el límite: esto edita al CLIENTE (su nombre y su
+            logo, en todas sus pólizas), no a qué cliente pertenece ESTA póliza. */
          ? '<button type="button" class="btn btn-suave btn-mini" data-editar-cliente="' + esc(cli.id) + '" '
-           + 'title="Editar el cliente y subir su logo">' + ICONO.lapiz + (cli.logo ? 'Cambiar logo' : 'Subir logo') + '</button>'
+           + 'title="Editar los datos del cliente y su logo. Para que esta póliza pase a OTRO cliente, usa Editar póliza.">'
+           + ICONO.lapiz + (cli.logo ? 'Cambiar logo' : 'Subir logo') + '</button>'
          : '')
      + '</b></div>'
      + '<div class="c-fila"><span>Sitio</span><b>' + esc(p.sitioNombre || '—')
@@ -4800,7 +4803,24 @@ function modalCliente(id){
     +   '<input type="file" id="archivoLogo" accept="image/*" style="display:none">'
     + '</div>'
     + '<div class="campo"><label>Nombre del cliente *</label>'
-    +   '<input type="text" id="cNombre" placeholder="Ej. Mercado Libre" value="' + esc(c ? c.nombre : '') + '"></div>'
+    +   '<input type="text" id="cNombre" placeholder="Ej. Mercado Libre" value="' + esc(c ? c.nombre : '') + '">'
+    /* El nombre del cliente es UNO y lo comparten todas sus pólizas y kioscos.
+       Pasó de verdad (20-ago-2026): una póliza quedó con el cliente equivocado,
+       se entró por aquí a corregirlo, y renombrar el registro cambió el nombre
+       en las DOS pólizas del cliente. Se detectó en seis minutos y se regresó,
+       pero el aviso va donde se comete el error, no en la documentación. */
+    +   (() => {
+          if(!c) return '';
+          const np = polizasDeCliente(c.id).length, ns = sitiosDe(c.id).length;
+          if(!np && !ns) return '';
+          const partes = [];
+          if(np) partes.push(np + ' ' + plural(np,'póliza','pólizas'));
+          if(ns) partes.push(ns + ' ' + plural(ns,'kiosco','kioscos'));
+          return '<div class="pista">Este nombre se usa en <b>' + partes.join(' y ') + '</b>: '
+            + 'cambiarlo aquí lo cambia en todos. Para que una póliza pase a OTRO cliente, '
+            + 'eso se hace en <b>Editar póliza</b>, en su selector de cliente.</div>';
+        })()
+    +   '</div>'
     + '<div class="campo"><label>Contacto (opcional)</label>'
     +   '<input type="text" id="cContacto" placeholder="Ej. Juan Pérez · compras@cliente.com" value="' + esc(c ? c.contacto : '') + '"></div>'
     + '<div class="campo"><label>Notas (opcional)</label>'
@@ -4936,6 +4956,26 @@ function modalCliente(id){
     /* Al guardar, la decisión queda EXPLÍCITA ('si'/'no'): un cliente de antes
        de la casilla se gradúa del estado heredado en cuanto alguien lo edita. */
     const usa = $('cUsaForpass').checked ? 'si' : 'no';
+
+    /* Renombrar arrastra a todo lo del cliente, así que se pregunta — pero solo
+       cuando de verdad hay algo que arrastrar y el nombre SÍ cambió; preguntar
+       de más entrena a la gente a darle Aceptar sin leer.
+
+       window.confirm y no confirmar(): esa llama a abrirModal, que reemplaza
+       #modalCuerpo, y abajo todavía se leen cContacto y cNotas — quedarían en
+       null. Es la trampa documentada de leer un campo después de cerrar. */
+    if(c && nombre !== c.nombre){
+      const np = polizasDeCliente(c.id).length, ns = sitiosDe(c.id).length;
+      if(np || ns){
+        const partes = [];
+        if(np) partes.push(np + ' ' + plural(np,'póliza','pólizas'));
+        if(ns) partes.push(ns + ' ' + plural(ns,'kiosco','kioscos'));
+        if(!window.confirm('«' + c.nombre + '» va a pasar a llamarse «' + nombre + '».\n\n'
+            + 'Es el mismo cliente en ' + partes.join(' y ') + ', así que el nombre cambia en '
+            + 'todos.\n\nSi lo que querías es que una póliza pase a otro cliente, cancela y '
+            + 'hazlo en Editar póliza, en su selector de cliente.\n\n¿Cambiar el nombre?')) return;
+      }
+    }
     let reg;
     if(c){
       c.nombre = nombre; c.contacto = $('cContacto').value.trim(); c.notas = $('cNotas').value.trim();
